@@ -1,0 +1,18 @@
+# IDE
+.idea/
+.vscode/
+.claude/
+
+# Logs
+LOG_PATH_IS_UNDEFINED/
+*.log
+
+# Maven
+target/
+*.iml
+
+# Reports (optional, keep if needed for documentation)
+*_REPORT.md
+*_PLAN.md
+*_GUIDE.md
+dependency-tree.txt
