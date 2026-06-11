@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.sl.ehub.service.mapper.AggregatorSmsMapper">
+  <resultMap id="BaseResultMap" type="cn.sl.ehub.service.vo.AggregatorSms">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    <id column="id" jdbcType="INTEGER" property="id" />
+    <result column="name" jdbcType="VARCHAR" property="name" />
+    <result column="phone" jdbcType="VARCHAR" property="phone" />
+    <result column="role" jdbcType="VARCHAR" property="role" />
+    <result column="ent_id" jdbcType="VARCHAR" property="entId" />
+    <result column="query_flag" jdbcType="INTEGER" property="queryFlag" />
+    <result column="grid_code" jdbcType="VARCHAR" property="gridCode" />
+    <result column="acceptable" jdbcType="INTEGER" property="acceptable" />
+  </resultMap>
+  <insert id="batchInsert" parameterType="java.util.List">
+    INSERT INTO aggregator_sms
+    (name, phone, role, ent_id, query_flag, grid_code, acceptable)
+    VALUES
+    <foreach collection="list" item="item" index="index" separator=",">
+      (
+      #{item.name},
+      #{item.phone},
+      #{item.role},
+      #{item.entId},
+      #{item.queryFlag},
+      #{item.gridCode},
+      #{item.acceptable}
+      )
+    </foreach>
+  </insert>
+</mapper>

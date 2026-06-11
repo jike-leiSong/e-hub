@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.sl.ehub.service.mapper.TotalDeliveryLogMapper">
+    <resultMap id="BaseResultMap" type="cn.sl.ehub.service.vo.TotalDeliveryLog">
+        <!--
+          WARNING - @mbg.generated
+        -->
+        <id column="id" jdbcType="INTEGER" property="id"/>
+        <result column="group_no" jdbcType="VARCHAR" property="groupNo"/>
+        <result column="value" jdbcType="VARCHAR" property="value"/>
+        <result column="delivery_status" jdbcType="VARCHAR" property="deliveryStatus"/>
+        <result column="create_time" jdbcType="DATE" property="createTime"/>
+        <result column="issue_time" jdbcType="BIGINT" property="issueTime"/>
+        <result column="delivery_time" jdbcType="DATE" property="createTime"/>
+    </resultMap>
+    <select id="selectLogsByCreateTimeAsc" resultType="cn.sl.ehub.service.vo.TotalDeliveryLog">
+        SELECT *
+        FROM total_delivery_log
+        where create_time BETWEEN #{beginTime} AND #{endTime}
+        order by create_time asc
+    </select>
+    <select id="selectLogsByCreateTimeDesc" resultType="cn.sl.ehub.service.vo.TotalDeliveryLog">
+        SELECT *
+        FROM total_delivery_log
+        where create_time BETWEEN #{beginTime} AND #{endTime}
+        order by create_time desc
+    </select>
+
+    <select id="selectLogsByDeliveryTimeAsc" resultType="cn.sl.ehub.service.vo.TotalDeliveryLog">
+        SELECT *
+        FROM total_delivery_log
+        where delivery_time BETWEEN #{beginTime} AND #{endTime}
+        order by delivery_time asc
+    </select>
+    <select id="selectLogsByDeliveryTimeDesc" resultType="cn.sl.ehub.service.vo.TotalDeliveryLog">
+        SELECT *
+        FROM total_delivery_log
+        where delivery_time BETWEEN #{beginTime} AND #{endTime}
+        order by delivery_time desc
+    </select>
+</mapper>

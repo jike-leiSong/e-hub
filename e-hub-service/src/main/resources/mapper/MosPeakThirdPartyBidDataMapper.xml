@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.sl.ehub.service.mapper.MosPeakThirdPartyBidDataMapper">
+    <resultMap id="BaseResultMap" type="cn.sl.ehub.service.vo.MosPeakThirdPartyBidData">
+        <id column="id" jdbcType="BIGINT" property="id"/>
+        <result column="aggregator_id" jdbcType="VARCHAR" property="aggregatorId"/>
+        <result column="source_id" jdbcType="VARCHAR" property="sourceId"/>
+        <result column="data_time" jdbcType="TIMESTAMP" property="dataTime"/>
+        <result column="bid_price" jdbcType="DECIMAL" property="bidPrice"/>
+        <result column="max_in_power" jdbcType="DECIMAL" property="maxInPower"/>
+        <result column="max_out_power" jdbcType="DECIMAL" property="maxOutPower"/>
+        <result column="max_in_times" jdbcType="DECIMAL" property="maxInTimes"/>
+        <result column="max_out_times" jdbcType="DECIMAL" property="maxOutTimes"/>
+        <result column="in_rate" jdbcType="DECIMAL" property="inRate"/>
+        <result column="out_rate" jdbcType="DECIMAL" property="outRate"/>
+        <result column="soc" jdbcType="DECIMAL" property="soc"/>
+        <result column="value2" jdbcType="DECIMAL" property="value2"/>
+        <result column="value3" jdbcType="DECIMAL" property="value3"/>
+        <result column="value4" jdbcType="DECIMAL" property="value4"/>
+        <result column="update_time" jdbcType="TIMESTAMP" property="updateTime"/>
+    </resultMap>
+
+    <insert id="batchInsertOrUpdate" parameterType="java.util.List">
+        INSERT INTO mos_peak_third_party_bid_data
+        (aggregator_id, source_id, data_time, bid_price, max_in_power, max_out_power, max_in_times, max_out_times,
+         in_rate, out_rate, soc, value2, value3, value4, update_time)
+        VALUES
+        <foreach collection="list" item="item" index="index" separator=",">
+            (
+            #{item.aggregatorId},
+            #{item.sourceId},
+            #{item.dataTime},
+            #{item.bidPrice},
+            #{item.maxInPower},
+            #{item.maxOutPower},
+            #{item.maxInTimes},
+            #{item.maxOutTimes},
+            #{item.inRate},
+            #{item.outRate},
+            #{item.soc},
+            #{item.value2},
+            #{item.value3},
+            #{item.value4},
+            #{item.updateTime}
+            )
+        </foreach>
+        ON DUPLICATE KEY UPDATE
+        bid_price = VALUES(bid_price),
+        max_in_power = VALUES(max_in_power),
+        max_out_power = VALUES(max_out_power),
+        max_in_times = VALUES(max_in_times),
+        max_out_times = VALUES(max_out_times),
+        in_rate = VALUES(in_rate),
+        out_rate = VALUES(out_rate),
+        soc = VALUES(soc),
+        value2 = VALUES(value2),
+        value3 = VALUES(value3),
+        value4 = VALUES(value4),
+        update_time = VALUES(update_time)
+    </insert>
+
+    <delete id="deleteByPhyunitIdAndDateRange">
+        DELETE FROM mos_peak_third_party_bid_data
+        WHERE aggregator_id = #{aggregatorId}
+        AND source_id = #{sourceId}
+        AND data_time &gt;= #{startDate}
+        AND data_time &lt;= #{endDate}
+    </delete>
+
+    <select id="selectByPhyunitIdAndDateRange" resultMap="BaseResultMap">
+        SELECT * FROM mos_peak_third_party_bid_data
+        WHERE aggregator_id = #{aggregatorId}
+        AND source_id = #{sourceId}
+        <if test="startDate != null">
+            AND data_time &gt;= #{startDate}
+        </if>
+        <if test="endDate != null">
+            AND data_time &lt;= #{endDate}
+        </if>
+        ORDER BY data_time ASC
+    </select>
+</mapper>

@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.sl.ehub.service.mapper.AggregatorEntApplyPlanMapper">
+    <resultMap id="BaseResultMap" type="cn.sl.ehub.service.vo.AggregatorEntApplyPlan">
+        <id column="id" jdbcType="INTEGER" property="id"/>
+        <result column="aggregator_id" jdbcType="VARCHAR" property="aggregatorId"/>
+        <result column="ent_id" jdbcType="VARCHAR" property="entId"/>
+        <result column="start_date" jdbcType="VARCHAR" property="startDate"/>
+        <result column="end_date" jdbcType="VARCHAR" property="endDate"/>
+        <result column="apply_time" jdbcType="VARCHAR" property="applyTime"/>
+        <result column="detail" jdbcType="VARCHAR" property="detail"/>
+    </resultMap>
+
+    <select id="getAggregatorEntApplyPlanRespList" resultType="cn.sl.ehub.service.resp.AggregatorEntApplyPlanResp">
+        SELECT id, aggregator_id, ent_id, start_date, end_date, apply_time, plan_status
+        FROM aggregator_ent_apply_plan
+        WHERE ent_id = #{entId}
+        AND save_status = #{saveStatus}
+        ORDER BY plan_status ASC, apply_time DESC
+    </select>
+
+    <select id="getAggregatorEntApplyPlanRespListByPlanStatus" resultType="cn.sl.ehub.service.resp.AggregatorEntApplyPlanResp">
+        SELECT id, aggregator_id, ent_id, start_date, end_date, apply_time, plan_status
+        FROM aggregator_ent_apply_plan
+        WHERE ent_id = #{entId}
+        AND plan_status = #{planStatus}
+        AND save_status = true
+        ORDER BY apply_time DESC
+    </select>
+
+    <select id="getAggregatorEntApplyPlanRespListByPlanStatusAndDate"
+            resultType="cn.sl.ehub.service.resp.AggregatorEntApplyPlanResp">
+        SELECT id, aggregator_id, ent_id, start_date, end_date, apply_time, plan_status, IF(start_date &lt;= #{date} AND end_date &gt;= #{date} ,0,1) AS dataStatus
+        FROM aggregator_ent_apply_plan
+        WHERE ent_id = #{entId}
+        AND plan_status = #{planStatus}
+        ORDER BY dataStatus, apply_time DESC
+    </select>
+
+    <select id="getAggregatorEntApplyPlanRespListByFinish" resultType="cn.sl.ehub.service.resp.AggregatorEntApplyPlanResp">
+        SELECT id, aggregator_id, ent_id, start_date, end_date, apply_time, plan_status
+        FROM aggregator_ent_apply_plan
+        WHERE ent_id = #{entId}
+        AND end_date &lt; #{endDate}
+        AND plan_status = #{planStatus}
+        AND save_status = true
+        ORDER BY apply_time DESC
+    </select>
+
+    <select id="getAggregatorEntApplyPlanRespListByNow" resultType="cn.sl.ehub.service.resp.AggregatorEntApplyPlanResp">
+        SELECT id, aggregator_id, ent_id, start_date, end_date, apply_time, plan_status
+        FROM aggregator_ent_apply_plan
+        WHERE ent_id = #{entId}
+        AND start_date &lt;= #{date}
+        AND end_date &gt;= #{date}
+        AND plan_status = #{planStatus}
+        AND save_status = true
+        ORDER BY apply_time DESC
+    </select>
+
+    <select id="getAggregatorEntApplyPlanRespListByNowByLimitOne" resultType="cn.sl.ehub.service.resp.AggregatorEntApplyPlanResp">
+        SELECT id, aggregator_id, ent_id, start_date, end_date, apply_time, plan_status
+        FROM aggregator_ent_apply_plan
+        WHERE ent_id = #{entId}
+        AND start_date &lt;= #{date}
+        AND end_date &gt;= #{date}
+        AND plan_status = #{planStatus}
+        AND save_status = true
+        ORDER BY apply_time DESC
+        LIMIT 1
+    </select>
+
+    <select id="getAggregatorEntApplyPlanRespListByNoStart" resultType="cn.sl.ehub.service.resp.AggregatorEntApplyPlanResp">
+        SELECT id, aggregator_id, ent_id, start_date, end_date, apply_time, plan_status
+        FROM aggregator_ent_apply_plan
+        WHERE ent_id = #{entId}
+        AND start_date &gt; #{startDate}
+        AND plan_status = #{planStatus}
+        AND save_status = true
+        UNION
+        (SELECT id, aggregator_id, ent_id, start_date, end_date, apply_time, plan_status
+        FROM aggregator_ent_apply_plan
+        WHERE ent_id = #{entId}
+        AND start_date &lt;= #{startDate}
+        AND end_date &gt;= #{startDate}
+        AND plan_status = #{planStatus}
+        AND save_status = true
+        AND id &lt;&gt;
+        (SELECT id FROM aggregator_ent_apply_plan
+        WHERE ent_id = #{entId}
+        AND start_date &lt;= #{startDate}
+        AND end_date &gt;= #{startDate}
+        AND plan_status = #{planStatus}
+        AND save_status = true
+        ORDER BY apply_time DESC LIMIT 1)
+        )
+        ORDER BY apply_time DESC
+    </select>
+
+    <select id="getAggregatorEntApplyPlanRespListByEntId" resultType="cn.sl.ehub.service.resp.AggregatorEntApplyPlanResp">
+        SELECT id, aggregator_id, ent_id, start_date, end_date, apply_time, plan_status
+        FROM aggregator_ent_apply_plan
+        WHERE ent_id = #{entId}
+        AND save_status = true
+        ORDER BY apply_time DESC
+    </select>
+</mapper>

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.sl.ehub.service.mapper.BigScreenGeneralSituationMapper">
+    <resultMap id="BaseResultMap" type="cn.sl.ehub.service.vo.BigScreenGeneralSituation">
+        <id column="id" jdbcType="BIGINT" property="id"/>
+        <result column="transaction_day" jdbcType="INTEGER" property="transactionDay"/>
+        <result column="quantity" jdbcType="DOUBLE" property="quantity"/>
+        <result column="profit" jdbcType="DOUBLE" property="profit"/>
+        <result column="co2" jdbcType="DOUBLE" property="co2"/>
+        <result column="tree" jdbcType="INTEGER" property="tree"/>
+        <result column="area" jdbcType="DOUBLE" property="area"/>
+        <result column="coal" jdbcType="DOUBLE" property="coal"/>
+        <result column="so2" jdbcType="DOUBLE" property="so2"/>
+        <result column="nox" jdbcType="DOUBLE" property="nox"/>
+        <result column="create_time" jdbcType="DATE" property="createTime"/>
+        <result column="update_time" jdbcType="DATE" property="updateTime"/>
+    </resultMap>
+
+    <select id="getBigScreenGeneralSituation" resultType="cn.sl.ehub.service.vo.BigScreenGeneralSituation">
+        SELECT id, transaction_day, quantity, profit, co2, tree, area, coal, so2, nox, create_time, update_time FROM big_screen_general_situation
+    </select>
+</mapper>

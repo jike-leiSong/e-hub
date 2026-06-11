@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.sl.ehub.service.mapper.AggregatorEntDeviceMapper">
+    <resultMap id="BaseResultMap" type="cn.sl.ehub.service.vo.AggregatorEntDevice">
+        <!--
+          WARNING - @mbg.generated
+        -->
+        <id column="id" jdbcType="INTEGER" property="id"/>
+        <result column="aggregator_id" jdbcType="VARCHAR" property="aggregatorId"/>
+        <result column="ent_id" jdbcType="VARCHAR" property="entId"/>
+        <result column="station_id" jdbcType="VARCHAR" property="stationId"/>
+        <result column="resource_type_id" jdbcType="VARCHAR" property="resourceTypeId"/>
+        <result column="device_base_id" jdbcType="VARCHAR" property="deviceBaseId"/>
+        <result column="device_name" jdbcType="VARCHAR" property="deviceName"/>
+        <result column="device_type" jdbcType="VARCHAR" property="deviceType"/>
+        <result column="device_id" jdbcType="VARCHAR" property="deviceId"/>
+        <result column="status" jdbcType="TINYINT" property="status"/>
+        <result column="model_flag" jdbcType="TINYINT" property="modelFlag"/>
+        <result column="power" jdbcType="DOUBLE" property="power"/>
+        <result column="data_source" jdbcType="VARCHAR" property="dataSource"/>
+        <result column="iot_device_base_id" jdbcType="VARCHAR" property="iotDeviceBaseId"/>
+        <result column="area_code" jdbcType="VARCHAR" property="areaCode"/>
+        <result column="user_type" jdbcType="VARCHAR" property="userType"/>
+        <result column="equip_manufactor" jdbcType="VARCHAR" property="equipManufactor"/>
+        <result column="storage_type" jdbcType="VARCHAR" property="storageType"/>
+        <result column="controllable" jdbcType="SMALLINT" property="controllable"/>
+        <result column="username" jdbcType="VARCHAR" property="username"/>
+        <result column="state_grid_code" jdbcType="VARCHAR" property="stateGridCode"/>
+    </resultMap>
+
+
+    <select id="getOnlineAggregatorEntDeviceList" resultMap="BaseResultMap">
+        SELECT *
+        FROM aggregator_ent_device
+        WHERE status = 1;
+    </select>
+    <select id="getOnlineEntDevicesByAggregatorId" resultMap="BaseResultMap">
+        SELECT *
+        FROM aggregator_ent_device
+        WHERE status = 1 and aggregator_id = #{aggregatorId}
+        <if test="stationIds != null and stationIds.size() > 0">
+            and ent_id not IN
+            <foreach item="itemId" collection="stationIds" open="(" separator="," close=")">
+                #{itemId}
+            </foreach>
+        </if>
+
+    </select>
+
+    <select id="getModelAggregatorEntDeviceList" resultMap="BaseResultMap">
+        SELECT *
+        FROM aggregator_ent_device
+        WHERE model_flag = 1;
+    </select>
+    <select id="getModelAggregatorEntDeviceListByAggregatorId" resultMap="BaseResultMap">
+        SELECT *
+        FROM aggregator_ent_device
+        WHERE model_flag = 1 and aggregator_id = #{aggregatorId};
+    </select>
+
+    <update id="updateDeviceInfo" parameterType="cn.sl.ehub.service.req.UpdateEntDeviceReq">
+        UPDATE aggregator_ent_device
+        SET account_no     = #{accountNo},
+            power          = #{power},
+            response_power = #{responsePower}
+        WHERE device_base_id = #{deviceBaseId}
+    </update>
+
+    <insert id="batchInsert" parameterType="java.util.List">
+        INSERT INTO aggregator_ent_device
+        (aggregator_id, ent_id, station_id, resource_type_id, device_base_id, device_name, device_type, device_id,
+        power, data_source, iot_device_base_id, area_code, user_type, equip_manufactor, storage_type, controllable,
+        username, account_no, max_power, response_power, status, del_flag)
+        VALUES
+        <foreach collection="list" item="item" index="index" separator=",">
+            (
+            #{item.aggregatorId},
+            #{item.entId},
+            #{item.stationId},
+            #{item.resourceTypeId},
+            #{item.deviceBaseId},
+            #{item.deviceName},
+            #{item.deviceType},
+            #{item.deviceId},
+            #{item.power},
+            #{item.dataSource},
+            #{item.iotDeviceBaseId},
+            #{item.areaCode},
+            #{item.userType},
+            #{item.equipManufactor},
+            #{item.storageType},
+            #{item.controllable},
+            #{item.username},
+            #{item.accountNo},
+            #{item.maxPower},
+            #{item.responsePower},
+            #{item.status},
+            #{item.delFlag}
+            )
+        </foreach>
+    </insert>
+</mapper>

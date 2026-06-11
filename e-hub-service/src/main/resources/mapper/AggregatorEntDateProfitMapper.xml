@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.sl.ehub.service.mapper.AggregatorEntDateProfitMapper">
+    <resultMap id="BaseResultMap" type="cn.sl.ehub.service.vo.AggregatorEntDateProfit">
+        <!--
+          WARNING - @mbg.generated
+        -->
+        <id column="id" jdbcType="INTEGER" property="id"/>
+        <result column="aggregator_id" jdbcType="VARCHAR" property="aggregatorId"/>
+        <result column="date" jdbcType="VARCHAR" property="date"/>
+        <result column="ent_id" jdbcType="VARCHAR" property="entId"/>
+        <result column="ent_profit" jdbcType="DOUBLE" property="entProfit"/>
+    </resultMap>
+
+    <select id="selectRespListByParam" resultType="cn.sl.ehub.service.resp.AggregatorEntDateProfitResp">
+        select edp.id, edp.aggregator_id, date_format(edp.`date`, '%Y-%m-%d') as `date`, edp.ent_id, e.ent_name,
+        edp.ent_profit
+        from aggregator_ent_date_profit edp left join aggregator_ent e
+        on edp.ent_id = e.ent_id and edp.aggregator_id = e.aggregator_id
+        <where>
+            <if test="aggregatorId != null and aggregatorId != ''">
+                and edp.aggregator_id = #{aggregatorId}
+            </if>
+            <if test="date != null">
+                and edp.`date` = #{date}
+            </if>
+            <if test="entIds != null and entIds.size > 0">
+                and edp.ent_id in
+                <foreach collection="entIds" item="entId" separator="," open="(" close=")">
+                    #{entId}
+                </foreach>
+            </if>
+        </where>
+    </select>
+
+    <select id="selectDateListByEntIds" resultType="java.util.Date">
+        select distinct(`date`) as date from aggregator_ent_date_profit
+        <where>
+            <if test="aggregatorId != null and aggregatorId != ''">
+                and aggregator_id = #{aggregatorId}
+            </if>
+            <if test="entIds != null and entIds.size > 0">
+                and ent_id in
+                <foreach collection="entIds" item="entId" separator="," open="(" close=")">
+                    #{entId}
+                </foreach>
+            </if>
+        </where>
+        order by `date` desc
+    </select>
+
+    <insert id="batchInsert" parameterType="java.util.List">
+        INSERT INTO aggregator_ent_date_profit
+        (aggregator_id, date, ent_id, ent_profit, electric_quantity, count_price, average_price, count_profit)
+        VALUES
+        <foreach collection="list" item="item" index="index" separator=",">
+            (
+            #{item.aggregatorId},
+            #{item.date},
+            #{item.entId},
+            #{item.entProfit},
+            #{item.electricQuantity},
+            #{item.countPrice},
+            #{item.averagePrice},
+            #{item.countProfit}
+            )
+        </foreach>
+    </insert>
+
+    <select id="getTotalProfit" resultType="java.lang.Double">
+        SELECT IFNULL(SUM(ent_profit),0) FROM aggregator_ent_date_profit
+        WHERE ent_id = #{entId}
+        AND date &gt;= #{startDate}
+        AND date &lt;= #{endDate}
+    </select>
+
+    <select id="getProfit" resultType="cn.sl.ehub.service.resp.AggregatorEntDateProfitResp">
+        SELECT a.date, a.ent_profit AS entProfit, b.totalProfit
+        FROM aggregator_ent_date_profit a,
+        (SELECT SUM(ent_profit) AS totalProfit FROM aggregator_ent_date_profit WHERE ent_id = #{entId}) b
+        WHERE ent_id = #{entId} ORDER BY date DESC LIMIT 1
+    </select>
+
+    <select id="getAggregatorEntDateProfit" resultMap="BaseResultMap">
+        SELECT * FROM aggregator_ent_date_profit
+        WHERE ent_id = #{entId}
+        AND date = #{date}
+    </select>
+</mapper>

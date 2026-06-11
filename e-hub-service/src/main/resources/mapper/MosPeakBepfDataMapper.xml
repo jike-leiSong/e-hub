@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.sl.ehub.service.mapper.MosPeakBepfDataMapper">
+    <resultMap id="BaseResultMap" type="cn.sl.ehub.service.vo.MosPeakBepfData">
+        <id column="id" jdbcType="BIGINT" property="id"/>
+        <result column="aggregator_id" jdbcType="VARCHAR" property="aggregatorId"/>
+        <result column="source_id" jdbcType="VARCHAR" property="sourceId"/>
+        <result column="data_time" jdbcType="TIMESTAMP" property="dataTime"/>
+        <result column="point_index" jdbcType="INTEGER" property="pointIndex"/>
+        <result column="value" jdbcType="DECIMAL" property="value"/>
+        <result column="timestamp" jdbcType="BIGINT" property="timestamp"/>
+        <result column="update_time" jdbcType="TIMESTAMP" property="updateTime"/>
+    </resultMap>
+
+    <insert id="batchInsertOrUpdate" parameterType="java.util.List">
+        INSERT INTO mos_peak_bepf_data
+        (aggregator_id, source_id, data_time, point_index, value, timestamp, update_time)
+        VALUES
+        <foreach collection="list" item="item" index="index" separator=",">
+            (
+            #{item.aggregatorId},
+            #{item.sourceId},
+            #{item.dataTime},
+            #{item.pointIndex},
+            #{item.value},
+            #{item.timestamp},
+            #{item.updateTime}
+            )
+        </foreach>
+        ON DUPLICATE KEY UPDATE
+        value = VALUES(value),
+        timestamp = VALUES(timestamp),
+        update_time = VALUES(update_time)
+    </insert>
+
+    <delete id="deleteByPhyunitIdAndDateRange">
+        DELETE FROM mos_peak_bepf_data
+        WHERE aggregator_id = #{aggregatorId}
+        AND source_id = #{sourceId}
+        AND data_time &gt;= #{startDate}
+        AND data_time &lt;= #{endDate}
+    </delete>
+
+    <select id="selectByPhyunitIdAndDate" resultMap="BaseResultMap">
+        SELECT * FROM mos_peak_bepf_data
+        WHERE aggregator_id = #{aggregatorId}
+        AND source_id = #{sourceId}
+        AND data_time &gt; #{dataTime}
+        AND data_time &lt;= DATE_ADD(#{dataTime}, INTERVAL 1 DAY)
+        ORDER BY point_index ASC
+    </select>
+</mapper>

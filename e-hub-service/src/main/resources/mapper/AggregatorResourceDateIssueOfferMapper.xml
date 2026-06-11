@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.sl.ehub.service.mapper.AggregatorResourceDateIssueOfferMapper">
+    <resultMap id="BaseResultMap" type="cn.sl.ehub.service.vo.AggregatorResourceDateIssueOffer">
+        <id column="id" jdbcType="INTEGER" property="id"/>
+        <result column="aggregator_id" jdbcType="VARCHAR" property="aggregatorId"/>
+        <result column="resource_type_id" jdbcType="VARCHAR" property="resourceTypeId"/>
+        <result column="date" jdbcType="VARCHAR" property="date"/>
+        <result column="offer" jdbcType="DOUBLE" property="offer"/>
+    </resultMap>
+
+    <insert id="batchInsert" parameterType="java.util.List">
+        INSERT INTO aggregator_resource_date_issue_offer
+        (aggregator_id, resource_type_id, date, offer, price_detail, price_chart)
+        VALUES
+        <foreach collection="list" item="item" index="index" separator=",">
+            (
+            #{item.aggregatorId},
+            #{item.resourceTypeId},
+            #{item.date},
+            #{item.offer},
+            #{item.priceDetail},
+            #{item.priceChart}
+            )
+        </foreach>
+    </insert>
+</mapper>

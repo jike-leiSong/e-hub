@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.sl.ehub.service.mapper.AggregatorDeviceDateIssueChartMapper">
+    <resultMap id="BaseResultMap" type="cn.sl.ehub.service.vo.AggregatorDeviceDateIssueChart">
+        <id column="id" jdbcType="INTEGER" property="id"/>
+        <result column="aggregator_id" jdbcType="VARCHAR" property="aggregatorId"/>
+        <result column="ent_id" jdbcType="VARCHAR" property="entId"/>
+        <result column="station_id" jdbcType="VARCHAR" property="stationId"/>
+        <result column="resource_type_id" jdbcType="VARCHAR" property="resourceTypeId"/>
+        <result column="device_base_id" jdbcType="VARCHAR" property="deviceBaseId"/>
+        <result column="date" jdbcType="VARCHAR" property="date"/>
+        <result column="issue_chart" jdbcType="VARCHAR" property="issueChart"/>
+    </resultMap>
+
+    <insert id="batchInsert" parameterType="java.util.List">
+        INSERT INTO aggregator_device_date_issue_chart
+        (aggregator_id, ent_id, station_id, resource_type_id, device_base_id, date, issue_chart)
+        VALUES
+        <foreach collection="list" item="item" index="index" separator=",">
+            (
+            #{item.aggregatorId},
+            #{item.entId},
+            #{item.stationId},
+            #{item.resourceTypeId},
+            #{item.deviceBaseId},
+            #{item.date},
+            #{item.issueChart}
+            )
+        </foreach>
+    </insert>
+</mapper>

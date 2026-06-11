@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.sl.ehub.service.mapper.AggregatorEntDeviceIotLogMapper">
+    <resultMap id="BaseResultMap" type="cn.sl.ehub.service.vo.AggregatorEntDeviceIotLog">
+        <id column="id" jdbcType="INTEGER" property="id"/>
+        <result column="aggregator_id" jdbcType="VARCHAR" property="aggregatorId"/>
+        <result column="ent_id" jdbcType="VARCHAR" property="entId"/>
+        <result column="station_id" jdbcType="VARCHAR" property="stationId"/>
+        <result column="resource_type_id" jdbcType="VARCHAR" property="resourceTypeId"/>
+        <result column="device_base_id" jdbcType="VARCHAR" property="deviceBaseId"/>
+        <result column="device_id" jdbcType="VARCHAR" property="deviceId"/>
+        <result column="device_name" jdbcType="VARCHAR" property="deviceName"/>
+        <result column="device_type" jdbcType="VARCHAR" property="deviceType"/>
+        <result column="send_time" jdbcType="VARCHAR" property="sendTime"/>
+        <result column="result_msg" jdbcType="VARCHAR" property="resultMsg"/>
+    </resultMap>
+
+    <insert id="batchInsert" parameterType="java.util.List">
+        INSERT INTO aggregator_ent_device_iot_log
+        (aggregator_id, ent_id, station_id, resource_type_id, device_base_id, device_id, device_name, device_type, send_time, result_msg)
+        VALUES
+        <foreach collection="list" item="item" index="index" separator=",">
+            (
+            #{item.aggregatorId},
+            #{item.entId},
+            #{item.stationId},
+            #{item.resourceTypeId},
+            #{item.deviceBaseId},
+            #{item.deviceId},
+            #{item.deviceName},
+            #{item.deviceType},
+            #{item.sendTime},
+            #{item.resultMsg}
+            )
+        </foreach>
+    </insert>
+</mapper>

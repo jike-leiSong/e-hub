@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.sl.ehub.service.mapper.IotCmdSetLogMapper">
+  <resultMap id="BaseResultMap" type="cn.sl.ehub.service.vo.IotCmdSetLog">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    <id column="id" jdbcType="BIGINT" property="id" />
+    <result column="request_id" jdbcType="VARCHAR" property="requestId" />
+    <result column="iot_code" jdbcType="INTEGER" property="iotCode" />
+    <result column="iot_result" jdbcType="VARCHAR" property="iotResult" />
+    <result column="cmd_set_time" jdbcType="TIMESTAMP" property="cmdSetTime" />
+    <result column="system_code" jdbcType="VARCHAR" property="systemCode" />
+    <result column="cim_id" jdbcType="VARCHAR" property="cimId" />
+    <result column="metric_code" jdbcType="VARCHAR" property="metricCode" />
+    <result column="target_value" jdbcType="VARCHAR" property="targetValue" />
+    <result column="call_back_time" jdbcType="TIMESTAMP" property="callBackTime" />
+    <result column="call_back_result" jdbcType="VARCHAR" property="callBackResult" />
+    <result column="call_back_code" jdbcType="INTEGER" property="callBackCode" />
+    <result column="create_time" jdbcType="TIMESTAMP" property="createTime" />
+    <result column="update_time" jdbcType="TIMESTAMP" property="updateTime" />
+    <result column="u_id" jdbcType="VARCHAR" property="uId" />
+  </resultMap>
+</mapper>

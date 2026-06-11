@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.sl.ehub.service.mapper.AggregatorBaseLineLoadChartMapper">
+    <resultMap id="BaseResultMap" type="cn.sl.ehub.service.vo.AggregatorBaseLineLoadChart">
+        <id column="id" jdbcType="INTEGER" property="id"/>
+        <result column="aggregator_id" jdbcType="VARCHAR" property="aggregatorId"/>
+        <result column="resource_type" jdbcType="VARCHAR" property="resourceType"/>
+        <result column="base_line_load_chart" jdbcType="VARCHAR" property="baseLineLoadChart"/>
+        <result column="base_date" jdbcType="VARCHAR" property="baseDate"/>
+    </resultMap>
+
+    <insert id="batchInsert" parameterType="java.util.List">
+        INSERT INTO aggregator_base_line_load_chart
+        (aggregator_id, resource_type, base_date, base_line_load_chart)
+        VALUES
+        <foreach collection="list" item="item" index="index" separator=",">
+            (
+            #{item.aggregatorId},
+            #{item.resourceType},
+            #{item.baseDate},
+            #{item.baseLineLoadChart}
+            )
+        </foreach>
+    </insert>
+</mapper>

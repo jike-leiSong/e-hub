@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.sl.ehub.service.mapper.AggregatorEntPropertyMapper">
+  <resultMap id="BaseResultMap" type="cn.sl.ehub.service.vo.AggregatorEntProperty">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    <id column="id" jdbcType="INTEGER" property="id" />
+    <result column="username" jdbcType="VARCHAR" property="username" />
+    <result column="station_id" jdbcType="VARCHAR" property="stationId" />
+    <result column="ent_id" jdbcType="VARCHAR" property="entId" />
+    <result column="resource_type_id" jdbcType="VARCHAR" property="resourceTypeId" />
+    <result column="capacity" jdbcType="VARCHAR" property="capacity" />
+    <result column="unit" jdbcType="VARCHAR" property="unit" />
+    <result column="area_code" jdbcType="VARCHAR" property="areaCode" />
+    <result column="user_type" jdbcType="VARCHAR" property="userType" />
+    <result column="equip_manufactor" jdbcType="VARCHAR" property="equipManufactor" />
+    <result column="storage_type" jdbcType="VARCHAR" property="storageType" />
+    <result column="owner" jdbcType="VARCHAR" property="owner" />
+    <result column="controllable" jdbcType="VARCHAR" property="controllable" />
+    <result column="status" jdbcType="VARCHAR" property="status" />
+  </resultMap>
+</mapper>

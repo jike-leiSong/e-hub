@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.sl.ehub.service.mapper.AggregatorDateProfitMapper">
+    <resultMap id="BaseResultMap" type="cn.sl.ehub.service.vo.AggregatorDateProfit">
+        <!--
+          WARNING - @mbg.generated
+        -->
+        <id column="id" jdbcType="INTEGER" property="id"/>
+        <result column="aggregator_id" jdbcType="VARCHAR" property="aggregatorId"/>
+        <result column="date" jdbcType="VARCHAR" property="date"/>
+        <result column="issue_profit" jdbcType="DOUBLE" property="issueProfit"/>
+        <result column="aggregator_profit" jdbcType="DOUBLE" property="aggregatorProfit"/>
+        <result column="ent_profit" jdbcType="DOUBLE" property="entProfit"/>
+    </resultMap>
+
+    <resultMap id="DateProfitWithEntDetailResultMap" type="cn.sl.ehub.service.resp.AggregatorDateProfitResp">
+        <result column="aggregator_id" jdbcType="VARCHAR" property="aggregatorId"/>
+        <result column="date" jdbcType="VARCHAR" property="date"/>
+        <result column="issue_profit" jdbcType="DOUBLE" property="issueProfit"/>
+        <result column="aggregator_profit" jdbcType="DOUBLE" property="aggregatorProfit"/>
+        <result column="ent_profit" jdbcType="DOUBLE" property="entProfit"/>
+        <collection property="entDateProfitRespList" ofType="cn.sl.ehub.service.resp.AggregatorEntDateProfitResp">
+            <result column="ent_id" jdbcType="VARCHAR" property="entId"/>
+            <result column="ent_name" jdbcType="VARCHAR" property="entName"/>
+            <result column="date" jdbcType="VARCHAR" property="date"/>
+            <result column="detail_ent_profit" jdbcType="DOUBLE" property="entProfit"/>
+        </collection>
+    </resultMap>
+
+    <select id="selectDateProfitWithEntDetail" resultMap="DateProfitWithEntDetailResultMap">
+        SELECT
+        p.aggregator_id,
+        date_format(p.`date`, '%Y-%m-%d') as `date`,
+        p.issue_profit,
+        p.aggregator_profit,
+        p.ent_profit,
+        ep.ent_id,
+        e.ent_name,
+        ep.ent_profit detail_ent_profit
+        FROM
+        aggregator_date_profit p,
+        aggregator_ent_date_profit ep,
+        aggregator_ent e
+        WHERE
+        p.aggregator_id = ep.aggregator_id
+        AND p.date = ep.date
+        AND ep.aggregator_id = e.aggregator_id
+        AND ep.ent_id = e.ent_id
+        <if test="aggregatorId != null and aggregatorId !=''">
+            AND p.aggregator_id = #{aggregatorId}
+        </if>
+        <if test="startDate != null">
+            AND p.date &gt;= #{startDate}
+        </if>
+        <if test="endDate != null">
+            AND p.date &lt;= #{endDate}
+        </if>
+        <if test="entIds != null and entIds.size > 0">
+            AND ep.ent_id IN
+            <foreach collection="entIds" item="entId" separator="," open="(" close=")">
+                #{entId}
+            </foreach>
+        </if>
+        ORDER BY p.date DESC
+    </select>
+
+    <insert id="batchInsert" parameterType="java.util.List">
+        INSERT INTO aggregator_date_profit
+        (aggregator_id, date, issue_profit, aggregator_profit, ent_profit, electric_quantity)
+        VALUES
+        <foreach collection="list" item="item" index="index" separator=",">
+            (
+            #{item.aggregatorId},
+            #{item.date},
+            #{item.issueProfit},
+            #{item.aggregatorProfit},
+            #{item.entProfit},
+            #{item.electricQuantity}
+            )
+        </foreach>
+    </insert>
+
+    <select id="getAggregatorProfitRespTotal" resultType="cn.sl.ehub.service.resp.AggregatorProfitResp">
+        SELECT
+        IFNULL(SUM(issue_profit),0) AS issueProfit,
+        IFNULL(SUM(aggregator_profit),0) AS aggregatorProfit,
+        IFNULL(SUM(electric_quantity),0) AS electricQuantity
+        FROM aggregator_date_profit
+        WHERE aggregator_id = #{aggregatorId}
+        AND date &gt;= #{startDate}
+        AND date &lt;= #{endDate}
+    </select>
+</mapper>

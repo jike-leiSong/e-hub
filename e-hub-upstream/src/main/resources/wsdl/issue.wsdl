@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<wsdl:definitions xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:tns="http://ws.la.enn.cn/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:ns1="http://schemas.xmlsoap.org/soap/http" name="IssueWebService" targetNamespace="http://ws.la.enn.cn/">
+    <wsdl:types>
+        <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:tns="http://ws.la.enn.cn/" attributeFormDefault="unqualified" elementFormDefault="unqualified" targetNamespace="http://ws.la.enn.cn/" version="1.0">
+            <xs:element name="clearIssue" type="tns:clearIssue"/>
+            <xs:element name="clearIssueResponse" type="tns:clearIssueResponse"/>
+            <xs:element name="controlIssue" type="tns:controlIssue"/>
+            <xs:element name="controlIssueResponse" type="tns:controlIssueResponse"/>
+            <xs:element name="singleRetryIssue" type="tns:singleRetryIssue"/>
+            <xs:element name="singleRetryIssueResponse" type="tns:singleRetryIssueResponse"/>
+            <xs:element name="totalRetryIssue" type="tns:totalRetryIssue"/>
+            <xs:element name="totalRetryIssueResponse" type="tns:totalRetryIssueResponse"/>
+            <xs:complexType name="controlIssue">
+                <xs:sequence>
+                    <xs:element minOccurs="0" name="controlIssueRequest" type="xs:string"/>
+                </xs:sequence>
+            </xs:complexType>
+            <xs:complexType name="controlIssueResponse">
+                <xs:sequence>
+                    <xs:element minOccurs="0" name="return" type="tns:resultVO"/>
+                </xs:sequence>
+            </xs:complexType>
+            <xs:complexType name="resultVO">
+                <xs:sequence>
+                    <xs:element minOccurs="0" name="code" type="xs:int"/>
+                    <xs:element minOccurs="0" name="data" type="xs:anyType"/>
+                    <xs:element minOccurs="0" name="msg" type="xs:string"/>
+                    <xs:element minOccurs="0" name="requestId" type="xs:string"/>
+                </xs:sequence>
+            </xs:complexType>
+            <xs:complexType name="singleRetryIssue">
+                <xs:sequence>
+                    <xs:element minOccurs="0" name="retryIssueRequest" type="xs:string"/>
+                </xs:sequence>
+            </xs:complexType>
+            <xs:complexType name="singleRetryIssueResponse">
+                <xs:sequence>
+                    <xs:element minOccurs="0" name="return" type="tns:resultVO"/>
+                </xs:sequence>
+            </xs:complexType>
+            <xs:complexType name="clearIssue">
+                <xs:sequence>
+                    <xs:element minOccurs="0" name="clearIssueRequest" type="xs:string"/>
+                </xs:sequence>
+            </xs:complexType>
+            <xs:complexType name="clearIssueResponse">
+                <xs:sequence>
+                    <xs:element minOccurs="0" name="return" type="tns:resultVO"/>
+                </xs:sequence>
+            </xs:complexType>
+            <xs:complexType name="totalRetryIssue">
+                <xs:sequence>
+                    <xs:element minOccurs="0" name="retryIssueRequest" type="xs:string"/>
+                </xs:sequence>
+            </xs:complexType>
+            <xs:complexType name="totalRetryIssueResponse">
+                <xs:sequence>
+                    <xs:element minOccurs="0" name="return" type="tns:resultVO"/>
+                </xs:sequence>
+            </xs:complexType>
+            <xs:element name="IOException" type="tns:IOException"/>
+            <xs:complexType name="IOException">
+                <xs:sequence>
+                    <xs:element minOccurs="0" name="message" type="xs:string"/>
+                </xs:sequence>
+            </xs:complexType>
+        </xs:schema>
+    </wsdl:types>
+    <wsdl:message name="IOException">
+        <wsdl:part element="tns:IOException" name="IOException"> </wsdl:part>
+    </wsdl:message>
+    <wsdl:message name="singleRetryIssueResponse">
+        <wsdl:part element="tns:singleRetryIssueResponse" name="parameters"> </wsdl:part>
+    </wsdl:message>
+    <wsdl:message name="totalRetryIssue">
+        <wsdl:part element="tns:totalRetryIssue" name="parameters"> </wsdl:part>
+    </wsdl:message>
+    <wsdl:message name="clearIssueResponse">
+        <wsdl:part element="tns:clearIssueResponse" name="parameters"> </wsdl:part>
+    </wsdl:message>
+    <wsdl:message name="controlIssueResponse">
+        <wsdl:part element="tns:controlIssueResponse" name="parameters"> </wsdl:part>
+    </wsdl:message>
+    <wsdl:message name="controlIssue">
+        <wsdl:part element="tns:controlIssue" name="parameters"> </wsdl:part>
+    </wsdl:message>
+    <wsdl:message name="singleRetryIssue">
+        <wsdl:part element="tns:singleRetryIssue" name="parameters"> </wsdl:part>
+    </wsdl:message>
+    <wsdl:message name="clearIssue">
+        <wsdl:part element="tns:clearIssue" name="parameters"> </wsdl:part>
+    </wsdl:message>
+    <wsdl:message name="totalRetryIssueResponse">
+        <wsdl:part element="tns:totalRetryIssueResponse" name="parameters"> </wsdl:part>
+    </wsdl:message>
+    <wsdl:portType name="IssueWebService">
+        <wsdl:operation name="controlIssue">
+            <wsdl:input message="tns:controlIssue" name="controlIssue"> </wsdl:input>
+            <wsdl:output message="tns:controlIssueResponse" name="controlIssueResponse"> </wsdl:output>
+        </wsdl:operation>
+        <wsdl:operation name="singleRetryIssue">
+            <wsdl:input message="tns:singleRetryIssue" name="singleRetryIssue"> </wsdl:input>
+            <wsdl:output message="tns:singleRetryIssueResponse" name="singleRetryIssueResponse"> </wsdl:output>
+            <wsdl:fault message="tns:IOException" name="IOException"> </wsdl:fault>
+        </wsdl:operation>
+        <wsdl:operation name="clearIssue">
+            <wsdl:input message="tns:clearIssue" name="clearIssue"> </wsdl:input>
+            <wsdl:output message="tns:clearIssueResponse" name="clearIssueResponse"> </wsdl:output>
+        </wsdl:operation>
+        <wsdl:operation name="totalRetryIssue">
+            <wsdl:input message="tns:totalRetryIssue" name="totalRetryIssue"> </wsdl:input>
+            <wsdl:output message="tns:totalRetryIssueResponse" name="totalRetryIssueResponse"> </wsdl:output>
+        </wsdl:operation>
+    </wsdl:portType>
+    <wsdl:binding name="IssueWebServiceSoapBinding" type="tns:IssueWebService">
+        <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+        <wsdl:operation name="controlIssue">
+            <soap:operation soapAction="" style="document"/>
+            <wsdl:input name="controlIssue">
+                <soap:body use="literal"/>
+            </wsdl:input>
+            <wsdl:output name="controlIssueResponse">
+                <soap:body use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+        <wsdl:operation name="singleRetryIssue">
+            <soap:operation soapAction="" style="document"/>
+            <wsdl:input name="singleRetryIssue">
+                <soap:body use="literal"/>
+            </wsdl:input>
+            <wsdl:output name="singleRetryIssueResponse">
+                <soap:body use="literal"/>
+            </wsdl:output>
+            <wsdl:fault name="IOException">
+                <soap:fault name="IOException" use="literal"/>
+            </wsdl:fault>
+        </wsdl:operation>
+        <wsdl:operation name="clearIssue">
+            <soap:operation soapAction="" style="document"/>
+            <wsdl:input name="clearIssue">
+                <soap:body use="literal"/>
+            </wsdl:input>
+            <wsdl:output name="clearIssueResponse">
+                <soap:body use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+        <wsdl:operation name="totalRetryIssue">
+            <soap:operation soapAction="" style="document"/>
+            <wsdl:input name="totalRetryIssue">
+                <soap:body use="literal"/>
+            </wsdl:input>
+            <wsdl:output name="totalRetryIssueResponse">
+                <soap:body use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+    </wsdl:binding>
+    <wsdl:service name="IssueWebService">
+        <wsdl:port binding="tns:IssueWebServiceSoapBinding" name="IssueWebServiceImplPort">
+            <soap:address location="http://localhost:8089/webservice/issue"/>
+        </wsdl:port>
+    </wsdl:service>
+</wsdl:definitions>

@@ -1,0 +1,272 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.sl.ehub.service.mapper.AggregatorEntMapper">
+    <resultMap id="BaseResultMap" type="cn.sl.ehub.service.vo.AggregatorEnt">
+        <id column="id" jdbcType="INTEGER" property="id"/>
+        <result column="aggregator_id" jdbcType="VARCHAR" property="aggregatorId"/>
+        <result column="ent_id" jdbcType="VARCHAR" property="entId"/>
+        <result column="station_id" jdbcType="VARCHAR" property="stationId"/>
+        <result column="ent_name" jdbcType="VARCHAR" property="entName"/>
+        <result column="status" jdbcType="TINYINT" property="status"/>
+        <result column="longitude" jdbcType="VARCHAR" property="longitude"/>
+        <result column="latitude" jdbcType="VARCHAR" property="latitude"/>
+        <result column="percent" jdbcType="DOUBLE" property="percent"/>
+        <result column="agreement" jdbcType="VARCHAR" property="agreement"/>
+        <result column="sn_code" jdbcType="VARCHAR" property="snCode"/>
+        <result column="win_time" jdbcType="VARCHAR" property="winTime"/>
+    </resultMap>
+
+    <resultMap id="EntUserDetailWithDeviceResultMap" type="cn.sl.ehub.service.resp.EntUserDetailResp">
+        <result column="aggregator_id" jdbcType="VARCHAR" property="aggregatorId"/>
+        <result column="ent_id" jdbcType="VARCHAR" property="entId"/>
+        <result column="station_id" jdbcType="VARCHAR" property="stationId"/>
+        <result column="ent_name" jdbcType="VARCHAR" property="entName"/>
+        <result column="percent" jdbcType="DOUBLE" property="percent"/>
+        <result column="sn_code" jdbcType="VARCHAR" property="snCode"/>
+        <result column="agreement" jdbcType="VARCHAR" property="agreement"/>
+        <result column="agreementDate" jdbcType="VARCHAR" property="agreementDate"/>
+        <result column="service_start_date" jdbcType="VARCHAR" property="serviceStartDate"/>
+        <result column="service_end_date" jdbcType="VARCHAR" property="serviceEndDate"/>
+        <collection property="devices" ofType="cn.sl.ehub.service.resp.EntUserDeviceResp">
+            <result column="resource_type_id" jdbcType="VARCHAR" property="resourceTypeId"/>
+            <result column="device_base_id" jdbcType="VARCHAR" property="deviceBaseId"/>
+            <result column="device_name" jdbcType="VARCHAR" property="deviceName"/>
+            <result column="power" jdbcType="DOUBLE" property="power"/>
+            <result column="resourceTypeName" jdbcType="VARCHAR" property="resourceTypeName"/>
+            <result column="max_power" jdbcType="DOUBLE" property="maxPower"/>
+            <result column="response_power" jdbcType="DOUBLE" property="responsePower"/>
+            <result column="aggregator_id" jdbcType="VARCHAR" property="aggregatorId"/>
+            <result column="ent_id" jdbcType="VARCHAR" property="entId"/>
+            <result column="station_id" jdbcType="VARCHAR" property="stationId"/>
+            <result column="device_id" jdbcType="VARCHAR" property="deviceId"/>
+            <result column="account_no" jdbcType="VARCHAR" property="accountNo"/>
+        </collection>
+        <collection property="phones" ofType="cn.sl.ehub.service.resp.EntUserPhoneResp">
+            <result column="smsName" jdbcType="VARCHAR" property="smsName"/>
+            <result column="smsPhone" jdbcType="VARCHAR" property="smsPhone"/>
+        </collection>
+    </resultMap>
+
+    <select id="getEntUserDetailRespList" resultType="cn.sl.ehub.service.resp.EntUserDetailResp">
+        SELECT ae.aggregator_id,
+               ae.ent_id,
+               ae.ent_name                 AS entName,
+               ae.longitude,
+               ae.latitude,
+               IFNULL(SUM(aed.power), 0.0) AS totalPower
+        FROM aggregator_ent ae
+                 LEFT JOIN aggregator_ent_device aed ON ae.aggregator_id = aed.aggregator_id AND ae.ent_id = aed.ent_id
+        WHERE ae.aggregator_id = #{aggregatorId}
+        GROUP BY ae.ent_id;
+    </select>
+
+    <select id="selectEntUserDetailWithDevice" resultMap="EntUserDetailWithDeviceResultMap">
+        SELECT e.aggregator_id, e.ent_id, e.ent_name, e.percent, e.agreement, d.device_name, d.power,
+        d.resource_type_id, e.sn_code, t.name AS resourceTypeName
+        FROM aggregator_ent e, aggregator_ent_device d, aggregator_resource_type t
+        <where>
+            e.ent_id = d.ent_id AND d.resource_type_id = t.id
+            <if test="aggregatorId != null and aggregatorId != ''">
+                AND e.aggregator_id = #{aggregatorId}
+            </if>
+            <if test="entId != null and entId != ''">
+                AND e.ent_id = #{entId}
+            </if>
+            <if test="powerGetterThan != null">
+                AND d.power &gt;= #{powerGetterThan}
+            </if>
+            <if test="powerLessThan != null">
+                AND d.power &lt;= #{powerLessThan}
+            </if>
+            <if test="percent != null">
+                AND e.percent = #{percent}
+            </if>
+        </where>
+        ORDER BY t.resource_order, d.id
+    </select>
+
+    <select id="selectPercentDistinct" resultType="java.lang.Double">
+        select distinct(`percent`)
+        from aggregator_ent
+        where aggregator_id = #{aggregatorId}
+        order by `percent`
+    </select>
+
+    <select id="selectEntAndDeviceList" resultMap="EntUserDetailWithDeviceResultMap">
+        SELECT e.aggregator_id, e.ent_id, e.station_id, e.ent_name, e.agreement, e.service_start_date,
+        e.service_end_date,
+        CONCAT_WS('~', DATE_FORMAT(e.service_start_date,'%Y/%m/%d'), DATE_FORMAT(e.service_end_date,'%Y/%m/%d')) AS
+        agreementDate, d.device_base_id, d.ent_id, d.device_id, d.account_no,
+        d.device_name, d.power, d.max_power, d.response_power, s.name AS smsName, s.phone AS smsPhone
+        FROM aggregator_ent e
+        LEFT JOIN aggregator_ent_device d ON e.ent_id = d.ent_id AND d.del_flag = 1
+        LEFT JOIN aggregator_sms s ON e.ent_id = s.ent_id AND s.query_flag = 1
+        <where>
+            <if test="entId != null and entId != ''">
+                AND e.ent_id = #{entId}
+            </if>
+            <if test="yearList != null and yearList.size() > 0">
+                AND
+                <foreach collection="yearList" item="year" separator="or" open="(" close=")">
+                    YEAR(e.service_start_date) &lt;= #{year} AND YEAR(e.service_end_date) &gt;= #{year}
+                </foreach>
+            </if>
+        </where>
+        ORDER BY e.id, d.id
+    </select>
+
+    <select id="selectEntAndDeviceListByAggregatorId" resultMap="EntUserDetailWithDeviceResultMap">
+        SELECT e.aggregator_id, e.ent_id, e.station_id, e.ent_name, e.agreement, e.service_start_date,
+        e.service_end_date,
+        CONCAT_WS('~', DATE_FORMAT(e.service_start_date,'%Y/%m/%d'), DATE_FORMAT(e.service_end_date,'%Y/%m/%d')) AS
+        agreementDate, d.device_base_id, d.ent_id, d.device_id, d.account_no,
+        d.device_name, d.power, d.max_power, d.response_power, s.name AS smsName, s.phone AS smsPhone,
+        e.`percent`
+        FROM aggregator_ent e
+        LEFT JOIN aggregator_ent_device d ON e.ent_id = d.ent_id AND d.del_flag = 1
+        LEFT JOIN aggregator_sms s ON e.ent_id = s.ent_id AND s.query_flag = 1
+        <where>
+            <if test="aggregatorId != null and aggregatorId != ''">
+                AND e.aggregator_id = #{aggregatorId}
+            </if>
+            <if test="entId != null and entId != ''">
+                AND e.ent_id = #{entId}
+            </if>
+            <if test="yearList != null and yearList.size() > 0">
+                AND
+                <foreach collection="yearList" item="year" separator="or" open="(" close=")">
+                    YEAR(e.service_start_date) &lt;= #{year} AND YEAR(e.service_end_date) &gt;= #{year}
+                </foreach>
+            </if>
+        </where>
+        ORDER BY e.id, d.id
+    </select>
+
+    <select id="selectEntAndDeviceListByStartYear" resultMap="EntUserDetailWithDeviceResultMap">
+        SELECT e.aggregator_id, e.ent_id, e.station_id, e.ent_name, e.agreement, e.service_start_date,
+        e.service_end_date,
+        CONCAT_WS('~', DATE_FORMAT(e.service_start_date,'%Y/%m/%d'), DATE_FORMAT(e.service_end_date,'%Y/%m/%d')) AS
+        agreementDate, d.device_base_id, d.ent_id, d.device_id, d.account_no,
+        d.device_name, d.power, d.max_power, d.response_power, s.name AS smsName, s.phone AS smsPhone
+        FROM aggregator_ent e
+        LEFT JOIN aggregator_ent_device d ON e.ent_id = d.ent_id AND d.del_flag = 1
+        LEFT JOIN aggregator_sms s ON e.ent_id = s.ent_id AND s.query_flag = 1
+        <where>
+            <if test="entId != null and entId != ''">
+                AND e.ent_id = #{entId}
+            </if>
+            <if test="startYear != null and startYear != ''">
+                AND YEAR(e.service_end_date) &gt;= #{startYear}
+            </if>
+        </where>
+        ORDER BY e.id, d.id
+    </select>
+
+
+    <select id="selectEntAndDeviceListByStartYearAggregatorId" resultMap="EntUserDetailWithDeviceResultMap">
+        SELECT e.aggregator_id, e.ent_id, e.station_id, e.ent_name, e.agreement, e.service_start_date,
+        e.service_end_date,
+        CONCAT_WS('~', DATE_FORMAT(e.service_start_date,'%Y/%m/%d'), DATE_FORMAT(e.service_end_date,'%Y/%m/%d')) AS
+        agreementDate, d.device_base_id, d.ent_id, d.device_id, d.account_no,
+        d.device_name, d.power, d.max_power, d.response_power, s.name AS smsName, s.phone AS smsPhone,
+        e.`percent`
+        FROM aggregator_ent e
+        LEFT JOIN aggregator_ent_device d ON e.ent_id = d.ent_id AND d.del_flag = 1
+        LEFT JOIN aggregator_sms s ON e.ent_id = s.ent_id AND s.query_flag = 1
+        <where>
+            <if test="aggregatorId != null and aggregatorId != ''">
+                AND e.aggregator_id = #{aggregatorId}
+            </if>
+            <if test="entId != null and entId != ''">
+                AND e.ent_id = #{entId}
+            </if>
+            <if test="startYear != null and startYear != ''">
+                AND YEAR(e.service_end_date) &gt;= #{startYear}
+            </if>
+        </where>
+        ORDER BY e.id, d.id
+    </select>
+
+    <select id="selectEntAndDeviceListByEndYear" resultMap="EntUserDetailWithDeviceResultMap">
+        SELECT e.aggregator_id, e.ent_id, e.station_id, e.ent_name, e.agreement, e.service_start_date,
+        e.service_end_date,
+        CONCAT_WS('~', DATE_FORMAT(e.service_start_date,'%Y/%m/%d'), DATE_FORMAT(e.service_end_date,'%Y/%m/%d')) AS
+        agreementDate, d.device_base_id, d.ent_id, d.device_id, d.account_no,
+        d.device_name, d.power, d.max_power, d.response_power, s.name AS smsName, s.phone AS smsPhone,
+        e.`percent`
+        FROM aggregator_ent e
+        LEFT JOIN aggregator_ent_device d ON e.ent_id = d.ent_id AND d.del_flag = 1
+        LEFT JOIN aggregator_sms s ON e.ent_id = s.ent_id AND s.query_flag = 1
+        <where>
+            <if test="aggregatorId != null and aggregatorId != ''">
+                AND e.aggregator_id = #{aggregatorId}
+            </if>
+            <if test="entId != null and entId != ''">
+                AND e.ent_id = #{entId}
+            </if>
+            <if test="endYear != null and endYear != ''">
+                AND YEAR(e.service_start_date) &lt;= #{endYear}
+            </if>
+        </where>
+        ORDER BY e.id, d.id
+    </select>
+
+
+    <select id="selectEntAndDeviceListByEndYearAggregatorId" resultMap="EntUserDetailWithDeviceResultMap">
+        SELECT e.aggregator_id, e.ent_id, e.station_id, e.ent_name, e.agreement, e.service_start_date,
+        e.service_end_date,
+        CONCAT_WS('~', DATE_FORMAT(e.service_start_date,'%Y/%m/%d'), DATE_FORMAT(e.service_end_date,'%Y/%m/%d')) AS
+        agreementDate, d.device_base_id, d.ent_id, d.device_id, d.account_no,
+        d.device_name, d.power, d.max_power, d.response_power, s.name AS smsName, s.phone AS smsPhone
+        FROM aggregator_ent e
+        LEFT JOIN aggregator_ent_device d ON e.ent_id = d.ent_id AND d.del_flag = 1
+        LEFT JOIN aggregator_sms s ON e.ent_id = s.ent_id AND s.query_flag = 1
+        <where>
+            <if test="entId != null and entId != ''">
+                AND e.ent_id = #{entId}
+            </if>
+            <if test="endYear != null and endYear != ''">
+                AND YEAR(e.service_start_date) &lt;= #{endYear}
+            </if>
+        </where>
+        ORDER BY e.id, d.id
+    </select>
+
+    <update id="deleteAgreement">
+        UPDATE aggregator_ent
+        SET agreement = null
+        WHERE ent_id = #{entId}
+    </update>
+
+    <update id="updateAggregatorEntAgreementInfo" parameterType="cn.sl.ehub.service.req.UpdateEntReq">
+        UPDATE aggregator_ent
+        SET agreement          = #{agreement},
+            service_start_date = #{serviceStartDate},
+            service_end_date   = #{serviceEndDate},
+            `percent` = #{percent}
+        WHERE ent_id = #{entId}
+    </update>
+
+    <select id="getOnlineAggregatorEntList" resultMap="BaseResultMap">
+        SELECT *
+        FROM aggregator_ent
+        WHERE status = 1
+    </select>
+    <select id="getOnlineAggregatorEntListByResourTypeId" resultMap="BaseResultMap">
+        SELECT *
+        FROM aggregator_ent e
+        WHERE e.status = 1
+        AND e.station_id IN(
+            SELECT station_id
+            FROM aggregator_ent_device d
+            WHERE d.status = 1
+            AND d.resource_type_id = #{resourTypeId}
+            )
+    </select>
+    <select id="getOnlineEnergyStationListByResourTypeId" resultMap="BaseResultMap">
+        SELECT *
+            FROM aggregator_ent_device d
+            WHERE d.status = 1
+              AND d.resource_type_id = #{resourTypeId}
+    </select>
+</mapper>

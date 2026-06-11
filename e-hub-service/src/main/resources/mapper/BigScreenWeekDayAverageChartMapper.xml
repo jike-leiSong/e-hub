@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.sl.ehub.service.mapper.BigScreenWeekDayAverageChartMapper">
+    <resultMap id="BaseResultMap" type="cn.sl.ehub.service.vo.BigScreenWeekDayAverageChart">
+        <id column="id" jdbcType="BIGINT" property="id"/>
+        <result column="offer" jdbcType="VARCHAR" property="offer"/>
+        <result column="power" jdbcType="VARCHAR" property="power"/>
+    </resultMap>
+
+    <select id="getBigScreenWeekDayAverageChart" resultType="cn.sl.ehub.service.vo.BigScreenWeekDayAverageChart">
+        SELECT offer, power FROM big_screen_week_day_average_chart
+    </select>
+</mapper>

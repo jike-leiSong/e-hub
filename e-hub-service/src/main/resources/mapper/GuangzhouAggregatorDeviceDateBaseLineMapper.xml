@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.sl.ehub.service.mapper.GuangzhouAggregatorDeviceDateBaseLineMapper">
+  <resultMap id="BaseResultMap" type="cn.sl.ehub.service.vo.GuangzhouAggregatorDeviceDateBaseLine">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    <id column="id" jdbcType="BIGINT" property="id" />
+    <result column="aggregator_id" jdbcType="VARCHAR" property="aggregatorId" />
+    <result column="ent_id" jdbcType="VARCHAR" property="entId" />
+    <result column="station_id" jdbcType="VARCHAR" property="stationId" />
+    <result column="account_no" jdbcType="VARCHAR" property="accountNo" />
+    <result column="device_base_id" jdbcType="VARCHAR" property="deviceBaseId" />
+    <result column="date" jdbcType="DATE" property="date" />
+    <result column="create_time" jdbcType="TIMESTAMP" property="createTime" />
+    <result column="invite_id" jdbcType="BIGINT" property="inviteId" />
+    <result column="base_line_load_chart" jdbcType="LONGVARCHAR" property="baseLineLoadChart" />
+  </resultMap>
+</mapper>

@@ -1,0 +1,74 @@
+server:
+  port: 8088
+
+client:
+  keystore-alias: webclient
+  key-store: classpath:jks/webclient1.p12
+  trust-store: classpath:jks/webclient.truststore
+  store-password: Huabei.zdh2019
+aggregator:
+  name: XASN
+file:
+  separate: _
+  point: .
+  suffix: RB
+
+nari:
+  url:
+    total: https://202.96.15.45:39091/PostValue,https://202.96.15.46:39091/PostValue,
+      https://223.71.4.101:39091/PostValue,https://223.71.4.102:39091/PostValue
+    peakPlan: https://202.96.15.46:39081/PostValue,https://223.71.4.102:39081/PostValue
+    single: https://202.96.15.46:39090/PostValue,https://223.71.4.101:39090/PostValue,https://202.96.15.45:39090/PostValue,
+      https://223.71.4.102:39090/PostValue
+    connectionTimeout: 60000
+    receiveTimeout: 120000
+#nari:
+#  url:
+#    total: https://open-platform-gateway.ennew.com/edataSend/PostValueOne,https://open-platform-gateway.ennew.com/edataSend/PostValueTwo,https://open-platform-gateway.ennew.com/edataSend/PostValueThree,https://open-platform-gateway.ennew.com/edataSend/PostValueFour
+#    single: https://open-platform-gateway.ennew.com/edataSend/PostValue/SingleOne,https://open-platform-gateway.ennew.com/edataSend/PostValue/SingleTwo,https://open-platform-gateway.ennew.com/edataSend/PostValue/SingleThree,https://open-platform-gateway.ennew.com/edataSend/PostValue//PostValue/SingleFour
+#    connectionTimeout: 30000
+#    receiveTimeout: 90000
+
+spring:
+  profiles:
+    active: dev
+
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Chongqing
+    default-property-inclusion: always
+    serialization:
+      write-dates-as-timestamps: false
+  application:
+    name: e-hub-upstream
+
+# 日志配置
+logging:
+  config: classpath:logback-spring.xml
+
+# pagehelper:
+pagehelper:
+  helperDialect: mysql
+  supportMethodsArguments: true
+  autoRuntimeDialect: true
+  offsetAsPageNum: true
+  rowBoundsWithCount: true
+  reasonable: false
+  returnPageInfo: true
+  params: count=countSql
+
+sms:
+  applicationName: load-aggregator
+  appId: msg-5229460204476416
+  appSecret: pwd-15600168730
+  alertTemplateCode: SMS_215116833
+
+dingding:
+  secret: SEC7fbe9f5761f8461f409cb8cf7bc7b0369367c1a04723989a406c014e16984c4e
+  webHook: https://oapi.dingtalk.com/robot/send?access_token=dc5cf315a9c30e02027c06f29bef30882041ff60d7c21fbb226604cca8730151
+
+mybatis:
+  mapper-locations: classpath*:/mapper/*Mapper.xml
+  type-aliases-package: cn.sl.ehub.upstream.vo,cn.sl.ehub.service.vo
+  configuration:
+    map-underscore-to-camel-case: true

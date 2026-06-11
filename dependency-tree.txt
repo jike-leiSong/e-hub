@@ -1,0 +1,1 @@
+cn.enn:e-hub:pom:1.0.0-SNAPSHOT

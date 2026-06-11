@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.sl.ehub.service.mapper.AggregatorDateDeliveryChartMapper">
+    <resultMap id="BaseResultMap" type="cn.sl.ehub.service.vo.AggregatorDateDeliveryChart">
+        <id column="id" jdbcType="INTEGER" property="id"/>
+        <result column="aggregator_id" jdbcType="VARCHAR" property="aggregatorId"/>
+        <result column="resource_type_id" jdbcType="VARCHAR" property="resourceTypeId"/>
+        <result column="date" jdbcType="VARCHAR" property="date"/>
+        <result column="delivery_chart" jdbcType="VARCHAR" property="deliveryChart"/>
+    </resultMap>
+
+    <insert id="batchInsert" parameterType="java.util.List">
+        INSERT INTO aggregator_date_delivery_chart
+        (aggregator_id, resource_type_id, date, delivery_chart)
+        VALUES
+        <foreach collection="list" item="item" index="index" separator=",">
+            (
+            #{item.aggregatorId},
+            #{item.resourceTypeId},
+            #{item.date},
+            #{item.deliveryChart}
+            )
+        </foreach>
+    </insert>
+
+    <select id="getPlanApplyEntNum" resultType="java.lang.String">
+        SELECT
+            t2.ent_id
+        FROM
+            aggregator_ent_device t2
+                LEFT JOIN aggregator_date_delivery_chart t1 ON t1.resource_type_id = t2.resource_type_id
+        WHERE
+            t2.aggregator_id = #{aggregatorId}
+          AND t1.DATE = #{date}
+        GROUP BY
+            t2.ent_id
+    </select>
+</mapper>

@@ -1,0 +1,76 @@
+app:
+    申报：
+        申报页面
+        /applyPlan/getApplyIndexResp
+        功率参考
+        /applyPlan/getPowerDetail
+        暂存
+        /applyPlan/saveApplyPlanList
+        确认申报
+        /applyPlan/apply
+        查询设备列表
+        /yesterday/getDeviceList
+    收益账单：
+        查询总收益
+        /profitBill/getTotalProfit
+        查询收益账单
+        /profitBill/getProfitBill
+pc:
+    首页：
+        资源类型列表
+        /yesterday/getResourceTypeList
+        上次收益
+        /yesterday/getLastProfit
+        实时汇总
+        /yesterday/getOverview
+        申报计划
+        /yesterday/getOverview
+        收益统计
+        /profit/week
+        用户分布
+        /entUserDetail/getEntUserDetailRespList
+        查询申报
+        /tomorrow/getAggregatorApply
+        立即申报
+        /tomorrow/updateAggregatorApply
+        查询报价回显
+        /tomorrow/getAggregatorApplyOfferResp
+        暂存报价
+        /tomorrow/saveAggregatorApplyOffer
+        提交报价
+        /tomorrow/submitAggregatorApplyOffer
+    收益详情
+        /profit/list 无筛选条件
+        /profit/list/download 无筛选条件导出
+        /profit/listByEntIdList 有筛选条件
+        /profit/listByEntIdListExcel 有筛选条件导出
+    实时功率详情
+    /yesterday/getOverview
+        用户情况
+        /yesterday/getEntUserOverviewResp
+        资源类型列表
+        /yesterday/getResourceTypeList
+        设备列表
+        /yesterday/getDeviceList
+        设备4条曲线图
+        /today/getEntUserDeviceChartResp
+        执行记录
+        /today/getIotLog
+    申报计划详情
+    /yesterday/getOverview
+        用户情况
+        /yesterday/getEntUserOverviewResp
+        资源类型列表
+        /yesterday/getResourceTypeList
+        设备列表
+        /yesterday/getDeviceList
+        设备曲线
+        /tomorrow/getEntUserDeviceChartResp
+    用户详情
+        企业列表
+        /entUserDetail/options
+        数据列表
+        /entUserDetail/list
+
+
+

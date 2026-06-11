@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.sl.ehub.service.mapper.AggregatorEntDateApplyDetailMapper">
+    <resultMap id="BaseResultMap" type="cn.sl.ehub.service.vo.AggregatorEntDateApplyDetail">
+        <id column="id" jdbcType="INTEGER" property="id"/>
+        <result column="aggregator_id" jdbcType="VARCHAR" property="aggregatorId"/>
+        <result column="date" jdbcType="VARCHAR" property="date"/>
+        <result column="ent_id" jdbcType="VARCHAR" property="entId"/>
+        <result column="station_id" jdbcType="VARCHAR" property="stationId"/>
+        <result column="apply_time" jdbcType="VARCHAR" property="applyTime"/>
+        <result column="apply_date" jdbcType="VARCHAR" property="applyDate"/>
+    </resultMap>
+
+    <insert id="batchInsert" parameterType="java.util.List">
+        INSERT INTO aggregator_ent_date_apply_detail
+        (aggregator_id, date, ent_id, station_id, apply_time, apply_date, plan_status, apply_status)
+        VALUES
+        <foreach collection="list" item="item" index="index" separator=",">
+            (
+            #{item.aggregatorId},
+            #{item.date},
+            #{item.entId},
+            #{item.stationId},
+            #{item.applyTime},
+            #{item.applyDate},
+            #{item.planStatus},
+            #{item.applyStatus}
+            )
+        </foreach>
+    </insert>
+</mapper>

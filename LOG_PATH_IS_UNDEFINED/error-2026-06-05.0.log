@@ -1,0 +1,15 @@
+2026-06-05 14:15:17.820 [restartedMain] ERROR o.s.b.d.LoggingFailureAnalysisReporter -
+
+***************************
+APPLICATION FAILED TO START
+***************************
+
+Description:
+
+A component required a bean of type 'cn.sl.ehub.service.service.TotalDeliveryLogService' that could not be found.
+
+
+Action:
+
+Consider defining a bean of type 'cn.sl.ehub.service.service.TotalDeliveryLogService' in your configuration.
+

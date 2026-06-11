@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<wsdl:definitions name="GetFileImplService" targetNamespace="http://webservice.nari.com/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:tns="http://webservice.nari.com/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:ns1="http://schemas.xmlsoap.org/soap/http">
+   <wsdl:types>
+      <xs:schema attributeFormDefault="unqualified" elementFormDefault="unqualified" targetNamespace="http://webservice.nari.com/" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+         <xs:element name="commitFile" type="tns:commitFile"/>
+         <xs:element name="commitFileResponse" type="tns:commitFileResponse"/>
+         <xs:element name="getDeclare" type="tns:getDeclare"/>
+         <xs:element name="getDeclareResponse" type="tns:getDeclareResponse"/>
+         <xs:element name="getRecallDeclare" type="tns:getRecallDeclare"/>
+         <xs:element name="getRecallDeclareResponse" type="tns:getRecallDeclareResponse"/>
+         <xs:element name="test" type="tns:test"/>
+         <xs:element name="testResponse" type="tns:testResponse"/>
+         <xs:complexType name="getDeclare">
+            <xs:sequence>
+               <xs:element minOccurs="0" name="type" type="xs:string"/>
+            </xs:sequence>
+         </xs:complexType>
+         <xs:complexType name="getDeclareResponse">
+            <xs:sequence>
+               <xs:element minOccurs="0" name="return" type="xs:string"/>
+            </xs:sequence>
+         </xs:complexType>
+         <xs:complexType name="test">
+            <xs:sequence>
+               <xs:element minOccurs="0" name="test" type="xs:string"/>
+            </xs:sequence>
+         </xs:complexType>
+         <xs:complexType name="testResponse">
+            <xs:sequence>
+               <xs:element minOccurs="0" name="return" type="xs:string"/>
+            </xs:sequence>
+         </xs:complexType>
+         <xs:complexType name="getRecallDeclare">
+            <xs:sequence>
+               <xs:element minOccurs="0" name="type" type="xs:string"/>
+               <xs:element minOccurs="0" name="recalldate" type="xs:string"/>
+            </xs:sequence>
+         </xs:complexType>
+         <xs:complexType name="getRecallDeclareResponse">
+            <xs:sequence>
+               <xs:element minOccurs="0" name="return" type="xs:string"/>
+            </xs:sequence>
+         </xs:complexType>
+         <xs:complexType name="commitFile">
+            <xs:sequence>
+               <xs:element minOccurs="0" name="filename" type="xs:string"/>
+               <xs:element minOccurs="0" name="filebyte" type="xs:string"/>
+            </xs:sequence>
+         </xs:complexType>
+         <xs:complexType name="commitFileResponse">
+            <xs:sequence>
+               <xs:element minOccurs="0" name="return" type="xs:string"/>
+            </xs:sequence>
+         </xs:complexType>
+         <xs:element name="Exception" type="tns:Exception"/>
+         <xs:complexType name="Exception">
+            <xs:sequence>
+               <xs:element minOccurs="0" name="message" type="xs:string"/>
+            </xs:sequence>
+         </xs:complexType>
+      </xs:schema>
+   </wsdl:types>
+   <wsdl:message name="getDeclareResponse">
+      <wsdl:part element="tns:getDeclareResponse" name="parameters"/>
+   </wsdl:message>
+   <wsdl:message name="getRecallDeclareResponse">
+      <wsdl:part element="tns:getRecallDeclareResponse" name="parameters"/>
+   </wsdl:message>
+   <wsdl:message name="test">
+      <wsdl:part element="tns:test" name="parameters"/>
+   </wsdl:message>
+   <wsdl:message name="Exception">
+      <wsdl:part element="tns:Exception" name="Exception"/>
+   </wsdl:message>
+   <wsdl:message name="getDeclare">
+      <wsdl:part element="tns:getDeclare" name="parameters"/>
+   </wsdl:message>
+   <wsdl:message name="getRecallDeclare">
+      <wsdl:part element="tns:getRecallDeclare" name="parameters"/>
+   </wsdl:message>
+   <wsdl:message name="testResponse">
+      <wsdl:part element="tns:testResponse" name="parameters"/>
+   </wsdl:message>
+   <wsdl:message name="commitFile">
+      <wsdl:part element="tns:commitFile" name="parameters"/>
+   </wsdl:message>
+   <wsdl:message name="commitFileResponse">
+      <wsdl:part element="tns:commitFileResponse" name="parameters"/>
+   </wsdl:message>
+   <wsdl:portType name="GetFile">
+      <wsdl:operation name="getDeclare">
+         <wsdl:input message="tns:getDeclare" name="getDeclare"/>
+         <wsdl:output message="tns:getDeclareResponse" name="getDeclareResponse"/>
+         <wsdl:fault message="tns:Exception" name="Exception"/>
+      </wsdl:operation>
+      <wsdl:operation name="test">
+         <wsdl:input message="tns:test" name="test"/>
+         <wsdl:output message="tns:testResponse" name="testResponse"/>
+      </wsdl:operation>
+      <wsdl:operation name="getRecallDeclare">
+         <wsdl:input message="tns:getRecallDeclare" name="getRecallDeclare"/>
+         <wsdl:output message="tns:getRecallDeclareResponse" name="getRecallDeclareResponse"/>
+         <wsdl:fault message="tns:Exception" name="Exception"/>
+      </wsdl:operation>
+      <wsdl:operation name="commitFile">
+         <wsdl:input message="tns:commitFile" name="commitFile"/>
+         <wsdl:output message="tns:commitFileResponse" name="commitFileResponse"/>
+         <wsdl:fault message="tns:Exception" name="Exception"/>
+      </wsdl:operation>
+   </wsdl:portType>
+   <wsdl:binding name="GetFileImplServiceSoapBinding" type="tns:GetFile">
+      <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+      <wsdl:operation name="getDeclare">
+         <soap:operation soapAction="" style="document"/>
+         <wsdl:input name="getDeclare">
+            <soap:body use="literal"/>
+         </wsdl:input>
+         <wsdl:output name="getDeclareResponse">
+            <soap:body use="literal"/>
+         </wsdl:output>
+         <wsdl:fault name="Exception">
+            <soap:fault name="Exception" use="literal"/>
+         </wsdl:fault>
+      </wsdl:operation>
+      <wsdl:operation name="test">
+         <soap:operation soapAction="" style="document"/>
+         <wsdl:input name="test">
+            <soap:body use="literal"/>
+         </wsdl:input>
+         <wsdl:output name="testResponse">
+            <soap:body use="literal"/>
+         </wsdl:output>
+      </wsdl:operation>
+      <wsdl:operation name="getRecallDeclare">
+         <soap:operation soapAction="" style="document"/>
+         <wsdl:input name="getRecallDeclare">
+            <soap:body use="literal"/>
+         </wsdl:input>
+         <wsdl:output name="getRecallDeclareResponse">
+            <soap:body use="literal"/>
+         </wsdl:output>
+         <wsdl:fault name="Exception">
+            <soap:fault name="Exception" use="literal"/>
+         </wsdl:fault>
+      </wsdl:operation>
+      <wsdl:operation name="commitFile">
+         <soap:operation soapAction="" style="document"/>
+         <wsdl:input name="commitFile">
+            <soap:body use="literal"/>
+         </wsdl:input>
+         <wsdl:output name="commitFileResponse">
+            <soap:body use="literal"/>
+         </wsdl:output>
+         <wsdl:fault name="Exception">
+            <soap:fault name="Exception" use="literal"/>
+         </wsdl:fault>
+      </wsdl:operation>
+   </wsdl:binding>
+   <wsdl:service name="GetFileImplService">
+      <wsdl:port binding="tns:GetFileImplServiceSoapBinding" name="GetFileImplPort">
+         <soap:address location="https://192.168.32.11:39090/PostValue"/>
+      </wsdl:port>
+   </wsdl:service>
+</wsdl:definitions>

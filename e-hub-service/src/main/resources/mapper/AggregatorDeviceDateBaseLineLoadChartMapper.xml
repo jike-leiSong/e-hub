@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.sl.ehub.service.mapper.AggregatorDeviceDateBaseLineLoadChartMapper">
+    <resultMap id="BaseResultMap" type="cn.sl.ehub.service.vo.AggregatorDeviceDateBaseLineLoadChart">
+        <id column="id" jdbcType="INTEGER" property="id"/>
+        <result column="aggregator_id" jdbcType="VARCHAR" property="aggregatorId"/>
+        <result column="ent_id" jdbcType="VARCHAR" property="entId"/>
+        <result column="station_id" jdbcType="VARCHAR" property="stationId"/>
+        <result column="device_base_id" jdbcType="VARCHAR" property="deviceBaseId"/>
+        <result column="base_line_load_chart" jdbcType="VARCHAR" property="baseLineLoadChart"/>
+        <result column="start_date" jdbcType="VARCHAR" property="startDate"/>
+        <result column="end_date" jdbcType="VARCHAR" property="endDate"/>
+    </resultMap>
+
+    <select id="getAggregatorDeviceDateBaseLineLoadChartList" resultMap="BaseResultMap">
+        SELECT * FROM aggregator_device_date_base_line_load_chart
+        WHERE device_base_id IN
+        <foreach collection="deviceBaseIdList" item="deviceBaseId" separator="," open="(" close=")">
+            #{deviceBaseId}
+        </foreach>
+        AND
+        <foreach collection="dateList" item="date" separator="or" open="(" close=")">
+            start_date &lt;= #{date} AND end_date &gt;= #{date}
+        </foreach>
+    </select>
+</mapper>

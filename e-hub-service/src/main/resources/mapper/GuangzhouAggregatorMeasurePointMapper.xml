@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.sl.ehub.service.mapper.GuangzhouAggregatorMeasurePointMapper">
+  <resultMap id="BaseResultMap" type="cn.sl.ehub.service.vo.GuangzhouAggregatorMeasurePoint">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    <id column="id" jdbcType="BIGINT" property="id" />
+    <result column="point_id" jdbcType="VARCHAR" property="pointId" />
+    <result column="system_code" jdbcType="VARCHAR" property="systemCode" />
+    <result column="ent_id" jdbcType="VARCHAR" property="entId" />
+    <result column="adjust_value" jdbcType="DOUBLE" property="adjustValue" />
+    <result column="metric_code" jdbcType="VARCHAR" property="metricCode" />
+    <result column="issue_code" jdbcType="VARCHAR" property="issueCode" />
+    <result column="device_type" jdbcType="VARCHAR" property="deviceType" />
+    <result column="device_id" jdbcType="VARCHAR" property="deviceId" />
+    <result column="up_value_30_min" jdbcType="DOUBLE" property="upValue30Min" />
+    <result column="down_value_30_min" jdbcType="DOUBLE" property="downValue30Min" />
+    <result column="up_value_60_min" jdbcType="DOUBLE" property="upValue60Min" />
+    <result column="up_value_120_min" jdbcType="DOUBLE" property="upValue120Min" />
+    <result column="down_value_120_min" jdbcType="DOUBLE" property="downValue120Min" />
+  </resultMap>
+</mapper>

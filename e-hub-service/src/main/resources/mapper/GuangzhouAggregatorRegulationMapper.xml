@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.sl.ehub.service.mapper.GuangzhouAggregatorRegulationMapper">
+  <resultMap id="BaseResultMap" type="cn.sl.ehub.service.vo.GuangzhouAggregatorRegulation">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    <id column="id" jdbcType="BIGINT" property="id" />
+    <result column="order_id" jdbcType="VARCHAR" property="orderId" />
+    <result column="order_time" jdbcType="BIGINT" property="orderTime" />
+    <result column="adjust_begin_time" jdbcType="BIGINT" property="adjustBeginTime" />
+    <result column="adjust_end_time" jdbcType="BIGINT" property="adjustEndTime" />
+    <result column="adjust_value" jdbcType="DOUBLE" property="adjustValue" />
+    <result column="type" jdbcType="VARCHAR" property="type" />
+    <result column="selected_sub_user" jdbcType="VARCHAR" property="selectedSubUser" />
+    <result column="response_code" jdbcType="VARCHAR" property="responseCode" />
+    <result column="response_message" jdbcType="VARCHAR" property="responseMessage" />
+    <result column="create_time" jdbcType="TIMESTAMP" property="createTime" />
+  </resultMap>
+</mapper>

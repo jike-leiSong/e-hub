@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.sl.ehub.service.mapper.PeakPlanDeliveryLogMapper">
+    <resultMap id="BaseResultMap" type="cn.sl.ehub.service.vo.PeakPlanDeliveryLog">
+        <id column="id" jdbcType="BIGINT" property="id"/>
+        <result column="aggregator_id" jdbcType="VARCHAR" property="aggregatorId"/>
+        <result column="source_id" jdbcType="VARCHAR" property="sourceId"/>
+        <result column="data_type" jdbcType="VARCHAR" property="dataType"/>
+        <result column="method" jdbcType="VARCHAR" property="method"/>
+        <result column="delivery_data" jdbcType="LONGVARCHAR" property="deliveryData"/>
+        <result column="delivery_status" jdbcType="VARCHAR" property="deliveryStatus"/>
+        <result column="data_date" jdbcType="TIMESTAMP" property="dataDate"/>
+        <result column="create_time" jdbcType="TIMESTAMP" property="createTime"/>
+        <result column="remark" jdbcType="VARCHAR" property="remark"/>
+    </resultMap>
+
+    <insert id="batchInsert" parameterType="java.util.List">
+        INSERT INTO peak_plan_delivery_log
+        (aggregator_id, source_id, data_type, method, delivery_data, delivery_status, data_date, create_time, remark)
+        VALUES
+        <foreach collection="list" item="item" index="index" separator=",">
+            (
+            #{item.aggregatorId},
+            #{item.sourceId},
+            #{item.dataType},
+            #{item.method},
+            #{item.deliveryData},
+            #{item.deliveryStatus},
+            #{item.dataDate},
+            #{item.createTime},
+            #{item.remark}
+            )
+        </foreach>
+    </insert>
+
+    <select id="selectByAggregatorAndSourceAndDate" resultMap="BaseResultMap">
+        SELECT * FROM peak_plan_delivery_log
+        WHERE aggregator_id = #{aggregatorId}
+        AND source_id = #{sourceId}
+        AND data_date = #{dataDate}
+        ORDER BY create_time DESC
+    </select>
+</mapper>

@@ -1,0 +1,57 @@
+spring:
+  # MySQL数据库配置
+  datasource:
+    type: com.zaxxer.hikari.HikariDataSource
+    platform: mysql
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://82.156.97.190:3306/e_hub?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password: ehub666$
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+
+  # Redis配置
+  redis:
+    host: 82.156.97.190
+    port: 6379
+    database: 0
+    password:
+    timeout: 6000
+    jedis:
+      pool:
+        max-active: 100
+        min-idle: 5
+        max-idle: 20
+        max-wait: 4000
+
+# Swagger配置
+swagger:
+  enable: true
+
+# 鑫泰聚合商配置
+xintai:
+  aggregator:
+    id: 1711340903453614082
+
+# 调峰计划聚合商配置（如需要请配置）
+peak:
+  plan:
+    aggregator:
+      id:
+
+# 电网上送配置
+nari:
+  url:
+    total: http://localhost:8080/mock/PostValue
+    peakPlan: http://localhost:8080/mock/PostValue
+    single: http://localhost:8080/mock/PostValue
+    connectionTimeout: 60000
+    receiveTimeout: 120000
+
+# 日志配置
+logging:
+  level:
+    root: info
+    cn.sl.ehub.upstream: debug
