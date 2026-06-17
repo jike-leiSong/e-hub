@@ -1,4 +1,4 @@
-package cn.sl.ehub.upstream.exception;
+package cn.sl.ehub.console.exception;
 
 import cn.sl.ehub.common.vo.ResultVO;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -15,9 +15,9 @@ import org.springframework.web.bind.annotation.ResponseBody;
 @ControllerAdvice
 public class BaseExceptionHandler {
 
-    @ExceptionHandler(value = BaseException.class)
+    @ExceptionHandler(value = cn.sl.ehub.common.exception.BaseException.class)
     @ResponseBody
-    public ResultVO<String> controlExceptionHandler(BaseException e) {
+    public ResultVO<String> controlExceptionHandler(cn.sl.ehub.common.exception.BaseException e) {
         return ResultVO.fail(e.getCode(), e.getMessage());
     }
 }

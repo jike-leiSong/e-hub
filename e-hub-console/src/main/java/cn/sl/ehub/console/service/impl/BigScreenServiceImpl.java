@@ -1,5 +1,6 @@
 package cn.sl.ehub.console.service.impl;
 
+import cn.sl.ehub.common.vo.DataResp;
 import cn.sl.ehub.service.mapper.*;
 import cn.sl.ehub.service.resp.BigScreenWeekDayAverageChartResp;
 import cn.sl.ehub.console.service.IBigScreenService;

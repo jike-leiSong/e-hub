@@ -13,9 +13,7 @@ import java.util.Set;
 public enum StateGridEnum {
 
     HUABEI("HUABEI", "华北电网"),
-    HUABEI_DELIVERY("HUABEI_DELIVERY", "华北电网申报"),
-    GUANGZHOU_DELIVERY("GUANGZHOU_DELIVERY", "广州电网申报"),
-    GUANGZHOU("GUANGZHOU", "广州电网");
+    HUABEI_DELIVERY("HUABEI_DELIVERY", "华北电网申报");
 
     private String code;
     private String name;

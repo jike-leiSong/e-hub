@@ -72,3 +72,9 @@ mybatis:
   type-aliases-package: cn.sl.ehub.upstream.vo,cn.sl.ehub.service.vo
   configuration:
     map-underscore-to-camel-case: true
+
+# 模型配置
+model:
+  no:
+    up:
+      data: ""

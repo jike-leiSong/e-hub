@@ -127,10 +127,10 @@ public class DeliveryService {
     @Value("${file.suffix}")
     private String fileSuffix;
 
-    @Value("${model.no.up.data}")
+    @Value("${model.no.up.data:}")
     private String noUpModelEnergyStationCode;
 
-    @Value("${device.no.up.data}")
+    @Value("${device.no.up.data:}")
     private String noUpDeviceStationIds;
 
     private static final String LOCAL_FILE_PATH_MEASE = System.getProperty("user.dir") + File.separator + "huabei" + File.separator + "MEASE" + File.separator;

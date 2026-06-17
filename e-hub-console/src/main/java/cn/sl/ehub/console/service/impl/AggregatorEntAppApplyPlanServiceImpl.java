@@ -44,7 +44,6 @@ public class AggregatorEntAppApplyPlanServiceImpl implements IAggregatorEntAppAp
     private final IAggregatorEntDateProfitService aggregatorEntDateProfitService;
     private final IAggregatorEntProfitTimeService aggregatorEntProfitTimeService;
     private final IAggregatorDeviceDateProfitService aggregatorDeviceDateProfitService;
-    private final IDataService dataService;
     private final AggregatorEntApplyPlanMapper aggregatorEntApplyPlanMapper;
     private final IAggregatorEntDateApplyDetailService aggregatorEntDateApplyDetailService;
     private final IAggregatorDateHolidayService aggregatorDateHolidayService;

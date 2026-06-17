@@ -85,7 +85,7 @@ public class ProfitController {
 
     @ApiOperation(value = "收益统计 日收益列表")
     @GetMapping("/list")
-    public ResultVO<List<AggregatorDateProfitResp>> getProfitList(@ApiParam(value = "聚合商ID")
+    public ResultWithPageVO<List<AggregatorDateProfitResp>> getProfitList(@ApiParam(value = "聚合商ID")
                                                                   @RequestParam String aggregatorId,
                                                                   @RequestParam(required = false) String startDate,
                                                                   @RequestParam(required = false) String endDate,
@@ -115,7 +115,7 @@ public class ProfitController {
 
     //@ApiOperation(value = "收益统计 企业日收益列表")
     //@GetMapping("/ent/list")
-    public ResultVO<List<AggregatorEntDateProfitResp>> getProfitEntList(@ApiParam(value = "聚合商ID")
+    public ResultWithPageVO<List<AggregatorEntDateProfitResp>> getProfitEntList(@ApiParam(value = "聚合商ID")
                                                                         @RequestParam String aggregatorId,
                                                                         @RequestParam String date,
                                                                         @RequestParam(required = false) List<String> entIds) {
@@ -165,7 +165,7 @@ public class ProfitController {
 
     @ApiOperation(value = "日收益列表(有筛选条件)")
     @GetMapping("/listByEntIdList")
-    public ResultVO<List<List<String>>> listByEntIdList(@ApiParam(value = "聚合商ID") @RequestParam String aggregatorId,
+    public ResultWithPageVO<List<List<String>>> listByEntIdList(@ApiParam(value = "聚合商ID") @RequestParam String aggregatorId,
                                                         @ApiParam(value = "开始时间") @RequestParam String startDate,
                                                         @ApiParam(value = "结束时间") @RequestParam String endDate,
                                                         @ApiParam(value = "当前页", defaultValue = "1") @RequestParam Integer pageIndex,

@@ -1,6 +1,5 @@
 package cn.sl.ehub.common.exception;
 
-import cn.sl.ehub.common.vo.guangzhou.GuangZhouResultVO;
 import cn.sl.ehub.common.vo.ResultVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;

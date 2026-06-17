@@ -1,0 +1,50 @@
+spring:
+  datasource:
+    type: com.zaxxer.hikari.HikariDataSource
+    platform: mysql
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/e_hub?characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password: root
+
+  # redis
+  redis:
+    host: localhost
+    port: 6379
+    database: 0
+    password:
+    timeout: 6000
+    jedis:
+      pool:
+        max-active: 300
+        min-idle: 10
+        max-idle: 100
+        max-wait: 4000
+
+#大数据
+bigdata:
+  simulate: http://localhost:8080
+  userKey: dev-key
+  data-collector: http://localhost:8080
+
+#监控
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+
+#appId
+app:
+  id: e-hub-console-dev
+
+swagger:
+  enable: true
+
+# apollo配置
+apollo:
+  check: default
+
+# 服务器配置
+server:
+  keystore-alias: default-alias

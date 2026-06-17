@@ -24,6 +24,4 @@ public interface IAggregatorSmsService {
     List<AggregatorSms> getEntWarningSend(String entId);
 
     int save(List<UpdateEntPhoneReq> phoneList, String entId);
-
-    int saveByGuangZhou(List<AggregatorSms> phoneList, String entId);
 }

@@ -17,7 +17,7 @@ spring:
     host: 82.156.97.190
     port: 6379
     database: 0
-    password:
+    password: ehub666$
     timeout: 6000
     jedis:
       pool:
@@ -55,3 +55,9 @@ logging:
   level:
     root: info
     cn.sl.ehub.upstream: debug
+
+# 模型配置
+model:
+  no:
+    up:
+      data: ""

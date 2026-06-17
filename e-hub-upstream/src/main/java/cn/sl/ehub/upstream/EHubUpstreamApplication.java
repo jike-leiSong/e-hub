@@ -14,7 +14,7 @@ import tk.mybatis.spring.annotation.MapperScan;
  * @date 2026-05-28
  */
 @SpringBootApplication
-@ComponentScan(basePackages = {"cn.sl.ehub.upstream", "cn.sl.ehub.service"})
+@ComponentScan(basePackages = {"cn.sl.ehub.upstream", "cn.sl.ehub.service", "cn.sl.ehub.common"})
 @MapperScan(basePackages = {"cn.sl.ehub.upstream.mapper", "cn.sl.ehub.service.mapper"})
 @EnableAsync
 public class EHubUpstreamApplication {

@@ -99,6 +99,12 @@
             <groupId>cn.enn</groupId>
             <artifactId>e-hub-service</artifactId>
         </dependency>
+        <!-- mysql driver for application runtime -->
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <scope>runtime</scope>
+        </dependency>
         <!-- Excel -->
         <dependency>
             <groupId>cn.afterturn</groupId>

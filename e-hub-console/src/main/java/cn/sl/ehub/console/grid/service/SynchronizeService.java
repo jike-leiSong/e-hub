@@ -26,8 +26,12 @@ public class SynchronizeService {
     public ResultVO<Boolean> clearIssue() {
         String cmdData = clearIssueLogService.getTodayLastedCmdData();
         if (StringUtils.isNotBlank(cmdData)) {
-            ResultVO<Boolean> booleanResultVO = tripartDataService.synchronRetry(cmdData);
-            return booleanResultVO;
+            ResultVO<String> result = tripartDataService.synchronRetry(cmdData);
+            if (result.getCode() != null && result.getCode() == 200) {
+                return ResultVO.success(true);
+            } else {
+                return ResultVO.fail(result.getCode(), result.getMsg());
+            }
         } else {
             return ResultVO.fail(StatusCode.E_B.getCode(), StatusCode.E_B.getMsg());
         }

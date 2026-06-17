@@ -157,9 +157,9 @@ public class DeliveryServiceXinTai {
 
     @Value("${file.suffix}")
     private String fileSuffix;
-    @Value("${device.no.up.data}")
+    @Value("${device.no.up.data:}")
     private String noUpDeviceStationIds;
-    @Value("${model.no.up.data}")
+    @Value("${model.no.up.data:}")
     private String noUpModelEnergyStationCode;
 
     @Resource

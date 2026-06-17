@@ -94,10 +94,10 @@ public class DeliveryRetryService {
     @Value("${file.suffix}")
     private String fileSuffix;
 
-    @Value("${model.no.up.data}")
+    @Value("${model.no.up.data:}")
     private String noUpModelEnergyStationCode;
 
-    @Value("${device.no.up.data}")
+    @Value("${device.no.up.data:}")
     private String noUpDeviceStationIds;
 
     @Value("${nari.url.single}")

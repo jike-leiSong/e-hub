@@ -21,7 +21,6 @@ import java.util.concurrent.TimeUnit;
  * @Date 2026-05-28
  */
 @Component
-@ConditionalOnProperty("spring.redis.sentinel.nodes")
 public final class RedisUtil {
 
     //默认的缓存过期时间1小时

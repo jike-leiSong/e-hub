@@ -38,21 +38,5 @@
                              targetProject="src\main\java"
                              type="XMLMAPPER"/>
 
-        <table tableName="guangzhou_aggregator_token">
-            <generatedKey column="id" sqlStatement="JDBC"/>
-        </table>
-        <table tableName="guangzhou_aggregator_regulation">
-            <generatedKey column="id" sqlStatement="JDBC"/>
-        </table>
-        <table tableName="guangzhou_aggregator_invite">
-            <generatedKey column="id" sqlStatement="JDBC"/>
-        </table>
-        <table tableName="guangzhou_aggregator_collection">
-            <generatedKey column="id" sqlStatement="JDBC"/>
-        </table>
-        <table tableName="guangzhou_aggregator_bid">
-            <generatedKey column="id" sqlStatement="JDBC"/>
-        </table>
-
     </context>
 </generatorConfiguration>

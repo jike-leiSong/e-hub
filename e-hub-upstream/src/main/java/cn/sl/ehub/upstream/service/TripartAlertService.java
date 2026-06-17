@@ -71,9 +71,6 @@ public class TripartAlertService {
             case HUABEI:
                 toBeCheckedUrls = huabeiUrl;
                 break;
-//            case GUANGZHOU:
-//                toBeCheckedUrls = Lists.newArrayList();
-//                break;
             default:
                 break;
         }

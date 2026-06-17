@@ -1,4 +1,4 @@
-package cn.sl.ehub.upstream.exception;
+package cn.sl.ehub.console.exception;
 
 /**
  * @Description: 通用异常

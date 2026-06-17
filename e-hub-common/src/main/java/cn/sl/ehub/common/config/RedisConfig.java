@@ -32,7 +32,6 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
  */
 @Configuration
 @ConditionalOnClass(RedisOperations.class)
-@ConditionalOnProperty(prefix = "spring.redis.sentinel", name = "nodes")
 @Slf4j
 public class RedisConfig extends CachingConfigurerSupport {
 

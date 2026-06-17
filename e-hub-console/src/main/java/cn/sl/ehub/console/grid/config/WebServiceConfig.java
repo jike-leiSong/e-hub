@@ -30,7 +30,7 @@ import java.util.Map;
 @Configuration
 public class WebServiceConfig {
 
-    @Value("${server.keystore-alias}")
+    @Value("${server.keystore-alias:default-alias}")
     private String keystoreAlias;
 
     @Resource

@@ -1,7 +1,5 @@
 package cn.sl.ehub.console.config;
 
-import cn.sl.ehub.console.config.CheckApisTokenInterceptor;
-
 import com.fanneng.requestlog.config.RequestHandlerInterceptorAdapter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -18,12 +16,6 @@ import org.springframework.web.servlet.config.annotation.*;
 @Configuration
 public class WebMvcConfigApi implements WebMvcConfigurer {
 
-
-    @Bean
-    public CheckApisTokenInterceptor checkUserTicketInterceptor() {
-        return new CheckApisTokenInterceptor();
-    }
-
     @Bean
     RequestHandlerInterceptorAdapter requestHandlerInterceptorAdapter() {
         return new RequestHandlerInterceptorAdapter();
@@ -31,11 +23,6 @@ public class WebMvcConfigApi implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        // ticket拦截
-        registry.addInterceptor(checkUserTicketInterceptor())
-                .addPathPatterns("/**")
-                .excludePathPatterns("/", "/swagger-resources/**", "/webjars/**", "/webSocket/**", "/guangzhouDataSupport/**", "/externalData/**", "/guangzhouDataTimer/**",
-                        "/v3/**", "/swagger-ui/**", "/error", "/dataSupport/**", "/data/**", "/bigScreen/**", "/bigScreenInsert/**", "/health/**", "/doc.html", "/favicon.ico", "/tripartData/**", "/sms/**", "/rdfa-timer/api");
         registry.addInterceptor(requestHandlerInterceptorAdapter());
     }
 
