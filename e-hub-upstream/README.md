@@ -1,28 +1,21 @@
-todo
+# e-hub-upstream
 
-新增电网服务预警接口  每15分钟检查一次
+`e-hub-upstream` 是 e-hub 的上游/电网侧集成服务模块，主要承载：
 
-SQL
-```
-CREATE TABLE `tripart_service_alert` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `tripart_code` varchar(45) NOT NULL COMMENT '第三方编码',
-  `name` varchar(45) NOT NULL COMMENT '姓名',
-  `phone` varchar(11) NOT NULL COMMENT '手机号',
-  `status` varchar(2) NOT NULL COMMENT '删除标识 0 删除 ',
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='第三方服务告警'
-```
+- 电网侧数据上送
+- 第三方服务状态检查
+- 外部接口适配
+- 上游服务运行监控
 
-短信模板
-```
-告警通知：${tripartName} 服务不可用，请及时处理！
+本模块独立打包为 Spring Boot 服务，配置文件位于：
+
+```text
+e-hub-upstream/src/main/resources
 ```
 
-```
-SELECT * FROM `load-aggregator`.aggregator_ent;
-新增：
-state_grid_code
-state_grid_name
+常用构建命令：
 
+```bash
+cd /Users/sl/Documents/java/enn/e-hub
+mvn -s /Users/sl/.m2/settings.xml -pl e-hub-upstream -am package -DskipTests
 ```

@@ -2,12 +2,8 @@ package cn.sl.ehub.console.grid.config;
 
 import cn.sl.ehub.common.vo.ResultVO;
 import cn.sl.ehub.service.vo.ResultWithPageVO;
-import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
-import com.alibaba.fastjson.serializer.SerializerFeature;
-import com.fanneng.requestlog.common.RequestHolder;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -57,12 +53,7 @@ public class WsLoggerAspect {
         // 开始时间
         Instant begin = Instant.now();
         // requestId
-        String requestId = RequestHolder.request().getRequestId();
-        if (StringUtils.isBlank(requestId)){
-            requestId = UUID.randomUUID().toString();
-            RequestHolder.request().setRequestId(requestId);
-        }
-        requestId = RequestHolder.request().getRequestId();
+        String requestId = UUID.randomUUID().toString();
 
         // method输入参数
         methodBefore(pjp, requestId);

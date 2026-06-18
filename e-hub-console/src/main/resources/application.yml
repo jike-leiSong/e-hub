@@ -17,6 +17,12 @@ aggregator:
     plan:
       aggregatorId: 1711340903453614082
 
+console:
+  auth:
+    enabled: true
+    token-secret: ${CONSOLE_AUTH_TOKEN_SECRET:e-hub-console-default-token-secret}
+    expire-minutes: ${CONSOLE_AUTH_EXPIRE_MINUTES:720}
+
 logging:
   config: classpath:logback-spring.xml
   level:

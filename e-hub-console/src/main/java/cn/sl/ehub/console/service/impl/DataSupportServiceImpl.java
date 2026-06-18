@@ -2,7 +2,7 @@ package cn.sl.ehub.console.service.impl;
 
 import cn.sl.ehub.common.vo.DataResp;
 import cn.sl.ehub.console.model.req.AggregatorIssueProfitReq;
-import cn.sl.ehub.console.req.SaveDevicePercentBaseLoadSqlReq;
+import cn.sl.ehub.console.model.req.SaveDevicePercentBaseLoadSqlReq;
 import cn.sl.ehub.console.service.IDataSupportService;
 import cn.sl.ehub.service.resp.AggregatorEntApplyPlanResp;
 import cn.sl.ehub.service.vo.AggregatorEnt;

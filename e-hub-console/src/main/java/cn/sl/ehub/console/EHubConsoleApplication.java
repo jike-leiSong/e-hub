@@ -18,8 +18,7 @@ import tk.mybatis.spring.annotation.MapperScan;
     scanBasePackages = {
         "cn.sl.ehub.console",
         "cn.sl.ehub.service",
-        "cn.sl.ehub.common",
-        "com.fanneng.requestlog"
+        "cn.sl.ehub.common"
     }
 )
 @MapperScan(basePackages = {

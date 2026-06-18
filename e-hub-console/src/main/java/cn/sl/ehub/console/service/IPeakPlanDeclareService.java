@@ -1,6 +1,6 @@
 package cn.sl.ehub.console.service;
 
-import cn.sl.ehub.console.req.PeakPlanDeclareImportReq;
+import cn.sl.ehub.console.model.req.PeakPlanDeclareImportReq;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Date;

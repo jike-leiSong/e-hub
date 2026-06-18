@@ -11,8 +11,19 @@ LOG_PATH_IS_UNDEFINED/
 target/
 *.iml
 
+# Frontend
+node_modules/
+e-hub-console/frontend/dist/
+e-hub-console/frontend/.vite/
+e-hub-console/frontend/.env.local
+e-hub-console/frontend/.env.*.local
+.DS_Store
+
 # Reports (optional, keep if needed for documentation)
 *_REPORT.md
 *_PLAN.md
 *_GUIDE.md
+*_SUMMARY.md
+*_STATUS.md
+*_COMPLETION.md
 dependency-tree.txt
