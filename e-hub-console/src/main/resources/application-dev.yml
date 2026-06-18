@@ -3,16 +3,16 @@ spring:
     type: com.zaxxer.hikari.HikariDataSource
     platform: mysql
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/e_hub?characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://82.156.97.190:3306/e_hub?characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
     username: root
-    password: root
+    password: ehub666$
 
   # redis
   redis:
-    host: localhost
+    host: 82.156.97.190
     port: 6379
     database: 0
-    password:
+    password: ehub666$
     timeout: 6000
     jedis:
       pool:
