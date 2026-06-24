@@ -1,8 +1,31 @@
 <template>
   <div class="iot-resource-page">
-    <section class="resource-toolbar">
+    <section class="domain-nav">
+      <button
+        v-for="item in domainItems"
+        :key="item.key"
+        type="button"
+        :class="{ active: activeDomain === item.key }"
+        @click="switchDomain(item.key)"
+      >
+        <span>{{ item.title }}</span>
+        <small>{{ item.desc }}</small>
+      </button>
+    </section>
+
+    <section v-if="activeDomain === 'enterprise'" class="domain-section">
+      <div class="section-head">
+        <div>
+          <p>企业管理</p>
+          <span>维护聚合商下企业档案，替代 SQL 手工录入</span>
+        </div>
+        <el-button type="primary" size="small" icon="el-icon-plus" @click="openEnterpriseDialog('create')">
+          新增企业
+        </el-button>
+      </div>
+
+      <section class="resource-toolbar">
       <el-form
-        v-if="activeTab === 'enterprises'"
         :inline="true"
         :model="enterpriseFilters"
         size="small"
@@ -28,7 +51,94 @@
           <el-button icon="el-icon-refresh" @click="resetEnterpriseFilters">重置</el-button>
         </el-form-item>
       </el-form>
-      <el-form v-else :inline="true" :model="filters" size="small" class="filter-form">
+      </section>
+
+      <section class="resource-summary compact">
+        <div class="summary-item">
+          <span>企业总数</span>
+          <strong>{{ enterprisePage.total || 0 }}</strong>
+        </div>
+        <div class="summary-item">
+          <span>当前企业</span>
+          <strong>{{ selectedEnterprise ? selectedEnterprise.entName : "-" }}</strong>
+        </div>
+        <div class="summary-item">
+          <span>当前企业ID</span>
+          <strong>{{ selectedEnterprise ? selectedEnterprise.entId : "-" }}</strong>
+        </div>
+      </section>
+
+      <section class="data-panel">
+        <div class="table-actions">
+          <span>企业列表</span>
+          <el-button size="mini" icon="el-icon-refresh" @click="reloadEnterprises">刷新</el-button>
+        </div>
+        <el-table
+          v-loading="enterpriseLoading"
+          :data="enterprises"
+          size="small"
+          height="520"
+          stripe
+          highlight-current-row
+          @current-change="handleEnterpriseCurrentChange"
+        >
+          <el-table-column prop="entName" label="企业名称" min-width="220" fixed />
+          <el-table-column prop="entId" label="企业ID" min-width="150" />
+          <el-table-column prop="aggregatorId" label="聚合商ID" min-width="150" />
+          <el-table-column prop="stationId" label="企业编码" min-width="120" />
+          <el-table-column prop="installCap" label="装机容量" min-width="100" />
+          <el-table-column prop="stateGridName" label="电网名称" min-width="140" />
+          <el-table-column prop="serviceStartDate" label="服务开始" min-width="120" />
+          <el-table-column prop="serviceEndDate" label="服务结束" min-width="120" />
+          <el-table-column prop="status" label="状态" width="80">
+            <template slot-scope="{ row }">
+              <el-tag size="mini" :type="row.status === 1 ? 'success' : 'info'">
+                {{ row.status === 1 ? "启用" : "停用" }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="planRunStatus" label="按计划运行" width="100">
+            <template slot-scope="{ row }">
+              <el-tag size="mini" :type="row.planRunStatus === 1 ? 'success' : 'info'">
+                {{ row.planRunStatus === 1 ? "是" : "否" }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="190" fixed="right">
+            <template slot-scope="{ row }">
+              <el-button type="text" size="mini" @click="viewEnterpriseDevices(row)">查看设备</el-button>
+              <el-button type="text" size="mini" @click="openEnterpriseDialog('edit', row)">编辑</el-button>
+              <el-button type="text" size="mini" @click="removeEnterprise(row)">停用</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        <el-pagination
+          class="table-pagination"
+          background
+          layout="total, prev, pager, next, sizes"
+          :page-size="enterprisePage.pageSize"
+          :current-page.sync="enterprisePage.pageIndex"
+          :total="enterprisePage.total"
+          :page-sizes="[10, 20, 50, 100]"
+          @current-change="reloadEnterprises"
+          @size-change="handleEnterpriseSizeChange"
+        />
+      </section>
+    </section>
+
+    <section v-if="activeDomain === 'device'" class="domain-section">
+      <div class="section-head">
+        <div>
+          <p>设备管理</p>
+          <span>维护设备资产，并在设备详情中管理属性、测点和绑定关系</span>
+        </div>
+        <el-button type="primary" size="small" icon="el-icon-plus" @click="openDeviceDialog('create')">
+          新增设备
+        </el-button>
+      </div>
+
+      <section class="resource-toolbar">
+      <el-form :inline="true" :model="filters" size="small" class="filter-form">
         <el-form-item label="聚合商">
           <el-input v-model.trim="filters.aggregatorId" clearable placeholder="aggregatorId" />
         </el-form-item>
@@ -53,25 +163,9 @@
           <el-button icon="el-icon-refresh" @click="resetFilters">重置</el-button>
         </el-form-item>
       </el-form>
-      <el-button
-        v-if="activeTab === 'enterprises'"
-        type="primary"
-        size="small"
-        icon="el-icon-plus"
-        @click="openEnterpriseDialog('create')"
-      >
-        新增企业
-      </el-button>
-      <el-button v-else type="primary" size="small" icon="el-icon-plus" @click="openDeviceDialog('create')">
-        新增设备
-      </el-button>
-    </section>
+      </section>
 
-    <section class="resource-summary">
-      <div class="summary-item">
-        <span>企业总数</span>
-        <strong>{{ enterprisePage.total || 0 }}</strong>
-      </div>
+      <section class="resource-summary compact">
       <div class="summary-item">
         <span>设备总数</span>
         <strong>{{ devicePage.total || 0 }}</strong>
@@ -88,99 +182,19 @@
         <span>当前设备</span>
         <strong>{{ selectedDevice ? selectedDevice.deviceCode : "-" }}</strong>
       </div>
-    </section>
+      </section>
 
-    <section class="resource-layout">
-      <aside class="resource-tree-panel">
-        <div class="panel-head">
-          <p>设备树</p>
+      <section class="device-domain-layout">
+        <aside class="device-list-panel">
+          <div class="table-actions">
+            <span>设备列表</span>
           <el-button type="text" size="mini" @click="reloadDevices">刷新</el-button>
         </div>
-        <el-tree
-          class="device-tree"
-          :data="treeData"
-          node-key="id"
-          default-expand-all
-          highlight-current
-          :expand-on-click-node="false"
-          @node-click="handleTreeNodeClick"
-        >
-          <span slot-scope="{ node, data }" class="tree-node">
-            <i :class="treeIcon(data)"></i>
-            <span>{{ node.label }}</span>
-          </span>
-        </el-tree>
-      </aside>
-
-      <main class="resource-main-panel">
-        <el-tabs v-model="activeTab" class="resource-tabs">
-          <el-tab-pane label="企业维护" name="enterprises">
-            <div class="table-actions">
-              <span>企业列表</span>
-              <el-button size="mini" icon="el-icon-refresh" @click="reloadEnterprises">刷新</el-button>
-            </div>
-            <el-table
-              v-loading="enterpriseLoading"
-              :data="enterprises"
-              size="small"
-              height="430"
-              stripe
-              highlight-current-row
-              @current-change="handleEnterpriseCurrentChange"
-            >
-              <el-table-column prop="entName" label="企业名称" min-width="220" fixed />
-              <el-table-column prop="entId" label="企业ID" min-width="150" />
-              <el-table-column prop="aggregatorId" label="聚合商ID" min-width="150" />
-              <el-table-column prop="stationId" label="企业编码" min-width="120" />
-              <el-table-column prop="installCap" label="装机容量" min-width="100" />
-              <el-table-column prop="stateGridName" label="电网名称" min-width="140" />
-              <el-table-column prop="serviceStartDate" label="服务开始" min-width="120" />
-              <el-table-column prop="serviceEndDate" label="服务结束" min-width="120" />
-              <el-table-column prop="status" label="状态" width="80">
-                <template slot-scope="{ row }">
-                  <el-tag size="mini" :type="row.status === 1 ? 'success' : 'info'">
-                    {{ row.status === 1 ? "启用" : "停用" }}
-                  </el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column prop="planRunStatus" label="按计划运行" width="100">
-                <template slot-scope="{ row }">
-                  <el-tag size="mini" :type="row.planRunStatus === 1 ? 'success' : 'info'">
-                    {{ row.planRunStatus === 1 ? "是" : "否" }}
-                  </el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column label="操作" width="190" fixed="right">
-                <template slot-scope="{ row }">
-                  <el-button type="text" size="mini" @click="viewEnterpriseDevices(row)">查看设备</el-button>
-                  <el-button type="text" size="mini" @click="openEnterpriseDialog('edit', row)">编辑</el-button>
-                  <el-button type="text" size="mini" @click="removeEnterprise(row)">停用</el-button>
-                </template>
-              </el-table-column>
-            </el-table>
-            <el-pagination
-              class="table-pagination"
-              background
-              layout="total, prev, pager, next, sizes"
-              :page-size="enterprisePage.pageSize"
-              :current-page.sync="enterprisePage.pageIndex"
-              :total="enterprisePage.total"
-              :page-sizes="[10, 20, 50, 100]"
-              @current-change="reloadEnterprises"
-              @size-change="handleEnterpriseSizeChange"
-            />
-          </el-tab-pane>
-
-          <el-tab-pane label="设备资产" name="devices">
-            <div class="table-actions">
-              <span>设备列表</span>
-              <el-button size="mini" icon="el-icon-refresh" @click="reloadDevices">刷新</el-button>
-            </div>
             <el-table
               v-loading="deviceLoading"
               :data="devices"
               size="small"
-              height="430"
+              height="560"
               stripe
               highlight-current-row
               @current-change="handleDeviceCurrentChange"
@@ -217,11 +231,42 @@
               @current-change="reloadDevices"
               @size-change="handleDeviceSizeChange"
             />
-          </el-tab-pane>
+        </aside>
 
-          <el-tab-pane label="测点配置" name="points">
+        <main class="device-detail-panel">
+          <div class="device-detail-head">
+            <div>
+              <p>{{ selectedDevice ? selectedDevice.deviceName : "未选择设备" }}</p>
+              <span>{{ selectedDevice ? selectedDevice.deviceCode : "请从左侧设备列表选择设备" }}</span>
+            </div>
+            <el-button
+              size="mini"
+              icon="el-icon-edit"
+              :disabled="!selectedDevice"
+              @click="openDeviceDialog('edit', selectedDevice)"
+            >
+              编辑设备
+            </el-button>
+          </div>
+          <el-tabs v-model="deviceDetailTab" class="detail-tabs">
+            <el-tab-pane label="基础属性" name="profile">
+              <div v-if="selectedDevice" class="device-profile">
+                <div><span>所属企业</span><strong>{{ enterpriseNameMap[selectedDevice.entId] || selectedDevice.entId }}</strong></div>
+                <div><span>设备编码</span><strong>{{ selectedDevice.deviceCode }}</strong></div>
+                <div><span>设备类型</span><strong>{{ selectedDevice.deviceTypeName || selectedDevice.deviceTypeCode || "-" }}</strong></div>
+                <div><span>项目ID</span><strong>{{ selectedDevice.projectId || "-" }}</strong></div>
+                <div><span>厂商</span><strong>{{ selectedDevice.manufacturer || "-" }}</strong></div>
+                <div><span>型号</span><strong>{{ selectedDevice.model || "-" }}</strong></div>
+                <div><span>资产状态</span><strong>{{ selectedDevice.assetStatus === 1 ? "启用" : "停用" }}</strong></div>
+                <div><span>在线状态</span><strong>{{ selectedDevice.onlineStatus === 1 ? "在线" : "离线" }}</strong></div>
+                <div><span>最近数据时间</span><strong>{{ selectedDevice.lastDataTime || "-" }}</strong></div>
+              </div>
+              <div v-else class="empty-state">请选择设备</div>
+            </el-tab-pane>
+
+            <el-tab-pane label="测点配置" name="points">
             <div class="table-actions">
-              <span>{{ selectedDevice ? selectedDevice.deviceName : "未选择设备" }}</span>
+                <span>测点列表</span>
               <el-button
                 size="mini"
                 type="primary"
@@ -267,9 +312,9 @@
                 </template>
               </el-table-column>
             </el-table>
-          </el-tab-pane>
+            </el-tab-pane>
 
-          <el-tab-pane label="三方绑定" name="refs">
+            <el-tab-pane label="绑定关系" name="refs">
             <div class="binding-layout">
               <section class="binding-section">
                 <div class="table-actions">
@@ -348,30 +393,74 @@
                 </el-table>
               </section>
             </div>
-          </el-tab-pane>
+            </el-tab-pane>
+          </el-tabs>
+        </main>
+      </section>
+    </section>
 
-          <el-tab-pane label="分钟数据" name="telemetry">
-            <div class="table-actions telemetry-filter">
-              <span>标准测点数据</span>
-              <div>
+    <section v-if="activeDomain === 'iot-data'" class="domain-section">
+      <div class="section-head">
+        <div>
+          <p>物联数据</p>
+          <span>查看标准测点分钟数据和接入未匹配数据，排查设备上送链路</span>
+        </div>
+      </div>
+
+      <section class="resource-toolbar">
+        <el-form :inline="true" :model="filters" size="small" class="filter-form">
+          <el-form-item label="企业">
+            <el-select v-model="filters.entId" clearable filterable placeholder="选择企业" @change="reloadDevices">
+              <el-option
+                v-for="item in enterprises"
+                :key="item.entId"
+                :label="enterpriseOptionLabel(item)"
+                :value="item.entId"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="设备">
+            <el-select
+              :value="selectedDevice ? selectedDevice.id : null"
+              clearable
+              filterable
+              placeholder="选择设备"
+              @change="handleTelemetryDeviceChange"
+            >
+              <el-option
+                v-for="item in devices"
+                :key="item.id"
+                :label="`${item.deviceName} (${item.deviceCode})`"
+                :value="item.id"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="测点">
                 <el-input
                   v-model.trim="telemetryQuery.pointCode"
-                  size="mini"
                   clearable
                   placeholder="pointCode"
                 />
+          </el-form-item>
+          <el-form-item label="时间">
                 <el-date-picker
                   v-model="telemetryQuery.range"
                   type="datetimerange"
-                  size="mini"
                   range-separator="至"
                   start-placeholder="开始时间"
                   end-placeholder="结束时间"
                   value-format="yyyy-MM-dd HH:mm:ss"
                 />
-                <el-button size="mini" type="primary" icon="el-icon-search" @click="loadTelemetry">查询</el-button>
-              </div>
-            </div>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" icon="el-icon-search" @click="loadTelemetry">查询</el-button>
+          </el-form-item>
+        </el-form>
+      </section>
+
+      <section class="data-panel">
+        <el-tabs v-model="iotDataTab" class="detail-tabs">
+          <el-tab-pane label="标准测点数据" name="telemetry">
             <el-table v-loading="telemetryLoading" :data="telemetryRows" size="small" height="430" stripe>
               <el-table-column prop="minuteTime" label="分钟时间" min-width="160" />
               <el-table-column prop="deviceCode" label="设备编码" min-width="120" />
@@ -431,7 +520,7 @@
             />
           </el-tab-pane>
         </el-tabs>
-      </main>
+      </section>
     </section>
 
     <el-dialog :title="enterpriseDialog.title" :visible.sync="enterpriseDialog.visible" width="720px">
@@ -681,7 +770,26 @@ export default {
   name: "LoadResources",
   data() {
     return {
-      activeTab: "enterprises",
+      activeDomain: "enterprise",
+      deviceDetailTab: "profile",
+      iotDataTab: "telemetry",
+      domainItems: [
+        {
+          key: "enterprise",
+          title: "企业管理",
+          desc: "聚合商下企业主数据",
+        },
+        {
+          key: "device",
+          title: "设备管理",
+          desc: "设备属性、测点、绑定关系",
+        },
+        {
+          key: "iot-data",
+          title: "物联数据",
+          desc: "标准数据与未匹配数据",
+        },
+      ],
       enterpriseFilters: {
         aggregatorId: sessionStorage.getItem("aggregatorId") || "",
         entId: sessionStorage.getItem("entId") || "",
@@ -786,42 +894,6 @@ export default {
         return map;
       }, {});
     },
-    treeData() {
-      const entMap = new Map();
-      this.devices.forEach(device => {
-        const entId = device.entId || "未归属企业";
-        if (!entMap.has(entId)) {
-          entMap.set(entId, {
-            id: `ent-${entId}`,
-            label: this.enterpriseNameMap[entId] || entId,
-            type: "ent",
-            children: [],
-            projectMap: new Map(),
-          });
-        }
-        const entNode = entMap.get(entId);
-        const projectKey = device.projectId || "none";
-        if (!entNode.projectMap.has(projectKey)) {
-          entNode.projectMap.set(projectKey, {
-            id: `project-${entId}-${projectKey}`,
-            label: device.projectId ? `项目 ${device.projectId}` : "未分项目",
-            type: "project",
-            children: [],
-          });
-          entNode.children.push(entNode.projectMap.get(projectKey));
-        }
-        entNode.projectMap.get(projectKey).children.push({
-          id: `device-${device.id}`,
-          label: `${device.deviceName} (${device.deviceCode})`,
-          type: "device",
-          device,
-        });
-      });
-      return Array.from(entMap.values()).map(item => {
-        delete item.projectMap;
-        return item;
-      });
-    },
   },
   mounted() {
     this.reloadEnterprises();
@@ -899,6 +971,15 @@ export default {
         offsetValue: 0,
         status: 1,
       };
+    },
+    switchDomain(domain) {
+      this.activeDomain = domain;
+      if (domain === "device" && !this.devices.length) {
+        this.reloadDevices();
+      }
+      if (domain === "iot-data" && !this.devices.length) {
+        this.reloadDevices();
+      }
     },
     enterpriseOptionLabel(item) {
       return item.entName ? `${item.entName} (${item.entId})` : item.entId;
@@ -1010,7 +1091,7 @@ export default {
       this.filters.aggregatorId = row.aggregatorId || this.filters.aggregatorId;
       this.filters.entId = row.entId;
       this.devicePage.pageIndex = 1;
-      this.activeTab = "devices";
+      this.activeDomain = "device";
       this.reloadDevices();
     },
     handleDeviceEntChange(entId) {
@@ -1031,14 +1112,22 @@ export default {
           const page = this.unwrapPage(res);
           this.devices = page.list;
           this.devicePage.total = page.total;
-          if (this.devices.length && !this.selectedDevice) {
-            this.selectDevice(this.devices[0]);
+          if (!this.devices.length) {
+            this.selectedDevice = null;
+            this.selectedPoint = null;
+            this.selectedPointId = null;
+            this.points = [];
+            this.deviceRefs = [];
+            this.pointRefs = [];
+            return;
           }
-          if (this.selectedDevice) {
-            const fresh = this.devices.find(item => item.id === this.selectedDevice.id);
-            if (fresh) {
-              this.selectedDevice = fresh;
-            }
+          const fresh = this.selectedDevice
+            ? this.devices.find(item => item.id === this.selectedDevice.id)
+            : null;
+          if (fresh) {
+            this.selectDevice(fresh);
+          } else {
+            this.selectDevice(this.devices[0]);
           }
         })
         .finally(() => {
@@ -1068,26 +1157,22 @@ export default {
     },
     selectDevice(row) {
       this.selectedDevice = row;
+      this.selectedEnterprise = this.enterprises.find(item => item.entId === row.entId) || this.selectedEnterprise;
       this.selectedPoint = null;
       this.selectedPointId = null;
       this.telemetryQuery.pointCode = "active_power";
       this.loadPoints();
       this.loadDeviceRefs();
     },
-    handleTreeNodeClick(data) {
-      if (data.type === "device") {
-        this.activeTab = "devices";
-        this.selectDevice(data.device);
+    handleTelemetryDeviceChange(deviceId) {
+      const device = this.devices.find(item => item.id === deviceId);
+      if (device) {
+        this.selectDevice(device);
+        return;
       }
-    },
-    treeIcon(data) {
-      if (data.type === "device") {
-        return "el-icon-cpu";
-      }
-      if (data.type === "project") {
-        return "el-icon-office-building";
-      }
-      return "el-icon-s-grid";
+      this.selectedDevice = null;
+      this.selectedPoint = null;
+      this.selectedPointId = null;
     },
     loadPoints() {
       if (!this.selectedDevice) {
@@ -1401,21 +1486,89 @@ export default {
   color: #1f2933;
 }
 
+.domain-nav {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.domain-nav button {
+  min-height: 76px;
+  padding: 14px 16px;
+  border: 1px solid #d9e5ec;
+  border-radius: 8px;
+  background: #ffffff;
+  cursor: pointer;
+  text-align: left;
+}
+
+.domain-nav button.active,
+.domain-nav button:hover {
+  border-color: #0780ed;
+  box-shadow: inset 3px 0 0 #0780ed;
+}
+
+.domain-nav span,
+.section-head p,
+.table-actions span,
+.device-detail-head p {
+  margin: 0;
+  color: #0e2638;
+  font-weight: 700;
+}
+
+.domain-nav span {
+  display: block;
+  font-size: 16px;
+}
+
+.domain-nav small {
+  display: block;
+  margin-top: 8px;
+  color: #6b7f8d;
+  font-size: 13px;
+}
+
+.domain-section {
+  margin-top: 12px;
+}
+
+.section-head,
 .resource-toolbar,
-.resource-summary,
-.resource-layout {
-  width: 100%;
+.data-panel,
+.device-list-panel,
+.device-detail-panel {
+  border: 1px solid #d9e5ec;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.section-head {
+  min-height: 66px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.section-head p {
+  font-size: 18px;
+}
+
+.section-head span {
+  display: block;
+  margin-top: 6px;
+  color: #6b7f8d;
+  font-size: 13px;
 }
 
 .resource-toolbar {
+  margin-top: 12px;
   min-height: 58px;
   padding: 12px 14px;
-  border: 1px solid #d9e5ec;
-  border-radius: 8px;
-  background: #fff;
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
   gap: 16px;
 }
 
@@ -1430,7 +1583,7 @@ export default {
 .resource-summary {
   margin-top: 12px;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;
 }
 
@@ -1458,29 +1611,46 @@ export default {
   font-weight: 700;
 }
 
-.resource-layout {
+.data-panel {
+  margin-top: 12px;
+  padding: 14px;
+}
+
+.device-domain-layout {
   margin-top: 12px;
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
+  grid-template-columns: minmax(520px, 0.95fr) minmax(420px, 1.05fr);
   gap: 12px;
 }
 
-.resource-tree-panel,
-.resource-main-panel {
-  border: 1px solid #d9e5ec;
-  border-radius: 8px;
-  background: #fff;
-  min-height: 612px;
+.device-list-panel,
+.device-detail-panel {
+  min-width: 0;
+  padding: 14px;
 }
 
-.resource-tree-panel {
-  overflow: hidden;
-}
-
-.panel-head,
 .table-actions {
-  min-height: 46px;
-  padding: 0 14px;
+  min-height: 36px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.table-actions span {
+  font-size: 15px;
+}
+
+.table-pagination {
+  margin-top: 10px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.device-detail-head {
+  min-height: 54px;
+  padding-bottom: 12px;
   border-bottom: 1px solid #edf2f5;
   display: flex;
   align-items: center;
@@ -1488,59 +1658,50 @@ export default {
   gap: 12px;
 }
 
-.panel-head p,
-.table-actions span {
-  margin: 0;
-  color: #0e2638;
-  font-size: 15px;
-  font-weight: 700;
-}
-
-.device-tree {
-  height: 566px;
-  overflow: auto;
-  padding: 8px 8px 12px;
-}
-
-.tree-node {
-  min-width: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+.device-detail-head span {
+  display: block;
+  margin-top: 6px;
+  color: #6b7f8d;
   font-size: 13px;
 }
 
-.tree-node i {
-  color: #178fa3;
-}
-
-.resource-main-panel {
-  min-width: 0;
-  padding: 0 0 12px;
-}
-
-.resource-tabs {
-  padding: 0 14px;
-}
-
-.resource-tabs ::v-deep .el-tabs__header {
-  margin-bottom: 0;
-}
-
-.resource-tabs ::v-deep .el-tabs__content {
-  padding-top: 12px;
-}
-
-.table-actions {
-  margin-bottom: 10px;
-  padding: 0;
-  border-bottom: 0;
-}
-
-.table-pagination {
+.detail-tabs {
   margin-top: 10px;
+}
+
+.device-profile {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.device-profile div {
+  min-height: 70px;
+  padding: 12px;
+  border: 1px solid #edf2f5;
+  border-radius: 8px;
+  background: #fbfdff;
+}
+
+.device-profile span {
+  display: block;
+  color: #6b7f8d;
+  font-size: 13px;
+}
+
+.device-profile strong {
+  display: block;
+  margin-top: 8px;
+  color: #0e2638;
+  font-size: 15px;
+}
+
+.empty-state {
+  height: 220px;
+  color: #8a9aa6;
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: center;
 }
 
 .binding-layout {
@@ -1589,22 +1750,19 @@ export default {
   border-radius: 8px;
 }
 
-@media (max-width: 1180px) {
-  .resource-summary {
-    grid-template-columns: repeat(2, minmax(120px, 1fr));
+@media (max-width: 1280px) {
+  .device-domain-layout {
+    grid-template-columns: 1fr;
   }
+}
 
-  .resource-layout {
+@media (max-width: 900px) {
+  .domain-nav {
     grid-template-columns: 1fr;
   }
 
-  .resource-tree-panel,
-  .resource-main-panel {
-    min-height: auto;
-  }
-
-  .device-tree {
-    height: 260px;
+  .device-profile {
+    grid-template-columns: 1fr;
   }
 }
 </style>
