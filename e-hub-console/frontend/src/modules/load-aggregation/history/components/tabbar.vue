@@ -34,8 +34,7 @@ export default {
       getResourceTypeList(
         {
           aggregatorId: sessionStorage.getItem("entId"),
-        },
-        this.simulate
+        }
       ).then(res => {
         this.resourceTypeList = res.data.data
         if (this.resourceTypeList.length > 0) {

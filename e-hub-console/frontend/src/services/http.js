@@ -5,10 +5,6 @@
 import axios from "axios";
 
 const service = axios.create({
-  // headers: {
-  //   'simulate': 1,
-  //   'ticket': sessionStorage.getItem('ticket') ? sessionStorage.getItem('ticket') : ''
-  // },
   // timeout: 5000,
 });
 service.defaults.headers.post["Content-Type"] =
@@ -21,7 +17,15 @@ service.interceptors.request.use(
   config => {
     const newConfig = config;
     const ticket = sessionStorage.getItem("ticket");
+    const token =
+      sessionStorage.getItem("token") ||
+      sessionStorage.getItem("ehub-token") ||
+      sessionStorage.getItem("console-token");
     newConfig.headers.ticket = ticket || "";
+    if (token) {
+      newConfig.headers.token = token;
+      newConfig.headers.Authorization = `Bearer ${token}`;
+    }
     return newConfig;
   },
   err => {

@@ -25,6 +25,7 @@ public class ConsoleAuthProperties {
             "/console/",
             "/console/**",
             "/health/**",
+            "/data-collector/**",
             "/error",
             "/favicon.ico",
             "/doc.html",

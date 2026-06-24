@@ -15,7 +15,7 @@
         <el-date-picker v-model="dateData" value-format="yyyy-MM-dd" type="daterange" size="small" range-separator="至" :picker-options="datePickerOptions" @change="dateChange" start-placeholder="开始日期" end-placeholder="结束日期" />
       </div>
       <div class="operate">
-        <el-button @click="exportData" :disabled="activeObj.option.data.canSet === '1'" size="small" type="primary">导出</el-button>
+        <el-button @click="exportData" size="small" type="primary">导出</el-button>
       </div>
     </div>
     <div v-loading="echartsLoading" class="echarts-part">
@@ -53,10 +53,6 @@ export default {
   props: {
     activeObj: {
       type: Object,
-      require: true,
-    },
-    simulate: {
-      type: String,
       require: true,
     },
     refreshId: {
@@ -110,7 +106,7 @@ export default {
       const params = {
         aggregatorId: sessionStorage.getItem("entId")
       }
-      getResourceTypeList(params, this.simulate).then(res => {
+      getResourceTypeList(params).then(res => {
         if (res.data.code === 200) {
           if (res.data.data && res.data.data.length > 0) {
             this.resourceTypeList = JSON.parse(JSON.stringify(res.data.data))
@@ -170,7 +166,7 @@ export default {
         endTime: this.dateData[1],
       }
       this.echartsLoading = true
-      getPrice(params, this.simulate).then(res => {
+      getPrice(params).then(res => {
         this.echartsLoading = false
         if (res.data.code === 200) {
           this.echartsData = [ // 
@@ -197,7 +193,7 @@ export default {
         endTime: this.dateData[1],
       }
       this.tableLoading = true
-      getClearPriceTable(params, this.simulate).then(res => {
+      getClearPriceTable(params).then(res => {
         this.tableLoading = false
         if (res.data.code === 200) {
           const response = res.data.data && res.data.data.rowDataList && res.data.data.rowDataList.length > 0 ? JSON.parse(JSON.stringify(res.data.data.rowDataList)) : []
@@ -229,7 +225,7 @@ export default {
         startTime: this.dateData[0],
         endTime: this.dateData[1],
       }
-      exportClearPriceExcel(params, this.simulate).then(res => {
+      exportClearPriceExcel(params).then(res => {
         const dateRange = `${this.dateData[0]}~${this.dateData[1]}`
         const resourceType = this.codeToName(this.resourceTypeId)
         const fileName = `${dateRange}${resourceType}出清情况.xls`

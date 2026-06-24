@@ -1,145 +1,92 @@
 <template>
   <div class="applyPlan">
-    <div class="applyPlan-left">
-      <div class="commonHeader">
-        <div class="text">申报计划</div>
-        <div class="headerRight" @click="goApplyPlanDetail()">
-          <span class="detailText">详情</span>
-          <img class="detailImg" src="../images/right.png" alt="" />
-        </div>
+    <div class="commonHeader">
+      <div class="titleBlock">
+        <div class="text">明日申报</div>
+        <span>{{ resourceTypeName || "当前资源类型" }}</span>
       </div>
-      <div class="applyInfo">
-        <tabbar @tabClick="tabClick($event)"></tabbar>
-        <div class="priceBox">
-          <!-- <div class="baojia">
-            <div class="title">
-              <div class="text">报</div>
-              <div class="text">价</div>
-            </div>
-            <div class="baojiaBox">
-              <el-tooltip
-                class="item"
-                effect="dark"
-                :content="showPriceResourceTypeListString"
-                placement="top-start"
-              >
-                <div>
-                  <div
-                    class="baojiaBox-item"
-                    v-for="(item, index) in priceResourceTypeList"
-                    :key="index"
-                  >
-                    <div class="baojiaBox-item-date">{{ item.date }}</div>
-                    <div
-                      class="baojiaBox-item-value"
-                      v-for="(offer, index2) in item.offerList"
-                      :key="index2"
-                    >
-                      <div class="time">
-                        {{ offer.startTime }}～{{ offer.endTime }}
-                      </div>
-                      <div class="value">{{ offer.offer }}</div>
-                      <div class="unit">
-                        元/kWh
-                        <span v-show="index2 < item.offerList.length - 1"
-                          >、</span
-                        >
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </el-tooltip>
-            </div>
-          </div> -->
-          <div class="plan">
-            <div class="title">
-              <div class="text">用</div>
-              <div class="text">户</div>
-              <div class="text">计</div>
-              <div class="text">划</div>
-            </div>
-            <div class="chartBox">
-              <ecline
-                :unit="'kW'"
-                :refreshId="refreshId"
-                :ecdata="tomorrowOverviewData.chartList"
-                style="height:388px"
-                width="100%"
-                height="100%"
-              ></ecline>
-            </div>
-          </div>
-        </div>
+      <div class="headerRight" @click="goApplyPlanDetail()">
+        <span class="detailText">详情</span>
+        <img class="detailImg" src="../images/right.png" alt="" />
       </div>
     </div>
-    <div class="applyPlan-right">
-      <div class="applyPlan-right-in">
-        <div
-          class="endApply"
-          v-if="applyData.applyStatus === '3' && applyData.winStatus == null"
+
+    <div class="applyWorkbench">
+      <div class="applyMain">
+        <div class="applySummary">
+          <div class="summaryItem">
+            <span>申报状态</span>
+            <strong>{{ applyStatusText }}</strong>
+          </div>
+          <div class="summaryItem">
+            <span>计划日</span>
+            <strong>{{ planDateText }}</strong>
+          </div>
+          <div class="summaryItem">
+            <span>申报资源</span>
+            <strong>{{ resourceTypeText }}</strong>
+          </div>
+          <div class="summaryItem">
+            <span>计划用户</span>
+            <strong>{{ applyUserText }}家</strong>
+          </div>
+          <div class="summaryItem">
+            <span>报价状态</span>
+            <strong>{{ priceStatusText }}</strong>
+          </div>
+        </div>
+
+        <div class="chartBox">
+          <ecline
+            :unit="'kW'"
+            :refreshId="refreshId"
+            :ecdata="tomorrowOverviewData.chartList"
+            style="height:250px"
+            width="100%"
+            height="100%"
+          ></ecline>
+        </div>
+      </div>
+
+      <aside class="applyActionPanel">
+        <button
+          type="button"
+          class="primaryApply"
+          :class="{ disabled: !canApply }"
+          @click="handlePrimaryAction"
         >
-          <div class="applyText">立即申报</div>
-          <div class="applyTextTip">{{ applyData.applyContext }}</div>
+          {{ actionText }}
+        </button>
+        <div class="actionTip">{{ applyContextText }}</div>
+        <div class="actionRows">
+          <div class="actionRow">
+            <span>报价</span>
+            <strong>{{ priceStatusText }}</strong>
+            <button type="button" @click="goApplyPage(applyData.applyPriceStatus)">
+              {{ applyData.applyPriceStatus === "0" ? "进入" : "查看" }}
+            </button>
+          </div>
+          <div class="actionRow">
+            <span>计划用户</span>
+            <strong>{{ applyUserText }}家</strong>
+          </div>
+          <div class="actionRow">
+            <span>资源类型</span>
+            <strong>{{ resourceTypeText }}</strong>
+          </div>
         </div>
-        <div
-          class="canApply"
-          v-if="applyData.applyStatus === '0' && applyData.winStatus == null"
-        >
-          <div class="applyText" @click="doApply()">立即申报</div>
-          <div class="applyTextTip">{{ applyData.applyContext }}</div>
-        </div>
-        <div
-          class="endApply"
-          v-if="applyData.applyStatus === '2' && applyData.winStatus == null"
-        >
-          <div class="applyText">申报结束</div>
-          <div class="applyTextTip">{{ applyData.applyContext }}</div>
-        </div>
-        <div class="winStatus" v-if="applyData.winStatus === '0'">
-          <img src="../images/winfail.png" alt="" />
-          <div class="winStatus-text">{{ applyData.applyContext }}</div>
-        </div>
-        <div class="winStatus" v-if="applyData.winStatus === '1'">
-          <img src="../images/winsuccess.png" alt="" />
-          <div class="winStatus-text" style="color: #0780ED">
+        <div class="winStatus" v-if="applyData.winStatus === '0' || applyData.winStatus === '1'">
+          <img v-if="applyData.winStatus === '0'" src="../images/winfail.png" alt="" />
+          <img v-else src="../images/winsuccess.png" alt="" />
+          <div class="winStatus-text" :class="{ success: applyData.winStatus === '1' }">
             {{ applyData.applyContext }}
           </div>
         </div>
-        <div class="contentItem">
-          <div class="title">计划日</div>
-          <div class="value">{{ applyData.planDate }}</div>
-        </div>
-        <div class="contentItem">
-          <div class="title">申报资源类型</div>
-          <el-tooltip
-            :content="applyData.applyResourceType"
-            placement="top"
-          >
-          <div class="value valueTip">{{ applyData.applyResourceType }}</div>
-          </el-tooltip>
-        </div>
-        <div class="contentItem">
-          <div class="title">计划参与用户</div>
-          <div class="value">{{ applyData.applyYesNum }}家</div>
-        </div>
-        <div class="contentItem">
-          <div class="title">报价</div>
-          <div class="value">
-            {{ applyData.applyPriceStatus === "0" ? "未提交" : "已提交" }}
-          </div>
-          <div class="goNext" @click="goApplyPage(applyData.applyPriceStatus)">
-            <span>{{
-              applyData.applyPriceStatus === "0" ? "进入" : "查看"
-            }}</span>
-            <img src="../images/blueright.png" alt="" />
-          </div>
-        </div>
-      </div>
+      </aside>
     </div>
   </div>
 </template>
 <script>
-import tabbar from "./tabbar";
 import ecline from "./ec_line";
 import { sendWSPush } from "@/websocket";
 
@@ -151,14 +98,23 @@ import {
   websocketUrl,
 } from "../api";
 
+function resolveAggregatorId() {
+  return (
+    sessionStorage.getItem("aggregatorId") ||
+    sessionStorage.getItem("entId") ||
+    sessionStorage.getItem("cid") ||
+    ""
+  );
+}
+
 export default {
   name: "applyPlan",
   components: {
-    tabbar,
     ecline,
   },
   data() {
     return {
+      aggregatorId: resolveAggregatorId(),
       tomorrowOverviewData: {},
       applyData: {},
       clickId: null,
@@ -171,19 +127,79 @@ export default {
       type: Object,
       require: true,
     },
-    simulate: {
-      type: String,
-      require: true,
-    },
     refreshId: {
       type: Number,
       require: false,
     },
+    resourceTypeId: {
+      type: [String, Number],
+      default: "",
+    },
+    resourceTypeName: {
+      type: String,
+      default: "",
+    },
+  },
+  computed: {
+    applyStatusText() {
+      const statusMap = {
+        0: "可申报",
+        1: "已申报",
+        2: "申报结束",
+        3: "未开始",
+      };
+      return statusMap[String(this.applyData.applyStatus)] || "--";
+    },
+    priceStatusText() {
+      if (this.applyData.applyPriceStatus === null || this.applyData.applyPriceStatus === undefined || this.applyData.applyPriceStatus === "") {
+        return "--";
+      }
+      return String(this.applyData.applyPriceStatus) === "1" ? "已提交" : "未提交";
+    },
+    planDateText() {
+      return this.applyData.planDate || "--";
+    },
+    resourceTypeText() {
+      return this.applyData.applyResourceType || this.resourceTypeName || "--";
+    },
+    applyUserText() {
+      return this.formatNumber(this.applyData.applyYesNum);
+    },
+    canApply() {
+      return String(this.applyData.applyStatus) === "0" && this.applyData.winStatus == null;
+    },
+    actionText() {
+      if (this.canApply) {
+        return "立即申报";
+      }
+      if (String(this.applyData.applyStatus) === "2") {
+        return "申报结束";
+      }
+      if (String(this.applyData.applyStatus) === "3") {
+        return "未开始";
+      }
+      return "查看申报";
+    },
+    applyContextText() {
+      return this.applyData.applyContext || this.applyStatusText;
+    },
   },
   methods: {
+    formatNumber(value) {
+      if (value === null || value === undefined || value === "") {
+        return "--";
+      }
+      const numberValue = Number(value);
+      if (!Number.isFinite(numberValue)) {
+        return value;
+      }
+      return numberValue.toLocaleString("zh-CN", {
+        maximumFractionDigits: 2,
+      });
+    },
     getConfigResult(res) {
       if (res && res === "load-aggregator-business-3") {
-        this.doGetTomorrowOverview(this.clickId);
+        this.doGetTomorrowOverview(this.resourceTypeId);
       } else if (res && res === "load-aggregator-business-4") {
         this.doGetAggregatorApply();
       }
@@ -221,10 +237,14 @@ export default {
     goApplyPage(e) {
       this.$emit("goApplyPage", e);
     },
-    doApply() {
-      if (this.activeObj.option.data.canSet === "1") {
+    handlePrimaryAction() {
+      if (this.canApply) {
+        this.doApply();
         return;
       }
+      this.goApplyPlanDetail();
+    },
+    doApply() {
       if (this.applyData.applyPriceStatus === "0") {
         this.$message({
           message: "请提交报价后再申报",
@@ -250,16 +270,12 @@ export default {
     goApplyPlanDetail() {
       this.$emit("goApplyPlanDetail");
     },
-    tabClick(e) {
-      this.clickId = e.id;
-      this.doGetTomorrowOverview(e.id);
-      this.doGetPriceByResourceTypeId(e.id);
-    },
     doGetAggregatorApply() {
       const query = {
         aggregatorId: this.aggregatorId,
+        resourceTypeId: this.resourceTypeId,
       };
-      getAggregatorApply(query, this.simulate).then(res => {
+      getAggregatorApply(query).then(res => {
         if (res.data.code === 200) {
           this.applyData = res.data.data;
           this.$forceUpdate();
@@ -267,12 +283,16 @@ export default {
       });
     },
     doGetTomorrowOverview(resourceTypeId) {
+      if (!resourceTypeId) {
+        this.tomorrowOverviewData = {};
+        return;
+      }
       const query = {
         aggregatorId: this.aggregatorId,
         resourceTypeId,
         dayType: "tomorrow",
       };
-      getOverview(query, this.simulate).then(res => {
+      getOverview(query).then(res => {
         if (res.data.code === 200) {
           const chartList = [
             {
@@ -298,257 +318,56 @@ export default {
   created() {
     this.$bus.$on("log", content => {
       this.doGetAggregatorApply();
-      this.doGetPriceByResourceTypeId(this.clickId);
+      this.doGetPriceByResourceTypeId(this.resourceTypeId);
     });
-    this.aggregatorId = sessionStorage.getItem("entId");
     // sessionStorage.setItem('openId', '1253604095892152322')
     // sessionStorage.setItem('ticket', '12536040958921523221610525422256APP')
     // this.aggregatorId = '1330710231317684226'
-    this.doGetAggregatorApply();
+  },
+  watch: {
+    resourceTypeId: {
+      immediate: true,
+      handler(value) {
+        this.clickId = value;
+        this.doGetAggregatorApply();
+        this.doGetTomorrowOverview(value);
+        if (value) {
+          this.doGetPriceByResourceTypeId(value);
+        }
+      },
+    },
   },
 };
 </script>
 <style lang="less"></style>
 <style lang="less" type="text/less" scoped>
 .applyPlan {
-  width: calc(100% - 40px);
-  height: 100%;
-  background: #ffffff;
-  border-radius: 12px;
-  padding: 0 20px;
-  display: flex;
-  .applyPlan-left {
-    width: calc(100% - 220px);
-    max-width: calc(100% - 220px);
-    margin-right: 20px;
-  }
-  .applyPlan-right {
-    width: 200px;
-    padding: 20px 0;
-    .applyPlan-right-in {
-      background: #f7fbff;
-      border-radius: 12px;
-      height: calc(100% - 20px);
-      padding: 20px 20px 0;
-      .winStatus {
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        img {
-          width: 82px;
-          height: 59px;
-          margin-bottom: 11px;
-        }
-        .winStatus-text {
-          font-size: 14px;
-          font-weight: 600;
-          color: #666666;
-        }
-      }
-      .canApply {
-        width: auto;
-        height: 84px;
-        background: linear-gradient(339deg, #0780ed 0%, #11b7f7 100%);
-        box-shadow: 0px 6px 10px 2px rgba(7, 128, 237, 0.32);
-        border-radius: 12px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        cursor: pointer;
-        .applyText {
-          font-size: 22px;
-          font-weight: 600;
-          color: #ffffff;
-          margin-bottom: 8px;
-        }
-        .applyTextTip {
-          font-size: 14px;
-          font-weight: 600;
-          color: #ffffff;
-          text-align: center;
-        }
-      }
-      .endApply {
-        width: auto;
-        height: 84px;
-        background: #d8d8d8;
-        box-shadow: 0px 6px 10px 2px rgba(153, 153, 153, 0.1);
-        border-radius: 12px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        cursor: pointer;
-        .applyText {
-          font-size: 22px;
-          font-weight: 600;
-          color: #ffffff;
-          margin-bottom: 8px;
-        }
-        .applyTextTip {
-          font-size: 14px;
-          font-weight: 600;
-          color: #ffffff;
-          text-align: center;
-        }
-      }
-      .contentItem {
-        width: 100%;
-        border-bottom: 1px solid #e8e8e8;
-        .title {
-          font-size: 14px;
-          font-weight: 600;
-          color: #999999;
-          margin: 20px 0;
-        }
-        .value {
-          font-size: 15px;
-          font-weight: 600;
-          color: #333333;
-          margin-bottom: 20px;
-        }
-        .valueTip {
-          // 超出 1 行显示...
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-        
-        .goNext {
-          display: flex;
-          height: 14px;
-          align-items: center;
-          margin-bottom: 15px;
-          cursor: pointer;
-          span {
-            font-size: 14px;
-            font-family: PingFangSC-Regular, PingFang SC;
-            color: #0780ed;
-          }
-          img {
-            margin-left: 3px;
-            width: 7px;
-            height: 11px;
-          }
-        }
-      }
-      .contentItem:last-child {
-        border-bottom: none;
-      }
-    }
-  }
-}
-.applyInfo {
   width: 100%;
-  .priceBox {
-    width: 100%;
-    height: 52px;
-    background: #ffffff;
-    // box-shadow: 0px 0px 6px 0px rgba(7, 128, 237, 0.11);
-    border-radius: 6px;
-    margin: 20px 0;
-    .baojia {
-      width: 100%;
-      height: 52px;
-      display: flex;
-      .title {
-        width: 30px;
-        height: 100%;
-        background: #f7fbff;
-        border-radius: 6px;
-        font-size: 14px;
-        font-weight: 600;
-        color: #6589a8;
-        .text {
-          width: 100%;
-          text-align: center;
-          margin-top: 8px;
-        }
-      }
-      .baojiaBox {
-        width: calc(100% - 50px);
-        padding: 0 10px;
-        margin-top: 12px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        .baojiaBox-item {
-          display: inline-block;
-          height: 30px;
-          width: auto;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-          .baojiaBox-item-date {
-            background: #f7fbff;
-            border-radius: 6px;
-            height: 30px;
-            padding: 0 16px;
-            font-size: 14px;
-            font-weight: 600;
-            color: #666666;
-            line-height: 30px;
-            text-align: center;
-            display: inline-block;
-            margin-right: 2px;
-          }
-          .baojiaBox-item-value {
-            display: inline-flex;
-            align-items: center;
-            .time {
-              font-size: 14px;
-              font-weight: 600;
-              color: #999999;
-            }
-            .value {
-              font-size: 16px;
-              font-weight: 600;
-              color: #333333;
-              margin: 0 7px;
-            }
-            .unit {
-              font-size: 14px;
-              font-weight: 600;
-              color: #999999;
-            }
-          }
-        }
-      }
-    }
-    .plan {
-      width: 100%;
-      height: 388px;
-      margin-top: 20px;
-      display: flex;
-      .title {
-        width: 30px;
-        height: calc(100% - 110px);
-        background: #f7fbff;
-        border-radius: 6px;
-        font-size: 14px;
-        font-weight: 600;
-        color: #6589a8;
-        padding-top: 110px;
-        .text {
-          width: 100%;
-          text-align: center;
-          margin-top: 7px;
-        }
-      }
-      .chartBox {
-        flex: 1;
-      }
-    }
-  }
+  height: 100%;
+  box-sizing: border-box;
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 0 20px 20px;
+  display: flex;
+  flex-direction: column;
 }
+
 .commonHeader {
   display: flex;
   height: 58px;
   align-items: center;
   justify-content: space-between;
   width: 100%;
+  .titleBlock {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    min-width: 0;
+    span {
+      color: #607d8f;
+      font-size: 13px;
+    }
+  }
   .text {
     font-size: 18px;
     font-weight: 600;
@@ -569,6 +388,159 @@ export default {
       width: 7px;
       height: 11px;
     }
+  }
+}
+
+.applyWorkbench {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 18px;
+  flex: 1;
+  min-height: 0;
+}
+
+.applyMain,
+.applyActionPanel {
+  min-width: 0;
+  min-height: 0;
+}
+
+.applyMain {
+  display: flex;
+  flex-direction: column;
+}
+
+.applySummary {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.summaryItem {
+  min-width: 0;
+  min-height: 74px;
+  padding: 12px 14px;
+  box-sizing: border-box;
+  border: 1px solid #e7eef4;
+  border-radius: 8px;
+  background: #f7fbff;
+  span,
+  strong {
+    display: block;
+  }
+  span {
+    color: #607d8f;
+    font-size: 13px;
+  }
+  strong {
+    margin-top: 12px;
+    color: #0e2638;
+    font-size: 18px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.chartBox {
+  flex: 1;
+  min-height: 0;
+  margin-top: 12px;
+}
+
+.applyActionPanel {
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  box-sizing: border-box;
+  border: 1px solid #e7eef4;
+  border-radius: 8px;
+  background: #f7fbff;
+}
+
+.primaryApply {
+  width: 100%;
+  height: 64px;
+  border: none;
+  border-radius: 8px;
+  background: #0780ed;
+  color: #ffffff;
+  font-size: 20px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.primaryApply.disabled {
+  background: #8ba2b3;
+}
+
+.actionTip {
+  min-height: 38px;
+  margin-top: 12px;
+  color: #607d8f;
+  font-size: 13px;
+  line-height: 19px;
+}
+
+.actionRows {
+  margin-top: 10px;
+  border-top: 1px solid #dce7ef;
+}
+
+.actionRow {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr) auto;
+  align-items: center;
+  min-height: 48px;
+  border-bottom: 1px solid #dce7ef;
+  gap: 8px;
+  span {
+    color: #607d8f;
+    font-size: 13px;
+  }
+  strong {
+    min-width: 0;
+    color: #0e2638;
+    font-size: 15px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  button {
+    border: none;
+    background: transparent;
+    color: #0780ed;
+    cursor: pointer;
+  }
+}
+
+.winStatus {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 14px;
+  img {
+    width: 36px;
+    height: auto;
+  }
+  .winStatus-text {
+    color: #607d8f;
+    font-size: 13px;
+    line-height: 18px;
+  }
+  .success {
+    color: #0780ed;
+  }
+}
+
+@media (max-width: 1280px) {
+  .applyWorkbench {
+    grid-template-columns: 1fr;
+  }
+
+  .applySummary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 </style>

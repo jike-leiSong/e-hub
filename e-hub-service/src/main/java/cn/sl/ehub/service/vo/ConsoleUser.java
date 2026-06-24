@@ -40,7 +40,7 @@ public class ConsoleUser {
     @Column(name = "password_hash")
     private String passwordHash;
 
-    @ApiModelProperty("用户类型 PLATFORM/AGGREGATOR/ENT")
+    @ApiModelProperty("用户类型 ADMIN/CUSTOMER，兼容历史 PLATFORM/AGGREGATOR/ENT")
     @Column(name = "user_type")
     private String userType;
 

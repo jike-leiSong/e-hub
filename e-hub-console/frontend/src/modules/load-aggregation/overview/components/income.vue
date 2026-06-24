@@ -21,6 +21,15 @@
 import ecbar from "./ec_bar";
 import { getWeekProfit } from "../api";
 
+function resolveAggregatorId() {
+  return (
+    sessionStorage.getItem("aggregatorId") ||
+    sessionStorage.getItem("entId") ||
+    sessionStorage.getItem("cid") ||
+    ""
+  );
+}
+
 export default {
   name: "income",
   components: {
@@ -33,10 +42,6 @@ export default {
     };
   },
   props: {
-    simulate: {
-      type: String,
-      require: true,
-    },
     refreshId: {
       type: Number,
       require: false,
@@ -76,7 +81,7 @@ export default {
     },
   },
   created() {
-    this.aggregatorId = sessionStorage.getItem("entId");
+    this.aggregatorId = resolveAggregatorId();
     this.doGetWeekProfit();
   },
 };
@@ -84,10 +89,11 @@ export default {
 <style lang="less"></style>
 <style lang="less" type="text/less" scoped>
 .realTime {
-  width: calc(100% - 40px);
+  width: 100%;
   height: 100%;
+  box-sizing: border-box;
   background: #ffffff;
-  border-radius: 12px;
+  border-radius: 8px;
   padding: 0 20px;
   .commonHeader {
     display: flex;

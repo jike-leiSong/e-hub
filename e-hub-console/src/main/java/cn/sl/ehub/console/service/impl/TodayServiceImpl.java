@@ -26,12 +26,12 @@ public class TodayServiceImpl implements ITodayService {
     private final IAggregatorEntDeviceService aggregatorEntDeviceService;
 
     @Override
-    public EntUserDeviceTodayChartResp getEntUserDeviceTodayChartResp(String simulate, String deviceBaseId) {
+    public EntUserDeviceTodayChartResp getEntUserDeviceTodayChartResp(String deviceBaseId) {
         return emptyTodayChart();
     }
 
     @Override
-    public EntUserDeviceTodayChartResp getDeviceTreeTodayChartResp(String simulate, String deviceBaseId, String energyStationcode, String systemCode) {
+    public EntUserDeviceTodayChartResp getDeviceTreeTodayChartResp(String deviceBaseId, String energyStationcode, String systemCode) {
         return emptyTodayChart();
     }
 

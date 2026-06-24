@@ -158,14 +158,12 @@
         <div class="bottomBtn" v-if="applyPriceStatus === '0' && showBtn">
           <div
             class="saveBtn"
-            :class="{ disabledBtn: activeObj.option.data.canSet === '1' }"
             @click="save()"
           >
             暂存
           </div>
           <div
             class="applyBtn"
-            :class="{ disabledBtn: activeObj.option.data.canSet === '1' }"
             @click="doApply()"
           >
             提交
@@ -294,10 +292,6 @@ export default {
     };
   },
   props: {
-    simulate: {
-      type: String,
-      require: true,
-    },
     activeObj: {
       type: Object,
       require: true,
@@ -331,7 +325,7 @@ export default {
         startTime: moment(this.showApplyDate).format("YYYY-MM-DD 00:00:00"),
         stationId: sessionStorage.getItem("systemCode"),
       };
-      getDayWeather(query, this.simulate).then(res => {
+      getDayWeather(query).then(res => {
         if (res.data.code === 200) {
           if (res.data.data.length > 0) {
             this.weatherData = res.data.data[0].result[0];
@@ -379,7 +373,7 @@ export default {
         aggregatorId: this.aggregatorId,
         resourceTypeId: item.resourceTypeId,
       };
-      getAggregatorDeliveryChart(query, this.simulate).then(res => {
+      getAggregatorDeliveryChart(query).then(res => {
         if (res.data.code === 200) {
           item.deliveryChart = [
             { name: "用户申报汇总功率", value: res.data.data.deliveryChart },
@@ -397,9 +391,6 @@ export default {
       return Number(timeDataList[0] * 60) + Number(timeDataList[1]);
     },
     doApply() {
-      if (this.activeObj.option.data.canSet === "1") {
-        return;
-      }
       let canSave = true;
       this.aggregatorApplyOfferRespData.forEach(item => {
         if (item.status) {
@@ -477,9 +468,6 @@ export default {
         .catch(() => {});
     },
     save() {
-      if (this.activeObj.option.data.canSet === "1") {
-        return;
-      }
       const query = {
         aggregatorId: this.aggregatorId,
         resourceList: this.aggregatorApplyOfferRespData,
@@ -571,8 +559,7 @@ export default {
       getAggregatorApplyOfferResp(
         {
           aggregatorId: this.aggregatorId,
-        },
-        this.simulate
+        }
       ).then(res => {
         if (res.data.code === 200) {
           res.data.data.resourceList.forEach(item => {

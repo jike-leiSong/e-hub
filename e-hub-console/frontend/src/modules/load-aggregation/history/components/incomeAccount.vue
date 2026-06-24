@@ -42,7 +42,6 @@
             <div
               class="resetBtn"
               @click="doExport()"
-              :class="{ disabledBtn: activeObj.option.data.canSet === '1' }"
             >
               导出
             </div>
@@ -140,10 +139,6 @@ export default {
       type: Object,
       require: true,
     },
-    simulate: {
-      type: String,
-      require: true,
-    },
   },
   methods: {
     changeEnt() {},
@@ -165,22 +160,21 @@ export default {
         startDate: this.form.startTime,
         aggregatorId: sessionStorage.getItem("entId"),
       };
-      getProfitCalculation(query, this.simulate).then(res => {
+      getProfitCalculation(query).then(res => {
         if (res.data.code === 200) {
           this.tableData = res.data.data;
         }
       });
     },
     doExport() {
-      if (this.activeObj.option.data.canSet === "1") {
-        return;
-      }
       const query = {
         entId: this.entItem.value,
         endDate: this.form.endTime,
         startDate: this.form.startTime,
       };
       axios.defaults.headers.common.ticket = sessionStorage.getItem("ticket");
+      axios.defaults.headers.common.token = sessionStorage.getItem("token") || sessionStorage.getItem("ticket");
+      axios.defaults.headers.common.Authorization = `Bearer ${sessionStorage.getItem("token") || sessionStorage.getItem("ticket")}`;
       axios.defaults.headers.common["X-GW-AccessKey"] = accessKeyValue;
       axios({
         method: "get",
@@ -203,8 +197,7 @@ export default {
     },
     doGetEntUserOptions() {
       getEntUserOptions(
-        { aggregatorId: this.aggregatorId },
-        this.simulate
+        { aggregatorId: this.aggregatorId }
       ).then(res => {
         if (res.data.code === 200) {
           this.entUserDetailOptions = res.data.data;

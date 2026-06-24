@@ -82,7 +82,7 @@ export default {
         return [
           { label: "客户管理", value: "可用", desc: "客户档案、租户状态、合作信息" },
           { label: "用户管理", value: "可用", desc: "账号、角色、组织归属" },
-          { label: "产品开通", value: "可用", desc: "负荷聚合、电价能力、有效期" },
+          { label: "产品开通", value: "可用", desc: "负荷聚合、电价服务、有效期" },
           { label: "权限管理", value: "可用", desc: "租户、角色、产品和接口权限" },
         ];
       }
@@ -90,10 +90,10 @@ export default {
         {
           label: "负荷聚合",
           value: this.user.products.includes("load_aggregation") ? "已开通" : "未开通",
-          desc: "运营总览、历史查询、设备资源",
+          desc: "运营总览、调节情况、收益结算、设备运行",
         },
         {
-          label: "电价能力",
+          label: "电价服务",
           value: this.user.products.includes("tariff") ? "已开通" : "未开通",
           desc: "全国电价、接口能力、调用记录",
         },
@@ -106,7 +106,7 @@ export default {
         return [
           { key: "customer-management", title: "客户管理", desc: "维护客户档案、租户状态和合作信息" },
           { key: "user-management", title: "用户管理", desc: "维护内部和客户账号、角色及组织归属" },
-          { key: "product-provisioning", title: "产品开通", desc: "给客户开通负荷聚合、电价能力和有效期" },
+          { key: "product-provisioning", title: "产品开通", desc: "给客户开通负荷聚合、电价服务和有效期" },
           { key: "permission-management", title: "权限管理", desc: "管理租户、角色、产品、接口和数据范围权限" },
         ];
       }
@@ -116,13 +116,13 @@ export default {
         domains.push({
           key: "load-overview",
           title: "负荷聚合",
-          desc: "聚合商运营、申报计划、收益、调节和设备资源分析",
+          desc: "聚合商运营、调节情况、收益结算、设备运行和企业设备管理",
         });
       }
       if (this.user.products.includes("tariff")) {
         domains.push({
           key: "tariff-query",
-          title: "电价能力",
+          title: "电价服务",
           desc: "全国电价查询展示、接口能力和调用记录",
         });
       }

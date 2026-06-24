@@ -4,6 +4,8 @@ import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
+import java.util.List;
+
 @Data
 @ApiModel("登录响应")
 public class AuthLoginResp {
@@ -23,7 +25,7 @@ public class AuthLoginResp {
     @ApiModelProperty("展示名称")
     private String displayName;
 
-    @ApiModelProperty("用户类型 PLATFORM/AGGREGATOR/ENT")
+    @ApiModelProperty("用户类型 ADMIN/CUSTOMER")
     private String userType;
 
     @ApiModelProperty("聚合商ID")
@@ -37,4 +39,25 @@ public class AuthLoginResp {
 
     @ApiModelProperty("过期秒数")
     private Long expireSeconds;
+
+    @ApiModelProperty("平台类型 owner/customer")
+    private String platformType;
+
+    @ApiModelProperty("角色编码")
+    private String role;
+
+    @ApiModelProperty("开通产品")
+    private List<String> products;
+
+    @ApiModelProperty("权限点")
+    private List<String> permissions;
+
+    @ApiModelProperty("允许访问页面")
+    private List<String> allowedPages;
+
+    @ApiModelProperty("默认页面")
+    private String defaultPage;
+
+    @ApiModelProperty("菜单")
+    private List<AuthMenuGroupResp> menuGroups;
 }

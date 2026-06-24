@@ -68,7 +68,6 @@
         <div
           class="btn"
           @click="doExport()"
-          :class="{ disabledBtn: activeObj.option.data.canSet === '1' }"
         >
           导出
         </div>
@@ -200,16 +199,9 @@ export default {
       type: Object,
       require: true,
     },
-    simulate: {
-      type: String,
-      require: true,
-    },
   },
   methods: {
     doExport() {
-      if (this.activeObj.option.data.canSet === "1") {
-        return;
-      }
       if (
         (this.proFitList.length === 0 && this.entIdList.length === 0) ||
         (this.entIdList.length > 0 && this.listByEntIdList.length === 0)
@@ -231,6 +223,8 @@ export default {
         entIds: entIds.join(","),
       };
       axios.defaults.headers.common.ticket = sessionStorage.getItem("ticket");
+      axios.defaults.headers.common.token = sessionStorage.getItem("token") || sessionStorage.getItem("ticket");
+      axios.defaults.headers.common.Authorization = `Bearer ${sessionStorage.getItem("token") || sessionStorage.getItem("ticket")}`;
       axios.defaults.headers.common["X-GW-AccessKey"] = accessKeyValue;
       let downUrl = "";
       if (this.entIdList.length === 0) {
@@ -277,7 +271,7 @@ export default {
         pageIndex: this.pageNo,
         pageSize: this.pageSize,
       };
-      getListByEntIdList(query, this.simulate).then(res => {
+      getListByEntIdList(query).then(res => {
         if (res.data.code === 200) {
           this.showTable = "2";
           this.showEntIdList = [];
@@ -302,7 +296,7 @@ export default {
         pageIndex: this.pageNo,
         pageSize: this.pageSize,
       };
-      getProfitList(query, this.simulate).then(res => {
+      getProfitList(query).then(res => {
         if (res.data.code === 200) {
           this.proFitTotal = res.data.total;
           this.proFitList = res.data.data;
@@ -341,7 +335,7 @@ export default {
       }
     },
     doGetEntUserOptions() {
-      getContentList({ aggregatorId: this.aggregatorId }, this.simulate).then(
+      getContentList({ aggregatorId: this.aggregatorId }).then(
         res => {
           if (res.data.code === 200) {
             this.entList = res.data.data;

@@ -5,8 +5,12 @@ import org.apache.ibatis.annotations.Param;
 import org.springframework.stereotype.Repository;
 import tk.mybatis.mapper.common.Mapper;
 
+import java.util.List;
+
 @Repository
 public interface ConsoleUserMapper extends Mapper<ConsoleUser> {
 
     ConsoleUser getByUsername(@Param("username") String username);
+
+    List<ConsoleUser> listCustomers(@Param("keyword") String keyword);
 }

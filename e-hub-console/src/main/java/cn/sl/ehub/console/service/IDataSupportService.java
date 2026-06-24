@@ -33,10 +33,9 @@ public interface IDataSupportService {
      * @param startDate
      * @param endDate
      * @param date
-     * @param simulate
      * @return
      */
-    Boolean addDeviceBaselineLoadChart(String deviceBaseId, String startDate, String endDate, String date, String simulate);
+    Boolean addDeviceBaselineLoadChart(String deviceBaseId, String startDate, String endDate, String date);
 
     /**
      * 华北网下发功率曲线-手动触发

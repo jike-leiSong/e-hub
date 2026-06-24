@@ -23,7 +23,6 @@ spring:
 
 #大数据
 bigdata:
-  simulate: http://localhost:8080
   userKey: dev-key
   data-collector: http://localhost:8080
 

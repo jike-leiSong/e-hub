@@ -8,13 +8,11 @@ import cn.sl.ehub.common.vo.ResultVO;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import javax.servlet.http.HttpServletRequest;
 import java.util.List;
 
 /**
@@ -38,23 +36,15 @@ public class TodayController {
 
     @ApiOperation(value = "查询设备曲线")
     @RequestMapping(value = "/getEntUserDeviceChartResp", method = RequestMethod.GET)
-    public ResultVO<EntUserDeviceTodayChartResp> getEntUserDeviceChartResp(HttpServletRequest request, @RequestParam("deviceBaseId") String deviceBaseId) {
-        String simulate = request.getHeader("simulate");
-        if (StringUtils.isEmpty(simulate) || "null".equals(simulate) || !"1".equals(simulate)) {
-            simulate = "0";
-        }
-        return ResultVO.success(detailService.getEntUserDeviceTodayChartResp(simulate, deviceBaseId));
+    public ResultVO<EntUserDeviceTodayChartResp> getEntUserDeviceChartResp(@RequestParam("deviceBaseId") String deviceBaseId) {
+        return ResultVO.success(detailService.getEntUserDeviceTodayChartResp(deviceBaseId));
     }
 
     @ApiOperation(value = "查询用户、能源站、设备曲线")
     @RequestMapping(value = "/getMultiDeviceChartResp", method = RequestMethod.GET)
     public ResultVO<EntUserDeviceTodayChartResp> getMultiDeviceChartResp(@RequestParam("deviceBaseId") String deviceBaseId,
                                                                          @RequestParam("systemCode") String systemCode,@RequestParam("energyStationcode") String energyStationcode) {
-        String simulate = "0";
-//        if (StringUtils.isEmpty(simulate) || "null".equals(simulate) || !"1".equals(simulate)) {
-//            simulate = "0";
-//        }
-        return ResultVO.success(detailService.getDeviceTreeTodayChartResp(simulate, deviceBaseId,energyStationcode,systemCode));
+        return ResultVO.success(detailService.getDeviceTreeTodayChartResp(deviceBaseId,energyStationcode,systemCode));
     }
 
     @ApiOperation(value = "查询执行记录")

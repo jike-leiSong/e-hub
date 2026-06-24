@@ -18,30 +18,27 @@ public interface IPeakShavingAuxiliaryService {
     /**
      * 查询数据
      *
-     * @param simulate
      * @param deviceBaseId
      * @param startDate
      * @param endDate
      * @param historyStatus
      * @return
      */
-    AggregatorDeviceChartResp getPowerChartResp(String simulate, String deviceBaseId, String startDate, String endDate, boolean historyStatus);
+    AggregatorDeviceChartResp getPowerChartResp(String deviceBaseId, String startDate, String endDate, boolean historyStatus);
 
     /**
      * 查询数据
      *
-     * @param simulate
      * @param entId
      * @param startDate
      * @param endDate
      * @return
      */
-    List<AggregatorDeviceChartResp> getNowPowerChartResp(String simulate, String entId, String startDate, String endDate);
+    List<AggregatorDeviceChartResp> getNowPowerChartResp(String entId, String startDate, String endDate);
 
     /**
      * 查询数据
      *
-     * @param simulate
      * @param entId
      * @param startDate
      * @param endDate
@@ -49,5 +46,5 @@ public interface IPeakShavingAuxiliaryService {
      * @param pageSize
      * @return
      */
-    PageResultVO<AggregatorDeviceChartResp> getNowPowerChartRespPage(String simulate, String entId, String startDate, String endDate, Integer pageNo, Integer pageSize);
+    PageResultVO<AggregatorDeviceChartResp> getNowPowerChartRespPage(String entId, String startDate, String endDate, Integer pageNo, Integer pageSize);
 }

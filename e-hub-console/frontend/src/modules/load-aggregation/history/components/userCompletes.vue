@@ -90,10 +90,6 @@ export default {
       type: Object,
       require: true,
     },
-    simulate: {
-      type: String,
-      require: true,
-    },
     refreshId: {
       type: Number,
       require: false,
@@ -166,7 +162,7 @@ export default {
         startDate: this.topDateData[0],
         endDate: this.topDateData[1],
       }
-      exportExcel(params, this.simulate).then(res => {
+      exportExcel(params).then(res => {
         // const dateRange = `${this.topDateData[0]}~${this.topDateData[1]}`
         // const resourceType = this.codeToName('resourceType', this.resourceTypeId)
         // const fileName = `${dateRange}${resourceType}调节效果统计.xls`
@@ -184,7 +180,7 @@ export default {
         startDate: this.topDateData[0],
         endDate: this.topDateData[1],
       }
-      exportBuZhaoUploadData(params, this.simulate).then(res => {
+      exportBuZhaoUploadData(params).then(res => {
         this.downloadFile(res)
       }).catch(err => {
         console.log(err)
@@ -201,7 +197,7 @@ export default {
         endDate: this.topDateData[1],
       }
       this.echartsLoading1 = true
-      getTotalPowerChart(params, this.simulate).then(res => {
+      getTotalPowerChart(params).then(res => {
         this.echartsLoading1 = false
         if (res.data.code === 200) {
           this.topEchartsData = [ // 
@@ -239,7 +235,7 @@ export default {
         aggregatorId: this.aggregatorId,
         resourceTypeId: this.resourceTypeId,
       }
-      await getEntUserOptions(params, this.simulate).then(res => {
+      await getEntUserOptions(params).then(res => {
         if (res.data.code === 200) {
           if (res.data.data && res.data.data.length > 0) {
             this.enterpriseList = JSON.parse(JSON.stringify(res.data.data))
@@ -260,7 +256,7 @@ export default {
         aggregatorId: sessionStorage.getItem("entId"),
         entId: this.form.enterpriseName
       }
-      await getResourceTypeList(params, this.simulate).then(res => {
+      await getResourceTypeList(params).then(res => {
         if (res.data.code === 200) {
           if (res.data.data && res.data.data.length > 0) {
             this.resourceTypeList = JSON.parse(JSON.stringify(res.data.data))
@@ -310,7 +306,7 @@ export default {
         startDate: this.form.bottomDateData[0],
         endDate: this.form.bottomDateData[1],
       }
-      exportExcel(params, this.simulate).then(res => {
+      exportExcel(params).then(res => {
         // const dateRange = `${this.form.bottomDateData[0]}~${this.form.bottomDateData[1]}`
         // const entName = this.codeToName('entName', this.form.enterpriseName)
         // const resourceType = this.codeToName('resourceType', this.resourceTypeId)
@@ -330,7 +326,7 @@ export default {
         endTime: this.form.bottomDateData[1],
       }
       this.echartsLoading2 = true
-      getUserCompletionEcharts(params, this.simulate).then(res => {
+      getUserCompletionEcharts(params).then(res => {
         this.echartsLoading2 = false
         if (res.data.code === 200) {
           this.incomeNumber = res.data.data.profit || 0

@@ -234,10 +234,6 @@ export default {
       type: Object,
       require: true,
     },
-    simulate: {
-      type: String,
-      require: true,
-    },
     refreshId: {
       type: Number,
       require: false,
@@ -263,8 +259,7 @@ export default {
       getResourceTypeList(
         {
           aggregatorId: sessionStorage.getItem("entId"),
-        },
-        this.simulate
+        }
       ).then(res => {
         this.resourceTypeList = res.data.data
         if (this.resourceTypeList.length > 0) {
@@ -309,7 +304,7 @@ export default {
         aggregatorId: this.aggregatorId,
         status: this.selType == "1" ? "0" : "1",
       };
-      getDeviceRunStatusChart(query, this.simulate).then(res => {
+      getDeviceRunStatusChart(query).then(res => {
         if (res.data.code === 200) {
           const list = [];
           this.unit = null;
@@ -364,8 +359,7 @@ export default {
     },
     doGetEntUserOptions() {
       getEntUserOptions(
-        { aggregatorId: this.aggregatorId },
-        this.simulate
+        { aggregatorId: this.aggregatorId }
       ).then(res => {
         if (res.data.code === 200) {
           this.entList = res.data.data;
@@ -386,7 +380,7 @@ export default {
         entId: this.form.subEntId,
         resourceTypeId: this.form.resourceTypeId,
       };
-      getDeviceList(query, this.simulate).then(res => {
+      getDeviceList(query).then(res => {
         if (res.data.code === 200) {
           this.deviceList = res.data.data;
           if (this.deviceList.length > 0) {

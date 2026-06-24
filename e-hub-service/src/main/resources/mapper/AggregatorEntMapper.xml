@@ -55,9 +55,22 @@
                ae.latitude,
                IFNULL(SUM(aed.power), 0.0) AS totalPower
         FROM aggregator_ent ae
-                 LEFT JOIN aggregator_ent_device aed ON ae.aggregator_id = aed.aggregator_id AND ae.ent_id = aed.ent_id
+        <choose>
+            <when test="resourceTypeId != null and resourceTypeId != ''">
+                INNER JOIN aggregator_ent_device aed
+                ON ae.aggregator_id = aed.aggregator_id
+                AND ae.ent_id = aed.ent_id
+                AND aed.resource_type_id = #{resourceTypeId}
+                AND aed.model_flag = 1
+            </when>
+            <otherwise>
+                LEFT JOIN aggregator_ent_device aed
+                ON ae.aggregator_id = aed.aggregator_id
+                AND ae.ent_id = aed.ent_id
+            </otherwise>
+        </choose>
         WHERE ae.aggregator_id = #{aggregatorId}
-        GROUP BY ae.ent_id;
+        GROUP BY ae.aggregator_id, ae.ent_id, ae.ent_name, ae.longitude, ae.latitude;
     </select>
 
     <select id="selectEntUserDetailWithDevice" resultMap="EntUserDetailWithDeviceResultMap">

@@ -105,10 +105,6 @@ export default {
       type: Object,
       require: true,
     },
-    simulate: {
-      type: String,
-      require: true,
-    },
   },
   methods: {
     doSelTab(item) {
@@ -138,7 +134,7 @@ export default {
         endTime: this.endTime,
         aggregatorId: this.aggregatorId,
       };
-      getUserProfitStatistics(query, this.simulate).then(res => {
+      getUserProfitStatistics(query).then(res => {
         if (res.data.code === 200) {
           this.userAmount = res.data.data.userAmount;
           if (!res.data.data.userProfitStatisticsList) {

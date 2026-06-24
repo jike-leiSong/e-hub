@@ -18,16 +18,17 @@ import java.nio.charset.StandardCharsets;
 @Component
 public class AuthInterceptor implements HandlerInterceptor {
 
-    private static final String USER_TYPE_PLATFORM = "PLATFORM";
-    private static final String USER_TYPE_AGGREGATOR = "AGGREGATOR";
-    private static final String USER_TYPE_ENT = "ENT";
-
     private final AuthService authService;
+    private final ConsolePermissionService permissionService;
     private final ObjectMapper objectMapper;
     private final AggregatorEntMapper aggregatorEntMapper;
 
-    public AuthInterceptor(AuthService authService, ObjectMapper objectMapper, AggregatorEntMapper aggregatorEntMapper) {
+    public AuthInterceptor(AuthService authService,
+                           ConsolePermissionService permissionService,
+                           ObjectMapper objectMapper,
+                           AggregatorEntMapper aggregatorEntMapper) {
         this.authService = authService;
+        this.permissionService = permissionService;
         this.objectMapper = objectMapper;
         this.aggregatorEntMapper = aggregatorEntMapper;
     }
@@ -40,6 +41,7 @@ public class AuthInterceptor implements HandlerInterceptor {
         try {
             String token = extractToken(request);
             AuthUser user = authService.verify(token);
+            validateApiPermission(request, user);
             validateDataScope(request, user);
             AuthContext.set(user);
             return true;
@@ -68,24 +70,37 @@ public class AuthInterceptor implements HandlerInterceptor {
         if (StringUtils.isNotBlank(token)) {
             return StringUtils.trim(token);
         }
-        return StringUtils.trim(request.getParameter("token"));
+        String ticket = request.getHeader("ticket");
+        if (StringUtils.isNotBlank(ticket)) {
+            return StringUtils.trim(ticket);
+        }
+        token = request.getParameter("token");
+        if (StringUtils.isNotBlank(token)) {
+            return StringUtils.trim(token);
+        }
+        return StringUtils.trim(request.getParameter("ticket"));
     }
 
     private void validateDataScope(HttpServletRequest request, AuthUser user) {
-        if (user == null || isPlatform(user)) {
+        if (user == null || isAdmin(user)) {
             return;
         }
-        if (isAggregator(user)) {
+        if (isCustomer(user)) {
             validateEqualIfPresent(user.getAggregatorId(), getValues(request, "aggregatorId", "aggregator_id"));
-            validateAggregatorEntScope(user.getAggregatorId(), getValues(request, "entId", "ent_id", "entIds", "ent_ids"));
-            return;
-        }
-        if (isEnt(user)) {
-            validateEqualIfPresent(user.getAggregatorId(), getValues(request, "aggregatorId", "aggregator_id"));
-            validateEqualIfPresent(user.getEntId(), getValues(request, "entId", "ent_id", "entIds", "ent_ids"));
+            if (StringUtils.isNotBlank(user.getEntId())) {
+                validateEqualIfPresent(user.getEntId(), getValues(request, "entId", "ent_id", "entIds", "ent_ids"));
+            } else {
+                validateAggregatorEntScope(user.getAggregatorId(), getValues(request, "entId", "ent_id", "entIds", "ent_ids"));
+            }
             return;
         }
         throwNoPermission();
+    }
+
+    private void validateApiPermission(HttpServletRequest request, AuthUser user) {
+        if (!permissionService.hasRequestPermission(request, user)) {
+            throwNoPermission();
+        }
     }
 
     private void validateAggregatorEntScope(String aggregatorId, String[] entIds) {
@@ -147,16 +162,15 @@ public class AuthInterceptor implements HandlerInterceptor {
         values.append(StringUtils.trim(value));
     }
 
-    private boolean isPlatform(AuthUser user) {
-        return StringUtils.equalsIgnoreCase(USER_TYPE_PLATFORM, user.getUserType());
+    private boolean isAdmin(AuthUser user) {
+        return StringUtils.equalsIgnoreCase(ConsoleProductService.USER_TYPE_ADMIN, user.getUserType())
+                || StringUtils.equalsIgnoreCase(ConsoleProductService.USER_TYPE_PLATFORM, user.getUserType());
     }
 
-    private boolean isAggregator(AuthUser user) {
-        return StringUtils.equalsIgnoreCase(USER_TYPE_AGGREGATOR, user.getUserType());
-    }
-
-    private boolean isEnt(AuthUser user) {
-        return StringUtils.equalsIgnoreCase(USER_TYPE_ENT, user.getUserType());
+    private boolean isCustomer(AuthUser user) {
+        return StringUtils.equalsIgnoreCase(ConsoleProductService.USER_TYPE_CUSTOMER, user.getUserType())
+                || StringUtils.equalsIgnoreCase(ConsoleProductService.USER_TYPE_AGGREGATOR, user.getUserType())
+                || StringUtils.equalsIgnoreCase(ConsoleProductService.USER_TYPE_ENT, user.getUserType());
     }
 
     private void throwNoPermission() {

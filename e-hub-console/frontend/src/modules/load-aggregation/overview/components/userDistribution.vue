@@ -31,6 +31,15 @@
 import { getEntUserDetailRespList } from "../api";
 import markerIcon from "../images/dingwei.png";
 
+function resolveAggregatorId() {
+  return (
+    sessionStorage.getItem("aggregatorId") ||
+    sessionStorage.getItem("entId") ||
+    sessionStorage.getItem("cid") ||
+    ""
+  );
+}
+
 export default {
   name: "userDistribution",
   data() {
@@ -42,10 +51,6 @@ export default {
     };
   },
   props: {
-    simulate: {
-      type: String,
-      require: true,
-    },
   },
   methods: {
     goUserDetail(e) {
@@ -114,8 +119,7 @@ export default {
     },
     doGetEntUserDetailRespList() {
       getEntUserDetailRespList(
-        { aggregatorId: this.aggregatorId },
-        this.simulate
+        { aggregatorId: this.aggregatorId }
       ).then(res => {
         if (res.data.code === 200) {
           this.entUserDetailRespListData = res.data.data;
@@ -135,7 +139,7 @@ export default {
     },
   },
   created() {
-    this.aggregatorId = sessionStorage.getItem("entId");
+    this.aggregatorId = resolveAggregatorId();
     const vm = this;
     const url =
       "https://webapi.amap.com/maps?v=1.4.15&key=c6900ccd32da4bc931626e3a100dce2b&callback=onLoad&plugin=AMap.DistrictSearch,AMap.Scale";
@@ -169,7 +173,7 @@ export default {
   width: 100%;
   height: 100%;
   background: #ffffff;
-  border-radius: 12px;
+  border-radius: 8px;
   display: flex;
   flex-direction: column;
   overflow: hidden;

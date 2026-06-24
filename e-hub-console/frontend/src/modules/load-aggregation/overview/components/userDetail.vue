@@ -284,7 +284,9 @@
             :limit="1"
             accept=".pdf"
             :headers="{
-              ticket: ticket,
+              ticket: authToken,
+              token: authToken,
+              Authorization: `Bearer ${authToken}`,
               'X-GW-AccessKey': accessKey,
             }"
             :on-success="handleSucess"
@@ -380,7 +382,6 @@ export default {
       imgUploadUrl: "",
       entUserDetailList: [],
       fileList: [],
-      ticket: sessionStorage.getItem("ticket"),
       entList: [],
       deviceList: [],
       timeValue: "",
@@ -414,9 +415,10 @@ export default {
       type: String,
       require: false,
     },
-    simulate: {
-      type: String,
-      require: true,
+  },
+  computed: {
+    authToken() {
+      return sessionStorage.getItem("token") || sessionStorage.getItem("ticket") || "";
     },
   },
   methods: {
@@ -451,6 +453,8 @@ export default {
         urlStr: this.ruleForm.agreement,
       };
       axios.defaults.headers.common.ticket = sessionStorage.getItem("ticket");
+      axios.defaults.headers.common.token = sessionStorage.getItem("token") || sessionStorage.getItem("ticket");
+      axios.defaults.headers.common.Authorization = `Bearer ${sessionStorage.getItem("token") || sessionStorage.getItem("ticket")}`;
       axios.defaults.headers.common["X-GW-AccessKey"] = accessKeyValue;
       axios({
         method: "get",
@@ -525,7 +529,7 @@ export default {
         return;
       } 
 
-      updateEnt(this.ruleForm, this.simulate).then(res => {
+      updateEnt(this.ruleForm).then(res => {
         if (res.data.code === 200) {
           this.$message({
             message: "编辑成功",
@@ -584,7 +588,7 @@ export default {
     doUpdateEnt() {
       const fd = new FormData();
       fd.append("aggregatorId", this.aggregatorId);
-      autoUpdateEnt(fd, this.simulate).then(res => {
+      autoUpdateEnt(fd).then(res => {
         if (res.data.code === 200) {
           this.$message({
             message: "同步用户成功",
@@ -605,8 +609,7 @@ export default {
     },
     doGetEntUserOptions() {
       getEntUserOptions(
-        { aggregatorId: this.aggregatorId },
-        this.simulate
+        { aggregatorId: this.aggregatorId }
       ).then(res => {
         if (res.data.code === 200) {
           this.entList = res.data.data;
@@ -623,7 +626,7 @@ export default {
         startYear: this.form.startYear,
         endYear: this.form.endYear,
       };
-      getEntUserDetailListV2(query, this.simulate).then(res => {
+      getEntUserDetailListV2(query).then(res => {
         if (res.data.code === 200) {
           res.data.data.forEach(item => {
             if (item.phones.length > 3) {
@@ -680,7 +683,7 @@ export default {
         entId: item.entId,
         stationId: item.stationId,
       };
-      getCimDeviceList(query, this.simulate).then(res => {
+      getCimDeviceList(query).then(res => {
         if (res.data.code === 200) {
           res.data.data.forEach(item => {
             item.disabled = false;

@@ -28,7 +28,8 @@ public interface AggregatorEntMapper extends Mapper<AggregatorEnt> {
      * @param aggregatorId
      * @return
      */
-    List<EntUserDetailResp> getEntUserDetailRespList(@Param("aggregatorId") String aggregatorId);
+    List<EntUserDetailResp> getEntUserDetailRespList(@Param("aggregatorId") String aggregatorId,
+                                                     @Param("resourceTypeId") String resourceTypeId);
 
     List<EntUserDetailResp> selectEntUserDetailWithDevice(@Param("aggregatorId") String aggregatorId,
                                                           @Param("entId") String entId,

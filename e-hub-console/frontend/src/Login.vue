@@ -47,7 +47,7 @@
       <aside class="login-aside">
         <div class="aside-top">
           <span>ENERGY OPERATIONS</span>
-          <strong>负荷聚合 · 电价能力</strong>
+          <strong>负荷聚合 · 电价服务</strong>
         </div>
         <div class="power-board">
           <div class="power-row">
@@ -79,6 +79,8 @@
 </template>
 
 <script>
+import service from "@/services/http";
+
 export default {
   name: "Login",
   data() {
@@ -102,15 +104,46 @@ export default {
         return;
       }
       this.loading = true;
-      window.setTimeout(() => {
-        if (this.form.remember) {
-          localStorage.setItem("ehub-account", this.form.account);
-        } else {
-          localStorage.removeItem("ehub-account");
-        }
-        this.loading = false;
-        this.$emit("login", { ...this.form });
-      }, 220);
+      service({
+        method: "post",
+        url: "/auth/login",
+        data: {
+          username: this.form.account,
+          password: this.form.password,
+        },
+        headers: {
+          "Content-Type": "application/json;charset=UTF-8",
+        },
+      })
+        .then(response => {
+          const body = response.data || {};
+          if (body.code !== 200) {
+            this.$message.error(body.msg || "登录失败");
+            return;
+          }
+          const authUser = body.data || {};
+          if (this.form.remember) {
+            localStorage.setItem("ehub-account", this.form.account);
+          } else {
+            localStorage.removeItem("ehub-account");
+          }
+          sessionStorage.setItem("token", authUser.token || "");
+          sessionStorage.setItem("ehub-token", authUser.token || "");
+          sessionStorage.setItem("ticket", authUser.token || "");
+          sessionStorage.setItem("aggregatorId", authUser.aggregatorId || "");
+          sessionStorage.setItem("entId", authUser.entId || "");
+          this.$emit("login", { ...this.form, authUser });
+        })
+        .catch(error => {
+          const message =
+            error && error.response && error.response.data
+              ? error.response.data.msg
+              : "登录失败";
+          this.$message.error(message || "登录失败");
+        })
+        .finally(() => {
+          this.loading = false;
+        });
     },
   },
 };

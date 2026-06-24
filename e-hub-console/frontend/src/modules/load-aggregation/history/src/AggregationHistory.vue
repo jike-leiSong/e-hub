@@ -2,12 +2,12 @@
   <div class="AggregationHistory" :style="{ height: allHeight ? allHeight + 'px' : '100%' }">
     <div class="history-head">
       <div>
-        <p class="history-title">历史查询</p>
-        <p class="history-subtitle">按结算、调节、运行、收益和出清价格维度追踪历史业务表现</p>
+        <p class="history-title">{{ pageConfig.title }}</p>
+        <p class="history-subtitle">{{ pageConfig.subtitle }}</p>
       </div>
-      <div class="history-tabs">
+      <div v-if="visibleMenuItems.length > 1" class="history-tabs">
         <button
-          v-for="item in menuItems"
+          v-for="item in visibleMenuItems"
           :key="item.index"
           type="button"
           class="history-tab"
@@ -21,33 +21,27 @@
     <div class="history-body">
       <userCompletes
         v-if="showPage == '1'"
-        :simulate="simulate"
         :refreshId="refreshId"
       ></userCompletes>
       <equipmentOperation
         v-if="showPage == '2'"
-        :simulate="simulate"
         :refreshId="refreshId"
       ></equipmentOperation>
       <profitStatis
         v-if="showPage == '3'"
-        :simulate="simulate"
         :refreshId="refreshId"
       ></profitStatis>
       <userProfit
         v-if="showPage == '4'"
-        :simulate="simulate"
         :refreshId="refreshId"
       ></userProfit>
       <clearPrice
         v-if="showPage == '5'"
         :activeObj="activeObj"
-        :simulate="simulate"
         :refreshId="refreshId"
       ></clearPrice>
       <incomeAccount
         v-if="showPage == '6'"
-        :simulate="simulate"
         :activeObj="activeObj"
         :refreshId="refreshId"
       ></incomeAccount>
@@ -74,20 +68,24 @@ export default {
   },
   data() {
     return {
-      showPage: "6",
+      showPage: defaultShowPage(this.viewType),
       refreshId: null,
       allHeight: 0,
       menuItems: [
-        { index: "6", label: "收益结算" },
-        { index: "1", label: "用户完成调节情况" },
-        { index: "2", label: "设备运行情况" },
+        { index: "1", label: "调节情况", group: "adjustment" },
+        { index: "6", label: "收益结算", group: "settlement" },
         { index: "3", label: "收益统计" },
         { index: "4", label: "用户收益统计" },
         { index: "5", label: "出清价格" },
+        { index: "2", label: "设备运行", group: "device-operation" },
       ],
     };
   },
   props: {
+    viewType: {
+      type: String,
+      default: "settlement",
+    },
     activeObj: {
       type: Object,
       require: true,
@@ -97,14 +95,20 @@ export default {
       require: false,
     },
   },
-  watch: {
-    activeObj: {
-      deep: true,
-      handler(val) {
-        this.simulate = String(val.option.data.dataType);
-      },
+  computed: {
+    pageConfig() {
+      return pageConfigs[this.viewType] || pageConfigs.settlement;
     },
-    "activeObj.option.data.dataType": function() {
+    visibleMenuItems() {
+      if (this.viewType === "settlement") {
+        return this.menuItems.filter(item => ["6", "3", "4", "5"].includes(item.index));
+      }
+      return this.menuItems.filter(item => item.index === this.showPage);
+    },
+  },
+  watch: {
+    viewType(val) {
+      this.showPage = defaultShowPage(val);
       this.doGetData();
     },
     activeCompName(val) {
@@ -132,9 +136,33 @@ export default {
     // sessionStorage.setItem("entId", '1711340903453614082')
     this.aggregatorId =
       sessionStorage.getItem("entId") || sessionStorage.getItem("cid");
-    this.simulate = String(this.activeObj.option.data.dataType);
   },
 };
+
+const pageConfigs = {
+  adjustment: {
+    title: "调节情况",
+    subtitle: "查看聚合商汇总功率和各企业调节曲线，支持时间段查询、导出和上送数据导出",
+  },
+  settlement: {
+    title: "收益结算",
+    subtitle: "汇总收益统计、用户收益统计和出清价格，支撑运营结算与对账",
+  },
+  "device-operation": {
+    title: "设备运行",
+    subtitle: "查看各企业、各设备、各测点的历史运行数据，支持时间段查询",
+  },
+};
+
+function defaultShowPage(viewType) {
+  if (viewType === "adjustment") {
+    return "1";
+  }
+  if (viewType === "device-operation") {
+    return "2";
+  }
+  return "6";
+}
 </script>
 <style lang="less" type="text/less" scoped>
 .AggregationHistory {
@@ -167,7 +195,7 @@ export default {
     }
   }
   .history-tabs {
-    min-width: 620px;
+    max-width: 620px;
     display: flex;
     flex-wrap: wrap;
     justify-content: flex-end;

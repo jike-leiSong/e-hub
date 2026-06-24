@@ -1,12 +1,15 @@
 package cn.sl.ehub.console.service.impl;
 
+import cn.sl.ehub.common.enums.StatusCode;
+import cn.sl.ehub.common.exception.BaseException;
+import cn.sl.ehub.console.service.IAggregatorEntService;
 import cn.sl.ehub.service.mapper.AggregatorEntMapper;
 import cn.sl.ehub.service.req.UpdateEntReq;
 import cn.sl.ehub.service.resp.EntUserDetailResp;
-import cn.sl.ehub.console.service.IAggregatorEntService;
 import cn.sl.ehub.service.vo.AggregatorEnt;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tk.mybatis.mapper.weekend.Weekend;
@@ -98,8 +101,80 @@ public class AggregatorEntServiceImpl implements IAggregatorEntService {
     }
 
     @Override
-    public List<EntUserDetailResp> getEntUserDetailRespList(String aggregatorId) {
-        return aggregatorEntMapper.getEntUserDetailRespList(aggregatorId);
+    public List<AggregatorEnt> pageAggregatorEntList(String aggregatorId, String entId, String entName, Integer status) {
+        Weekend<AggregatorEnt> weekendEnt = Weekend.of(AggregatorEnt.class);
+        WeekendCriteria<AggregatorEnt, Object> criteriaEnt = weekendEnt.weekendCriteria();
+        if (StringUtils.isNotBlank(aggregatorId)) {
+            criteriaEnt.andEqualTo(AggregatorEnt::getAggregatorId, aggregatorId);
+        }
+        if (StringUtils.isNotBlank(entId)) {
+            criteriaEnt.andEqualTo(AggregatorEnt::getEntId, entId);
+        }
+        if (StringUtils.isNotBlank(entName)) {
+            criteriaEnt.andLike(AggregatorEnt::getEntName, "%" + StringUtils.trim(entName) + "%");
+        }
+        if (status != null) {
+            criteriaEnt.andEqualTo(AggregatorEnt::getStatus, status);
+        }
+        weekendEnt.orderBy("id").desc();
+        return aggregatorEntMapper.selectByExample(weekendEnt);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public AggregatorEnt createAggregatorEnt(AggregatorEnt aggregatorEnt) {
+        validateRequired(aggregatorEnt);
+        if (getAggregatorEnt(aggregatorEnt.getEntId()) != null) {
+            throw new BaseException(StatusCode.C.getCode(), "企业ID已存在");
+        }
+        if (aggregatorEnt.getStatus() == null) {
+            aggregatorEnt.setStatus(1);
+        }
+        aggregatorEntMapper.insertSelective(aggregatorEnt);
+        return getAggregatorEnt(aggregatorEnt.getEntId());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public AggregatorEnt updateAggregatorEnt(String entId, AggregatorEnt aggregatorEnt) {
+        if (StringUtils.isBlank(entId)) {
+            throw new BaseException(StatusCode.C.getCode(), "企业ID不能为空");
+        }
+        AggregatorEnt existing = getAggregatorEnt(entId);
+        if (existing == null) {
+            throw new BaseException(StatusCode.C.getCode(), "企业不存在");
+        }
+        if (aggregatorEnt == null) {
+            throw new BaseException(StatusCode.C.getCode(), "企业信息不能为空");
+        }
+        aggregatorEnt.setId(existing.getId());
+        aggregatorEnt.setEntId(existing.getEntId());
+        if (StringUtils.isBlank(aggregatorEnt.getAggregatorId())) {
+            aggregatorEnt.setAggregatorId(existing.getAggregatorId());
+        }
+        aggregatorEntMapper.updateByPrimaryKeySelective(aggregatorEnt);
+        return getAggregatorEnt(entId);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int updateAggregatorEntStatus(String entId, Integer status) {
+        if (StringUtils.isBlank(entId)) {
+            throw new BaseException(StatusCode.C.getCode(), "企业ID不能为空");
+        }
+        AggregatorEnt existing = getAggregatorEnt(entId);
+        if (existing == null) {
+            throw new BaseException(StatusCode.C.getCode(), "企业不存在");
+        }
+        AggregatorEnt update = new AggregatorEnt();
+        update.setId(existing.getId());
+        update.setStatus(status == null ? 0 : status);
+        return aggregatorEntMapper.updateByPrimaryKeySelective(update);
+    }
+
+    @Override
+    public List<EntUserDetailResp> getEntUserDetailRespList(String aggregatorId, String resourceTypeId) {
+        return aggregatorEntMapper.getEntUserDetailRespList(aggregatorId, resourceTypeId);
     }
 
     @Override
@@ -171,5 +246,20 @@ public class AggregatorEntServiceImpl implements IAggregatorEntService {
             });
         }
         return aggregatorEntList.size();
+    }
+
+    private void validateRequired(AggregatorEnt aggregatorEnt) {
+        if (aggregatorEnt == null) {
+            throw new BaseException(StatusCode.C.getCode(), "企业信息不能为空");
+        }
+        if (StringUtils.isBlank(aggregatorEnt.getAggregatorId())) {
+            throw new BaseException(StatusCode.C.getCode(), "聚合商ID不能为空");
+        }
+        if (StringUtils.isBlank(aggregatorEnt.getEntId())) {
+            throw new BaseException(StatusCode.C.getCode(), "企业ID不能为空");
+        }
+        if (StringUtils.isBlank(aggregatorEnt.getEntName())) {
+            throw new BaseException(StatusCode.C.getCode(), "企业名称不能为空");
+        }
     }
 }

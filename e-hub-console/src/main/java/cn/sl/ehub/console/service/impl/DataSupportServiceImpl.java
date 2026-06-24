@@ -21,7 +21,7 @@ public class DataSupportServiceImpl implements IDataSupportService {
     }
 
     @Override
-    public Boolean addDeviceBaselineLoadChart(String deviceBaseId, String startDate, String endDate, String date, String simulate) {
+    public Boolean addDeviceBaselineLoadChart(String deviceBaseId, String startDate, String endDate, String date) {
         return false;
     }
 

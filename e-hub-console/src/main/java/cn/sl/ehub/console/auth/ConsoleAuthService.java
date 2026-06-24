@@ -30,12 +30,16 @@ public class ConsoleAuthService implements AuthService {
     private static final String AUDIENCE = "console";
 
     private final ConsoleAuthProperties properties;
+    private final ConsolePermissionService permissionService;
     private final ConsoleUserMapper consoleUserMapper;
     private final SecureRandom secureRandom = new SecureRandom();
     private final Map<String, AuthSession> sessions = new ConcurrentHashMap<>();
 
-    public ConsoleAuthService(ConsoleAuthProperties properties, ConsoleUserMapper consoleUserMapper) {
+    public ConsoleAuthService(ConsoleAuthProperties properties,
+                              ConsolePermissionService permissionService,
+                              ConsoleUserMapper consoleUserMapper) {
         this.properties = properties;
+        this.permissionService = permissionService;
         this.consoleUserMapper = consoleUserMapper;
     }
 
@@ -88,13 +92,14 @@ public class ConsoleAuthService implements AuthService {
         resp.setEntId(authUser.getEntId());
         resp.setExpireAt(expireAt);
         resp.setExpireSeconds(expireMinutes() * 60);
+        permissionService.fillLoginResp(resp, authUser);
         return resp;
     }
 
     @Override
     public AuthUser verify(String token) {
         if (Boolean.FALSE.equals(properties.getEnabled())) {
-            return new AuthUser(null, "anonymous", "anonymous", "PLATFORM", null, null);
+            return new AuthUser(null, "anonymous", "anonymous", ConsoleProductService.USER_TYPE_ADMIN, null, null);
         }
         if (StringUtils.isBlank(token)) {
             throw new BaseException(StatusCode.L.getCode(), StatusCode.L.getMsg());
@@ -131,10 +136,18 @@ public class ConsoleAuthService implements AuthService {
                 consoleUser.getUserId(),
                 consoleUser.getUsername(),
                 consoleUser.getDisplayName(),
-                StringUtils.upperCase(StringUtils.defaultIfBlank(consoleUser.getUserType(), "PLATFORM")),
+                normalizeUserType(consoleUser.getUserType()),
                 consoleUser.getAggregatorId(),
                 consoleUser.getEntId()
         );
+    }
+
+    private String normalizeUserType(String userType) {
+        if (StringUtils.equalsIgnoreCase(ConsoleProductService.USER_TYPE_ADMIN, userType)
+                || StringUtils.equalsIgnoreCase(ConsoleProductService.USER_TYPE_PLATFORM, userType)) {
+            return ConsoleProductService.USER_TYPE_ADMIN;
+        }
+        return ConsoleProductService.USER_TYPE_CUSTOMER;
     }
 
     private void updateLastLoginTime(ConsoleUser consoleUser) {

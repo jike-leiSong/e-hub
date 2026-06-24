@@ -32,7 +32,6 @@ spring:
 
 #大数据
 bigdata:
-  simulate: http://bigdata-api-simulate.pre.fnwintranet.com
   userKey: e1771cda571d696e843c5c055bdd8e32_e-hub-console
   data-collector: http://data-collector.fnwintranet.com
 

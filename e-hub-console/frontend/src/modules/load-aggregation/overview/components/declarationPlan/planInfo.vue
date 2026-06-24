@@ -192,8 +192,6 @@ export default {
       // 资源类型
       resourceType: '',
       resourceTypeList: [],
-      // 请求头参数
-      simulate: '',
       // 计划详情
       planData: null,
       // echarts
@@ -250,11 +248,10 @@ export default {
   created() {},
   mounted() {},
   methods: {
-    init(pageType, resourceTypeList, simulate, planData) {
+    init(pageType, resourceTypeList, planData) {
       this.pageType = pageType
       this.resourceType = ''
       this.resourceTypeList = JSON.parse(JSON.stringify(resourceTypeList))
-      this.simulate = simulate
       this.planData = planData ? JSON.parse(JSON.stringify(planData)) : null
       this.echartsDataList = []
       this.declarationPeriod = []
@@ -286,7 +283,7 @@ export default {
       const params = {
         planId: this.planData.id,
       }
-      getPlanDetail(params, this.simulate).then(res => {
+      getPlanDetail(params).then(res => {
         if (res.data.code === 200) {
           const responseData = JSON.parse(JSON.stringify(res.data.data))
           this.resourceType = responseData.sourceId
@@ -330,7 +327,7 @@ export default {
         referDate: this.referenceDay,
       }
       this.pageLoading = true
-      queryReferenceDailyPower(params, this.simulate).then(res => {
+      queryReferenceDailyPower(params).then(res => {
         this.pageLoading = false
         if (res.data.code === 200) {
           try {
@@ -449,7 +446,7 @@ export default {
     },
     // 重置
     reset() {
-      this.init(this.pageType, this.resourceTypeList, this.simulate, this.planData)
+      this.init(this.pageType, this.resourceTypeList, this.planData)
     },
     // 确认
     confirm() {
@@ -481,7 +478,7 @@ export default {
         params.id = this.planData.id
       }
       this.buttonLoading = true
-      addEditPlan(params, this.simulate).then(res => {
+      addEditPlan(params).then(res => {
         this.buttonLoading = false
         if (res.data.code === 200) {
           this.$message.success(this.pageType === 'EDIT' ? '修改成功' : '创建成功')

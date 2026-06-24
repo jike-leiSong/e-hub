@@ -25,7 +25,7 @@ public class YesterdayServiceImpl implements IYesterdayService {
     }
 
     @Override
-    public IndexOverviewResp getOverview(String simulate, String aggregatorId, String resourceTypeId, String dayType) {
+    public IndexOverviewResp getOverview(String aggregatorId, String resourceTypeId, String dayType) {
         return new IndexOverviewResp();
     }
 
@@ -36,22 +36,22 @@ public class YesterdayServiceImpl implements IYesterdayService {
     }
 
     @Override
-    public EntUserDeviceYesterdayChartResp getEntUserDeviceChartResp(String simulate, String deviceBaseId, List<AggregatorEntDevice> deviceList, String date) {
+    public EntUserDeviceYesterdayChartResp getEntUserDeviceChartResp(String deviceBaseId, List<AggregatorEntDevice> deviceList, String date) {
         return emptyChart();
     }
 
     @Override
-    public EntUserDeviceYesterdayChartResp getEntUserDeviceListChartResp(String simulate, List<AggregatorEntDevice> deviceList, String date) {
+    public EntUserDeviceYesterdayChartResp getEntUserDeviceListChartResp(List<AggregatorEntDevice> deviceList, String date) {
         return emptyChart();
     }
 
     @Override
-    public EntUserDeviceYesterdayChartResp getEntUserChartResp(String simulate, List<AggregatorEntDevice> deviceList, String date, String entId) {
+    public EntUserDeviceYesterdayChartResp getEntUserChartResp(List<AggregatorEntDevice> deviceList, String date, String entId) {
         return emptyChart();
     }
 
     @Override
-    public EntUserDeviceYesterdayChartResp getPowerDetail(String simulate, String deviceBaseId, String date) {
+    public EntUserDeviceYesterdayChartResp getPowerDetail(String deviceBaseId, String date) {
         return emptyChart();
     }
 

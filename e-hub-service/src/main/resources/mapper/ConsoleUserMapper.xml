@@ -36,4 +36,34 @@
         WHERE username = #{username}
         LIMIT 1
     </select>
+
+    <select id="listCustomers" resultMap="BaseResultMap">
+        SELECT id,
+               user_id,
+               username,
+               display_name,
+               password_salt,
+               password_hash,
+               user_type,
+               aggregator_id,
+               ent_id,
+               status,
+               last_login_time,
+               create_time,
+               update_time
+        FROM console_user
+        WHERE status = 1
+          AND UPPER(user_type) IN ('CUSTOMER', 'AGGREGATOR', 'ENT')
+        <if test="keyword != null and keyword != ''">
+          AND (
+              username LIKE CONCAT('%', #{keyword}, '%')
+              OR display_name LIKE CONCAT('%', #{keyword}, '%')
+              OR user_id LIKE CONCAT('%', #{keyword}, '%')
+              OR aggregator_id LIKE CONCAT('%', #{keyword}, '%')
+              OR ent_id LIKE CONCAT('%', #{keyword}, '%')
+          )
+        </if>
+        ORDER BY update_time DESC, id DESC
+        LIMIT 200
+    </select>
 </mapper>

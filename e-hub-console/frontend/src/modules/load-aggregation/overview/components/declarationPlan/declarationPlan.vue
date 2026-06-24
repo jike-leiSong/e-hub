@@ -96,10 +96,6 @@ export default {
     predictDataReport,
   },
   props: {
-    simulate: {
-      type: String,
-      require: true,
-    },
     activeObj: {
       type: Object,
       require: true,
@@ -149,7 +145,7 @@ export default {
         startTime: moment().format("YYYY-MM-DD 00:00:00"),
         endTime: moment().format("YYYY-MM-DD 24:00:00"),
       }
-      getDayWeather(params, this.simulate).then(res => {
+      getDayWeather(params).then(res => {
         if (res.data.code === 200) {
           if (res.data.data && res.data.data.length > 0) {
             try {
@@ -193,7 +189,7 @@ export default {
       const params = {
         aggregatorId: sessionStorage.getItem("entId"),
       }
-      getPlanList(params, this.simulate).then(res => {
+      getPlanList(params).then(res => {
         if (res.data.code === 200) {
           try {
             if (res.data.data.list && res.data.data.list.length > 0) {
@@ -228,7 +224,7 @@ export default {
           const params = {
             planId: data.id,
           }
-          getPlanDetail(params, this.simulate).then(res => {
+          getPlanDetail(params).then(res => {
             if (res.data.code === 200) {
               if (res.data.data.dataList && res.data.data.dataList.length > 0) {
                 this.$set(this.planList[index].planDataList[childIndex], 'echartsDataList', JSON.parse(JSON.stringify(res.data.data.dataList)))
@@ -250,10 +246,10 @@ export default {
       this.$refs.ref_predictDataReport.init();
     },
     addPlan() {
-      this.$refs.ref_planInfo.init('ADD', this.resourceTypeList, this.simulate)
+      this.$refs.ref_planInfo.init('ADD', this.resourceTypeList)
     },
     editPlan(data) {
-      this.$refs.ref_planInfo.init('EDIT', this.resourceTypeList, this.simulate, data)
+      this.$refs.ref_planInfo.init('EDIT', this.resourceTypeList, data)
     },
     planChange(data) {
       this.planId = data.sourceId

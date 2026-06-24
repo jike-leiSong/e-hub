@@ -103,10 +103,6 @@ export default {
       type: Object,
       require: true,
     },
-    simulate: {
-      type: String,
-      require: true,
-    },
     refreshId: {
       type: Number,
       require: false,
@@ -148,7 +144,7 @@ export default {
         endTime: this.endTime,
         aggregatorId: this.aggregatorId,
       };
-      getProfitStatistics(query, this.simulate).then(res => {
+      getProfitStatistics(query).then(res => {
         if (res.data.code === 200) {
           this.totalNum = res.data.data.profitStatisticsAmount;
           if (res.data.data.dateList) {

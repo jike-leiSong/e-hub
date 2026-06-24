@@ -25,10 +25,9 @@ public interface IHistoryQueryService {
      * 用户完成调节情况曲线图接口
      *
      * @param userAdjustmentGraphReq
-     * @param simulate
      * @return
      */
-    HistoryQueryGraphVO userAdjustmentGraph(UserAdjustmentGraphReq userAdjustmentGraphReq, String simulate);
+    HistoryQueryGraphVO userAdjustmentGraph(UserAdjustmentGraphReq userAdjustmentGraphReq);
 
     /**
      * @description 用户完成调节情况曲线图接口-新
@@ -37,7 +36,7 @@ public interface IHistoryQueryService {
      * @author sl
      * @date 2026-05-28
      */
-    HistoryQueryGraphVO userAdjustmentGraphNew(NewUserAdjustmentGraphReq userAdjustmentGraphReq, String simulate);
+    HistoryQueryGraphVO userAdjustmentGraphNew(NewUserAdjustmentGraphReq userAdjustmentGraphReq);
 
     /**
      * 用户完成调节情况图表
@@ -51,10 +50,9 @@ public interface IHistoryQueryService {
      * 设备运行情况曲线图
      *
      * @param deviceRunStatusReq
-     * @param simulate
      * @return
      */
-    List<LineDataGraphResp> deviceRunStatusChart(DeviceRunStatusReq deviceRunStatusReq, String simulate);
+    List<LineDataGraphResp> deviceRunStatusChart(DeviceRunStatusReq deviceRunStatusReq);
 
     /**
      * 收益统计
@@ -75,14 +73,13 @@ public interface IHistoryQueryService {
     /**
      * 查询汇总功率曲线
      *
-     * @param simulate
      * @param aggregatorId
      * @param resourceTypeId
      * @param startDate
      * @param endDate
      * @return
      */
-    IndexOverviewResp getTotalPowerChart(String simulate, String aggregatorId, String resourceTypeId, String startDate, String endDate);
+    IndexOverviewResp getTotalPowerChart(String aggregatorId, String resourceTypeId, String startDate, String endDate);
 
     /**
      * 查询出清价格

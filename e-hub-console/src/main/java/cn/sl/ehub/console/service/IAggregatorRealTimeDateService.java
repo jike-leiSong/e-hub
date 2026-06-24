@@ -18,8 +18,7 @@ public interface IAggregatorRealTimeDateService {
      * 查询数据
      *
      * @param deviceList
-     * @param simulate
      * @return
      */
-    List<AggregatorRealTimeDataResp> getDataByDeviceList(List<AggregatorEntDevice> deviceList, String simulate);
+    List<AggregatorRealTimeDataResp> getDataByDeviceList(List<AggregatorEntDevice> deviceList);
 }

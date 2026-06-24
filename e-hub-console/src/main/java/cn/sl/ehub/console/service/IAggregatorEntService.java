@@ -71,12 +71,32 @@ public interface IAggregatorEntService {
     List<AggregatorEnt> getAggregatorEntList(List<String> entIdList);
 
     /**
+     * 分页查询企业维护列表
+     */
+    List<AggregatorEnt> pageAggregatorEntList(String aggregatorId, String entId, String entName, Integer status);
+
+    /**
+     * 新增企业
+     */
+    AggregatorEnt createAggregatorEnt(AggregatorEnt aggregatorEnt);
+
+    /**
+     * 更新企业
+     */
+    AggregatorEnt updateAggregatorEnt(String entId, AggregatorEnt aggregatorEnt);
+
+    /**
+     * 更新企业状态
+     */
+    int updateAggregatorEntStatus(String entId, Integer status);
+
+    /**
      * 首页用户分布查询
      *
      * @param aggregatorId
      * @return
      */
-    List<EntUserDetailResp> getEntUserDetailRespList(String aggregatorId);
+    List<EntUserDetailResp> getEntUserDetailRespList(String aggregatorId, String resourceTypeId);
 
     List<Double> selectPercentDistinct(String aggregatorId);
 

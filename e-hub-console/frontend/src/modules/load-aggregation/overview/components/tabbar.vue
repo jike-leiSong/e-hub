@@ -14,6 +14,15 @@
 <script>
 import { getResourceTypeList } from "../api";
 
+function resolveAggregatorId() {
+  return (
+    sessionStorage.getItem("aggregatorId") ||
+    sessionStorage.getItem("entId") ||
+    sessionStorage.getItem("cid") ||
+    ""
+  );
+}
+
 export default {
   name: "tabbar",
   data() {
@@ -33,9 +42,8 @@ export default {
     doGetResourceTypeList() {
       getResourceTypeList(
         {
-          aggregatorId: sessionStorage.getItem("entId"),
-        },
-        this.simulate
+          aggregatorId: resolveAggregatorId(),
+        }
       ).then(res => {
         this.resourceTypeList = res.data.data
         if (this.resourceTypeList.length > 0) {

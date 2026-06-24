@@ -1,6 +1,5 @@
 package cn.sl.ehub.upstream.config;
 
-import cn.sl.ehub.common.utils.MapGlobalUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
@@ -28,19 +27,9 @@ public class CheckApisTokenInterceptor implements HandlerInterceptor {
      * HTTP请求头中设置当前请求data的TOKEN.
      */
     public static final String TICKET = "ticket";
-    public static final String SIMULATE = "simulate";
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
-
-        String simulate = request.getHeader(SIMULATE);
-        MapGlobalUtil.removeObjs("simulate");
-
-        if (!"1".equals(simulate)) {
-            simulate = "0";
-        }
-        MapGlobalUtil.addMapObj(SIMULATE, simulate);
-
         return isLogin(request);
     }
 

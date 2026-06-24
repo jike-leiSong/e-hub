@@ -166,10 +166,6 @@ export default {
     ecline1
   },
   props: {
-    simulate: {
-      type: String,
-      require: true,
-    },
     dateType: {
       type: String,
       require: true,
@@ -247,7 +243,7 @@ export default {
       const params = {
         aggregatorId: this.aggregatorId
       }
-      getResourceTypeList(params, this.simulate).then(res => {
+      getResourceTypeList(params).then(res => {
         if (res.data.code === 200) {
           if (res.data.data && res.data.data.length > 0) {
             this.resourceTypeList = JSON.parse(JSON.stringify(res.data.data))
@@ -293,7 +289,7 @@ export default {
         aggregatorId: this.aggregatorId,
         resourceType: this.currentResourceTypeId
       }
-      getEntUserTree(params, this.simulate).then(res => {
+      getEntUserTree(params).then(res => {
         if (res.data.code === 200) {
           if (res.data.data && res.data.data.length > 0) {
             this.entUserList = JSON.parse(JSON.stringify(res.data.data))
@@ -331,7 +327,7 @@ export default {
         dayType: "today",
       }
       this.topLoading = true
-      getOverview(params, this.simulate).then(res => {
+      getOverview(params).then(res => {
         this.topLoading = false
         if (res.data.code === 200) {
           const chartList = [{
@@ -375,7 +371,7 @@ export default {
         dayType: "tomorrow",
       }
       this.topLoading = true
-      getOverview(params, this.simulate).then(res => {
+      getOverview(params).then(res => {
         this.topLoading = false
         if (res.data.code === 200) {
           const chartList = [{
@@ -401,7 +397,7 @@ export default {
         resourceTypeId: this.currentResourceTypeId,
         date: moment(new Date()).format("YYYY-MM-DD"),
       }
-      getPlanDistribution(params, this.simulate).then(res => {
+      getPlanDistribution(params).then(res => {
         if (res.data.code === 200) {
           if (res.data.data === true) {
             this.distributionStatus = true
@@ -422,7 +418,7 @@ export default {
         deviceBaseId: this.entUserData.deviceType === '1' ? this.entUserData.deviceBaseId : '',
       }
       this.tab2BottomLoading = true
-      getRealTimeSummaryEcharts4(params, this.simulate).then(res => {
+      getRealTimeSummaryEcharts4(params).then(res => {
         this.tab2BottomLoading = false
         if (res.data.code === 200) {
           const responseData = JSON.parse(JSON.stringify(res.data.data))
@@ -485,7 +481,7 @@ export default {
         deviceBaseId,
         resourceTypeId: this.currentResourceTypeId,
       }
-      getIotLog(params, this.simulate).then(res => {
+      getIotLog(params).then(res => {
         if (res.data.code === 200) {
           this.executionRecordList = res.data.data && res.data.data.length > 0 ? JSON.parse(JSON.stringify(res.data.data)) : []
         } else {
@@ -501,7 +497,7 @@ export default {
       /*const params = {
         deviceBaseId: this.deviceBaseId
       }
-      getTomorrowEntUserDeviceChartResp(params, this.simulate).then(res => {
+      getTomorrowEntUserDeviceChartResp(params).then(res => {
         if (res.data.code === 200) {
           const dataList = [{
             name: "用户申报功率",

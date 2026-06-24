@@ -20,14 +20,13 @@ public interface ITodayService {
     /**
      * 查询设备曲线
      *
-     * @param simulate
      * @param deviceBaseId
      * @return
      */
-    EntUserDeviceTodayChartResp getEntUserDeviceTodayChartResp(String simulate, String deviceBaseId);
+    EntUserDeviceTodayChartResp getEntUserDeviceTodayChartResp(String deviceBaseId);
 
 
-    EntUserDeviceTodayChartResp getDeviceTreeTodayChartResp(String simulate, String deviceBaseId,String energyStationcode,String systemCode);
+    EntUserDeviceTodayChartResp getDeviceTreeTodayChartResp(String deviceBaseId,String energyStationcode,String systemCode);
     /**
      * 查询执行记录
      *

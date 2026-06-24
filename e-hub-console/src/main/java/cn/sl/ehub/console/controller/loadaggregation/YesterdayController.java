@@ -14,10 +14,8 @@ import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
-import javax.servlet.http.HttpServletRequest;
 import java.util.List;
 
 /**
@@ -53,15 +51,10 @@ public class YesterdayController {
 
     @ApiOperation(value = "总览(dayType：昨日=yesterday，今日=today，明日=tomorrow)")
     @RequestMapping(value = "/getOverview", method = RequestMethod.GET)
-    public ResultVO<IndexOverviewResp> getOverview(HttpServletRequest request,
-                                                   @RequestParam("aggregatorId") String aggregatorId,
+    public ResultVO<IndexOverviewResp> getOverview(@RequestParam("aggregatorId") String aggregatorId,
                                                    @RequestParam("resourceTypeId") String resourceTypeId,
                                                    @RequestParam(value = "dayType", defaultValue = "today") String dayType) {
-        String simulate = request.getHeader("simulate");
-        if (StringUtils.isEmpty(simulate) || "null".equals(simulate) || !"1".equals(simulate)) {
-            simulate = "0";
-        }
-        return ResultVO.success(detailService.getOverview(simulate, aggregatorId, resourceTypeId, dayType));
+        return ResultVO.success(detailService.getOverview(aggregatorId, resourceTypeId, dayType));
     }
 
     @ApiOperation(value = "查询设备列表")
@@ -76,12 +69,8 @@ public class YesterdayController {
 
     @ApiOperation(value = "查询昨日设备曲线")
     @RequestMapping(value = "/getEntUserDeviceChartResp", method = RequestMethod.GET)
-    public ResultVO<EntUserDeviceYesterdayChartResp> getEntUserDeviceChartResp(HttpServletRequest request, @RequestParam("deviceBaseId") String deviceBaseId) {
-        String simulate = request.getHeader("simulate");
-        if (StringUtils.isEmpty(simulate) || "null".equals(simulate) || !"1".equals(simulate)) {
-            simulate = "0";
-        }
-        return ResultVO.success(detailService.getEntUserDeviceChartResp(simulate, deviceBaseId, null, null));
+    public ResultVO<EntUserDeviceYesterdayChartResp> getEntUserDeviceChartResp(@RequestParam("deviceBaseId") String deviceBaseId) {
+        return ResultVO.success(detailService.getEntUserDeviceChartResp(deviceBaseId, null, null));
     }
 
     @ApiOperation(value = "用户情况(dayType：昨日=yesterday，今日=today，明日=tomorrow)")

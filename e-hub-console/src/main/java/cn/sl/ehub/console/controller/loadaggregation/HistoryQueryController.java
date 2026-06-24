@@ -25,13 +25,11 @@ import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
-import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
 import java.io.IOException;
@@ -60,43 +58,30 @@ public class HistoryQueryController {
 
     @ApiOperation(value = "汇总功率曲线")
     @RequestMapping(value = "/getTotalPowerChart", method = RequestMethod.GET)
-    public ResultVO<IndexOverviewResp> getTotalPowerChart(HttpServletRequest request,
-                                                          @RequestParam("aggregatorId") String aggregatorId,
+    public ResultVO<IndexOverviewResp> getTotalPowerChart(@RequestParam("aggregatorId") String aggregatorId,
                                                           @RequestParam("resourceTypeId") String resourceTypeId,
                                                           @RequestParam(value = "startDate", required = false) String startDate,
                                                           @RequestParam(value = "endDate", required = false) String endDate) {
-        String simulate = request.getHeader("simulate");
-        if (StringUtils.isEmpty(simulate) || "null".equals(simulate) || !"1".equals(simulate)) {
-            simulate = "0";
-        }
-        return ResultVO.success(historyQueryService.getTotalPowerChart(simulate, aggregatorId, resourceTypeId, startDate, endDate));
+        return ResultVO.success(historyQueryService.getTotalPowerChart(aggregatorId, resourceTypeId, startDate, endDate));
     }
 
     @PostMapping("/userAdjustmentGraph")
     @ApiOperation(value = "用户完成调节情况曲线图接口", notes = "用户完成调节情况曲线图接口")
-    public ResultVO<HistoryQueryGraphVO> userAdjustmentGraph(HttpServletRequest request, @RequestBody @Valid UserAdjustmentGraphReq userAdjustmentGraphReq, BindingResult results) {
+    public ResultVO<HistoryQueryGraphVO> userAdjustmentGraph(@RequestBody @Valid UserAdjustmentGraphReq userAdjustmentGraphReq, BindingResult results) {
         if (results.hasErrors()) {
             return ResultVO.fail(StatusCode.ERROR.getCode(), results.getFieldError().getDefaultMessage());
         }
-        String simulate = request.getHeader("simulate");
-        if (StringUtils.isEmpty(simulate) || "null".equals(simulate) || !"1".equals(simulate)) {
-            simulate = "0";
-        }
-        return ResultVO.success(historyQueryService.userAdjustmentGraph(userAdjustmentGraphReq, simulate));
+        return ResultVO.success(historyQueryService.userAdjustmentGraph(userAdjustmentGraphReq));
     }
 
 
     @PostMapping("/userAdjustmentGraphNew")
     @ApiOperation(value = "用户完成调节情况曲线图接口", notes = "用户完成调节情况曲线图接口")
-    public ResultVO<HistoryQueryGraphVO> userAdjustmentGraphNew(HttpServletRequest request, @RequestBody @Valid NewUserAdjustmentGraphReq userAdjustmentGraphReq, BindingResult results) {
+    public ResultVO<HistoryQueryGraphVO> userAdjustmentGraphNew(@RequestBody @Valid NewUserAdjustmentGraphReq userAdjustmentGraphReq, BindingResult results) {
         if (results.hasErrors()) {
             return ResultVO.fail(StatusCode.ERROR.getCode(), results.getFieldError().getDefaultMessage());
         }
-        String simulate = request.getHeader("simulate");
-        if (StringUtils.isEmpty(simulate) || "null".equals(simulate) || !"1".equals(simulate)) {
-            simulate = "0";
-        }
-        return ResultVO.success(historyQueryService.userAdjustmentGraphNew(userAdjustmentGraphReq, simulate));
+        return ResultVO.success(historyQueryService.userAdjustmentGraphNew(userAdjustmentGraphReq));
     }
 
     @PostMapping("/userAdjustmentTable")
@@ -110,12 +95,8 @@ public class HistoryQueryController {
 
     @PostMapping("/deviceRunStatusChart")
     @ApiOperation(value = "设备运行情况曲线图接口", notes = "设备运行情况曲线图接口")
-    public ResultVO<List<LineDataGraphResp>> deviceRunStatusChart(HttpServletRequest request, @RequestBody DeviceRunStatusReq deviceRunStatusReq) {
-        String simulate = request.getHeader("simulate");
-        if (StringUtils.isEmpty(simulate) || "null".equals(simulate) || !"1".equals(simulate)) {
-            simulate = "0";
-        }
-        return ResultVO.success(historyQueryService.deviceRunStatusChart(deviceRunStatusReq, simulate));
+    public ResultVO<List<LineDataGraphResp>> deviceRunStatusChart(@RequestBody DeviceRunStatusReq deviceRunStatusReq) {
+        return ResultVO.success(historyQueryService.deviceRunStatusChart(deviceRunStatusReq));
     }
 
     @PostMapping("/getMetricList")

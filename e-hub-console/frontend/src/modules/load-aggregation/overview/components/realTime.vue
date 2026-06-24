@@ -8,14 +8,14 @@
       </div>
     </div>
     <div>
-      <tabbar @tabClick="tabClick($event)"></tabbar>
+      <div class="resource-pill">{{ resourceTypeName || "当前资源类型" }}</div>
       <div style="margin-top:20px">
         <ecline
           :unit="'kW'"
           :refreshId="refreshId"
           :ecdata="todayOverviewData.chartList"
           :timeList="todayOverviewData.timeList"
-          style="height:520px"
+          style="height:390px"
           width="100%"
           height="100%"
         ></ecline>
@@ -24,19 +24,27 @@
   </div>
 </template>
 <script>
-import tabbar from "./tabbar";
 import ecline from "./ec_line1";
 
 import { getOverview } from "../api";
 
+function resolveAggregatorId() {
+  return (
+    sessionStorage.getItem("aggregatorId") ||
+    sessionStorage.getItem("entId") ||
+    sessionStorage.getItem("cid") ||
+    ""
+  );
+}
+
 export default {
   name: "realTime",
   components: {
-    tabbar,
     ecline,
   },
   data() {
     return {
+      aggregatorId: resolveAggregatorId(),
       todayOverviewData: {},
     };
   },
@@ -45,29 +53,34 @@ export default {
       type: Object,
       require: true,
     },
-    simulate: {
-      type: String,
-      require: true,
-    },
     refreshId: {
       type: Number,
       require: false,
+    },
+    resourceTypeId: {
+      type: [String, Number],
+      default: "",
+    },
+    resourceTypeName: {
+      type: String,
+      default: "",
     },
   },
   methods: {
     goDetail() {
       this.$emit("goRealTimeDetail");
     },
-    tabClick(e) {
-      this.doGetTodayOverview(e.id);
-    },
     doGetTodayOverview(resourceTypeId) {
+      if (!resourceTypeId) {
+        this.todayOverviewData = {};
+        return;
+      }
       const query = {
         aggregatorId: this.aggregatorId,
         resourceTypeId,
         dayType: "today",
       };
-      getOverview(query, this.simulate).then(res => {
+      getOverview(query).then(res => {
         if (res.data.code === 200) {
           const chartList = [
             {
@@ -97,19 +110,35 @@ export default {
       });
     },
   },
-  created() {
-    this.aggregatorId = sessionStorage.getItem("entId");
+  watch: {
+    resourceTypeId: {
+      immediate: true,
+      handler(value) {
+        this.doGetTodayOverview(value);
+      },
+    },
   },
 };
 </script>
 <style lang="less"></style>
 <style lang="less" type="text/less" scoped>
 .realTime {
-  width: calc(100% - 40px);
+  width: 100%;
   height: 100%;
+  box-sizing: border-box;
   background: #ffffff;
-  border-radius: 12px;
+  border-radius: 8px;
   padding: 0 20px;
+  .resource-pill {
+    display: inline-flex;
+    align-items: center;
+    height: 30px;
+    padding: 0 12px;
+    border-radius: 6px;
+    background: #f3f8fc;
+    color: #456577;
+    font-size: 13px;
+  }
   .commonHeader {
     display: flex;
     height: 58px;

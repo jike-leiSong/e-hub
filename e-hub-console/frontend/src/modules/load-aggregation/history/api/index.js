@@ -42,13 +42,12 @@ function normalizeBaseUrl(url) {
 
 export const baseUrl = urlStr;
 export const accessKeyValue = accessKey;
-export function getProfitCalculation(params, simulate) {
+export function getProfitCalculation(params) {
   return service({
     method: "get",
     params,
     url: `${baseUrl}/historyQuery/getProfitCalculation`,
     headers: {
-      simulate,
       ticket: sessionStorage.getItem("ticket"),
       "X-GW-AccessKey": accessKey,
     },
@@ -56,104 +55,96 @@ export function getProfitCalculation(params, simulate) {
 }
 
 // 出清价格接口
-export function getPrice(params, simulate) {
+export function getPrice(params) {
   return service({
     method: "post",
     data: params,
     url: `${baseUrl}/historyQuery/getPrice`,
     headers: {
-      simulate,
       ticket: sessionStorage.getItem("ticket"),
       "X-GW-AccessKey": accessKey,
     },
   });
 }
 // 汇总功率曲线
-export function getMetricList(params, simulate) {
+export function getMetricList(params) {
   return service({
     method: "post",
     data: params,
     url: `${baseUrl}/historyQuery/getMetricList`,
     headers: {
-      simulate,
       ticket: sessionStorage.getItem("ticket"),
       "X-GW-AccessKey": accessKey,
     },
   });
 }
 // 汇总功率曲线
-export function getTotalPowerChart(params, simulate) {
+export function getTotalPowerChart(params) {
   return service({
     method: "get",
     params,
     url: `${baseUrl}/historyQuery/getTotalPowerChart`,
     headers: {
-      simulate,
       ticket: sessionStorage.getItem("ticket"),
       "X-GW-AccessKey": accessKey,
     },
   });
 }
 
-export function getResourceTypeList(params, simulate) {
+export function getResourceTypeList(params) {
   return service({
     method: "get",
     params,
     url: `${baseUrl}/yesterday/getResourceTypeList`,
     headers: {
-      simulate,
       ticket: sessionStorage.getItem("ticket"),
       "X-GW-AccessKey": accessKey,
     },
   });
 }
 //  收益统计
-export function getProfitStatistics(params, simulate) {
+export function getProfitStatistics(params) {
   return service({
     method: "post",
     data: params,
     url: `${baseUrl}/historyQuery/profitStatistics`,
     headers: {
-      simulate,
       ticket: sessionStorage.getItem("ticket"),
       "X-GW-AccessKey": accessKey,
     },
   });
 }
 //  用户收益统计
-export function getUserProfitStatistics(params, simulate) {
+export function getUserProfitStatistics(params) {
   return service({
     method: "post",
     data: params,
     url: `${baseUrl}/historyQuery/userProfitStatistics`,
     headers: {
-      simulate,
       ticket: sessionStorage.getItem("ticket"),
       "X-GW-AccessKey": accessKey,
     },
   });
 }
 //  获取企业用户选项列表
-export function getEntUserOptions(params, simulate) {
+export function getEntUserOptions(params) {
   return service({
     method: "get",
     params,
     url: `${baseUrl}/entUserDetail/options`,
     headers: {
-      simulate,
       ticket: sessionStorage.getItem("ticket"),
       "X-GW-AccessKey": accessKey,
     },
   });
 }
 //  用户完成调节情况曲线图接口
-export function getUserAdjustmentGraph(params, simulate) {
+export function getUserAdjustmentGraph(params) {
   return service({
     method: "post",
     data: params,
     url: `${baseUrl}/historyQuery/userAdjustmentGraph`,
     headers: {
-      simulate,
       ticket: sessionStorage.getItem("ticket"),
       "X-GW-AccessKey": accessKey,
     },
@@ -161,13 +152,12 @@ export function getUserAdjustmentGraph(params, simulate) {
 }
 
 //  用户完成调节情况曲线图接口【新】
-export function getUserCompletionEcharts(params, simulate) {
+export function getUserCompletionEcharts(params) {
   return service({
     method: "post",
     data: params,
     url: `${baseUrl}/historyQuery/userAdjustmentGraphNew`,
     headers: {
-      simulate,
       ticket: sessionStorage.getItem("ticket"),
       "X-GW-AccessKey": accessKey,
     },
@@ -175,39 +165,36 @@ export function getUserCompletionEcharts(params, simulate) {
 }
 
 //  查询设备列表
-export function getDeviceList(params, simulate) {
+export function getDeviceList(params) {
   return service({
     method: "get",
     params,
     url: `${baseUrl}/yesterday/getDeviceList`,
     headers: {
-      simulate,
       ticket: sessionStorage.getItem("ticket"),
       "X-GW-AccessKey": accessKey,
     },
   });
 }
 //  查询设备列表
-export function getUserAdjustmentTable(params, simulate) {
+export function getUserAdjustmentTable(params) {
   return service({
     method: "post",
     data: params,
     url: `${baseUrl}/historyQuery/userAdjustmentTable`,
     headers: {
-      simulate,
       ticket: sessionStorage.getItem("ticket"),
       "X-GW-AccessKey": accessKey,
     },
   });
 }
 //  设备运行情况
-export function getDeviceRunStatusChart(params, simulate) {
+export function getDeviceRunStatusChart(params) {
   return service({
     method: "post",
     data: params,
     url: `${baseUrl}/historyQuery/deviceRunStatusChart`,
     headers: {
-      simulate,
       ticket: sessionStorage.getItem("ticket"),
       "X-GW-AccessKey": accessKey,
     },
@@ -243,28 +230,26 @@ export function doSaveOperation(params) {
 }
 
 // 导出excel
-export function exportExcel(params, simulate) {
+export function exportExcel(params) {
   return service({
     method: "get",
     params,
     url: `${baseUrl}/historyQuery/exportAdjust`,
     responseType: "blob",
     headers: {
-      simulate,
       ticket: sessionStorage.getItem("ticket"),
       "X-GW-AccessKey": accessKey,
     },
   });
 }
 
-export function exportBuZhaoUploadData(params, simulate) {
+export function exportBuZhaoUploadData(params) {
   return service({
     method: "get",
     params,
     url: `${baseUrl}/historyQuery/exportBuZhaoUploadData`,
     responseType: "blob",
     headers: {
-      simulate,
       ticket: sessionStorage.getItem("ticket"),
       "X-GW-AccessKey": accessKey,
     },
@@ -272,14 +257,13 @@ export function exportBuZhaoUploadData(params, simulate) {
 }
 
 // 导出出清价格excel
-export function exportClearPriceExcel(params, simulate) {
+export function exportClearPriceExcel(params) {
   return service({
     method: "get",
     params,
     url: `${baseUrl}/historyQuery/getPriceExcel`,
     responseType: "blob",
     headers: {
-      simulate,
       ticket: sessionStorage.getItem("ticket"),
       "X-GW-AccessKey": accessKey,
     },
@@ -287,13 +271,12 @@ export function exportClearPriceExcel(params, simulate) {
 }
 
 // 获取出清价格表格数据
-export function getClearPriceTable(params, simulate) {
+export function getClearPriceTable(params) {
   return service({
     method: "post",
     data: params,
     url: `${baseUrl}/historyQuery/getPriceTable`,
     headers: {
-      simulate,
       ticket: sessionStorage.getItem("ticket"),
       "X-GW-AccessKey": accessKey,
     },

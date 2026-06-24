@@ -11,7 +11,7 @@ window.moment = moment;
 Vue.prototype.$moment = moment;
 
 const params = new URLSearchParams(window.location.search);
-["entId", "cid", "ticket", "systemCode", "openId"].forEach(key => {
+["entId", "cid", "ticket", "token", "aggregatorId", "systemCode", "openId"].forEach(key => {
   const value = params.get(key);
   if (value) {
     sessionStorage.setItem(key, value);

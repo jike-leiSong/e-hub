@@ -28,7 +28,6 @@ spring:
         max-wait: 4000
 
 bigdata:
-  simulate: http://bigdata-api-simulate.pre.fnwintranet.com
   userKey: 03f9da7a41382f7199b9ad190872096c_e-hub-upstream
   data-collector: http://data-collector.fnwintranet.com
 

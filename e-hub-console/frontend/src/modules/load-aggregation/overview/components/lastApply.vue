@@ -46,10 +46,6 @@ export default {
       type: Object,
       require: true,
     },
-    simulate: {
-      type: String,
-      require: true,
-    },
   },
   methods: {
     goDetail() {
@@ -59,8 +55,7 @@ export default {
       getLastProfit(
         {
           aggregatorId: sessionStorage.getItem("entId"),
-        },
-        this.simulate
+        }
       ).then(res => {
         if (res.data.code === 200) {
           if (res.data.data.totalProfit === null) {

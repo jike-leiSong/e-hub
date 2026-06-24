@@ -21,10 +21,14 @@ public class AuthController {
 
     private final AuthService authService;
     private final AuthInterceptor authInterceptor;
+    private final ConsolePermissionService permissionService;
 
-    public AuthController(AuthService authService, AuthInterceptor authInterceptor) {
+    public AuthController(AuthService authService,
+                          AuthInterceptor authInterceptor,
+                          ConsolePermissionService permissionService) {
         this.authService = authService;
         this.authInterceptor = authInterceptor;
+        this.permissionService = permissionService;
     }
 
     @ApiOperation("登录")
@@ -43,16 +47,6 @@ public class AuthController {
     @ApiOperation("当前登录用户")
     @GetMapping("/me")
     public ResultVO<AuthUserInfoResp> me() {
-        AuthUser user = AuthContext.get();
-        AuthUserInfoResp resp = new AuthUserInfoResp();
-        if (user != null) {
-            resp.setUserId(user.getUserId());
-            resp.setUsername(user.getUsername());
-            resp.setDisplayName(user.getDisplayName());
-            resp.setUserType(user.getUserType());
-            resp.setAggregatorId(user.getAggregatorId());
-            resp.setEntId(user.getEntId());
-        }
-        return ResultVO.success(resp);
+        return ResultVO.success(permissionService.buildUserInfo(AuthContext.get()));
     }
 }

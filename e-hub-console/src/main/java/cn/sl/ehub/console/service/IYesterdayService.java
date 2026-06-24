@@ -30,13 +30,12 @@ public interface IYesterdayService {
     /**
      * 昨日总览
      *
-     * @param simulate
      * @param aggregatorId
      * @param resourceTypeId
      * @param dayType
      * @return
      */
-    IndexOverviewResp getOverview(String simulate, String aggregatorId, String resourceTypeId, String dayType);
+    IndexOverviewResp getOverview(String aggregatorId, String resourceTypeId, String dayType);
 
     /**
      * 查询设备列表
@@ -52,34 +51,31 @@ public interface IYesterdayService {
     /**
      * 查询昨日设备曲线
      *
-     * @param simulate
      * @param deviceBaseId
      * @param deviceList
      * @param date
      * @return
      */
-    EntUserDeviceYesterdayChartResp getEntUserDeviceChartResp(String simulate, String deviceBaseId, List<AggregatorEntDevice> deviceList, String date);
+    EntUserDeviceYesterdayChartResp getEntUserDeviceChartResp(String deviceBaseId, List<AggregatorEntDevice> deviceList, String date);
     /**
      * 查询多设备昨日设备曲线
      *
-     * @param simulate
      * @param deviceList
      * @param date
      * @return
      */
-    EntUserDeviceYesterdayChartResp getEntUserDeviceListChartResp(String simulate,List<AggregatorEntDevice> deviceList, String date);
+    EntUserDeviceYesterdayChartResp getEntUserDeviceListChartResp(List<AggregatorEntDevice> deviceList, String date);
 
-    EntUserDeviceYesterdayChartResp getEntUserChartResp(String simulate,List<AggregatorEntDevice> deviceList, String date,String entId);
+    EntUserDeviceYesterdayChartResp getEntUserChartResp(List<AggregatorEntDevice> deviceList, String date,String entId);
 
     /**
      * 查询昨日设备曲线
      *
-     * @param simulate
      * @param deviceBaseId
      * @param date
      * @return
      */
-    EntUserDeviceYesterdayChartResp getPowerDetail(String simulate, String deviceBaseId, String date);
+    EntUserDeviceYesterdayChartResp getPowerDetail(String deviceBaseId, String date);
 
     /**
      * 用户情况

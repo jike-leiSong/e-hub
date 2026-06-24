@@ -1,5 +1,6 @@
 <template>
-  <Login v-if="!isAuthenticated" @login="handleLogin" />
+  <div v-if="authLoading" class="auth-loading">加载中...</div>
+  <Login v-else-if="!isAuthenticated" @login="handleLogin" />
   <div v-else class="ehub-platform">
     <aside class="platform-sidebar">
       <div class="brand">
@@ -52,10 +53,6 @@
           <h1>{{ activeMeta.title }}</h1>
         </div>
         <div class="header-actions">
-          <div class="status-pill">
-            <span></span>
-            <p>{{ simulateLabel }}</p>
-          </div>
           <div class="operator">
             <p>{{ operatorName }}</p>
             <button type="button" @click="logout">退出</button>
@@ -75,10 +72,13 @@
           :active-comp-name="activeCompName"
         />
         <AggregationHistory
-          v-else-if="activePage === 'load-history'"
+          v-else-if="historyViewType"
           :active-obj="activeObj"
           :active-comp-name="activeCompName"
+          :view-type="historyViewType"
         />
+        <LoadResources v-else-if="activePage === 'load-resources'" />
+        <ProductProvisioning v-else-if="activePage === 'product-provisioning'" />
         <ComingSoon v-else v-bind="comingSoonConfig" />
       </main>
     </section>
@@ -89,45 +89,65 @@
 import Login from "./Login.vue";
 import PlatformWorkbench from "./PlatformWorkbench.vue";
 import ComingSoon from "./ComingSoon.vue";
+import ProductProvisioning from "./ProductProvisioning.vue";
 import Aggregation from "@/modules/load-aggregation/overview/Aggregation.vue";
 import AggregationHistory from "@/modules/load-aggregation/history/src/AggregationHistory.vue";
+import LoadResources from "@/modules/load-aggregation/resources/LoadResources.vue";
 import {
   buildMenu,
+  clearAuthStorage,
   clearUserSession,
-  createUserSession,
+  fetchCurrentUser,
   getAllowedPages,
   getDefaultPage,
   persistUserSession,
+  requestLogout,
   readUserSession,
-} from "./auth/mockUser.js";
+} from "./auth/session.js";
 
 const pageMeta = {
   workbench: {
     title: "工作台",
     eyebrow: "E-HUB ENERGY OPERATIONS",
   },
+  "no-product": {
+    title: "未开通产品",
+    eyebrow: "PRODUCT ACCESS",
+  },
   "load-overview": {
     title: "负荷聚合 / 运营总览",
     eyebrow: "LOAD AGGREGATION",
   },
+  "load-adjustment": {
+    title: "负荷聚合 / 调节情况",
+    eyebrow: "LOAD AGGREGATION",
+  },
+  "load-settlement": {
+    title: "负荷聚合 / 收益结算",
+    eyebrow: "LOAD AGGREGATION",
+  },
+  "load-device-operation": {
+    title: "负荷聚合 / 设备运行",
+    eyebrow: "LOAD AGGREGATION",
+  },
   "load-history": {
-    title: "负荷聚合 / 历史查询",
+    title: "负荷聚合 / 调节情况",
     eyebrow: "LOAD AGGREGATION",
   },
   "load-resources": {
-    title: "负荷聚合 / 设备资源",
+    title: "负荷聚合 / 企业与设备",
     eyebrow: "LOAD AGGREGATION",
   },
   "tariff-query": {
-    title: "电价能力 / 全国电价查询",
+    title: "电价服务 / 全国电价查询",
     eyebrow: "POWER TARIFF",
   },
   "tariff-api": {
-    title: "电价能力 / 接口能力",
+    title: "电价服务 / 接口能力",
     eyebrow: "POWER TARIFF",
   },
   "tariff-logs": {
-    title: "电价能力 / 调用记录",
+    title: "电价服务 / 调用记录",
     eyebrow: "POWER TARIFF",
   },
   "customer-management": {
@@ -153,10 +173,15 @@ const pageMeta = {
 };
 
 const comingSoonMap = {
+  "no-product": {
+    title: "未开通产品",
+    description: "当前账号未开通产品能力，请联系平台管理员开通负荷聚合或电价服务。",
+    items: ["负荷聚合", "电价服务", "产品开通", "权限生效"],
+  },
   "load-resources": {
-    title: "设备/资源数据",
-    description: "设备管理数据归属在负荷聚合产品内，用于维护设备资源、可调能力和运行状态。",
-    items: ["设备资源", "资源类型", "可调能力", "运行状态"],
+    title: "企业与设备",
+    description: "维护企业、设备、测点、三方绑定和接入数据，支撑调节与结算分析。",
+    items: ["企业资产", "设备资源", "测点配置", "接入诊断"],
   },
   "tariff-query": {
     title: "全国电价查询",
@@ -165,7 +190,7 @@ const comingSoonMap = {
   },
   "tariff-api": {
     title: "接口能力",
-    description: "为已开通电价能力的客户提供接口凭证、接口说明和调用额度管理。",
+    description: "为已开通电价服务的客户提供接口凭证、接口说明和调用额度管理。",
     items: ["接口凭证", "接口说明", "调用额度", "安全策略"],
   },
   "tariff-logs": {
@@ -185,8 +210,8 @@ const comingSoonMap = {
   },
   "product-provisioning": {
     title: "产品开通",
-    description: "为客户开通负荷聚合、电价能力等产品，并控制产品有效期。",
-    items: ["负荷聚合", "电价能力", "有效期", "开通记录"],
+    description: "为客户开通负荷聚合、电价服务等产品，并控制产品有效期。",
+    items: ["负荷聚合", "电价服务", "有效期", "开通记录"],
   },
   "permission-management": {
     title: "权限管理",
@@ -204,7 +229,7 @@ function resolveInitialPage() {
   const params = new URLSearchParams(window.location.search);
   const page = params.get("page");
   if (page === "history") {
-    return "load-history";
+    return "load-adjustment";
   }
   if (page === "overview") {
     return "load-overview";
@@ -215,41 +240,48 @@ function resolveInitialPage() {
   return "workbench";
 }
 
+const historyPageViewMap = {
+  "load-adjustment": "adjustment",
+  "load-settlement": "settlement",
+  "load-device-operation": "device-operation",
+  "load-history": "adjustment",
+};
+
 export default {
   name: "App",
   components: {
     Login,
     PlatformWorkbench,
     ComingSoon,
+    ProductProvisioning,
     Aggregation,
     AggregationHistory,
+    LoadResources,
   },
   data() {
-    const params = new URLSearchParams(window.location.search);
-    const currentUser = readUserSession();
+    const currentUser = readUserSession() || {};
     const page = resolveInitialPage();
     const allowedPages = getAllowedPages(currentUser);
     const initialPage = allowedPages.includes(page) ? page : allowedPages[0];
-    const hasTicket = Boolean(sessionStorage.getItem("ticket"));
+    const hasToken = Boolean(sessionStorage.getItem("ticket") || sessionStorage.getItem("token"));
     return {
-      isAuthenticated:
-        sessionStorage.getItem("ehub-authenticated") === "1" || hasTicket,
+      authLoading: hasToken,
+      isAuthenticated: false,
       currentUser,
-      activePage: initialPage,
-      activeCompName: [thisComponentName(initialPage)],
-      activeObj: {
-        option: {
-          data: {
-            dataType: params.get("simulate") || "0",
-            canSet: params.get("canSet") || "0",
-          },
-        },
-      },
+      activePage: initialPage || getDefaultPage(currentUser),
+      activeCompName: [thisComponentName(initialPage || getDefaultPage(currentUser))],
+      activeObj: {},
     };
+  },
+  created() {
+    this.bootstrapAuth();
   },
   computed: {
     activeMeta() {
       return pageMeta[this.activePage] || pageMeta.workbench;
+    },
+    historyViewType() {
+      return historyPageViewMap[this.activePage] || "";
     },
     menuGroups() {
       return buildMenu(this.currentUser);
@@ -260,11 +292,41 @@ export default {
     operatorName() {
       return this.currentUser.displayName || this.currentUser.account || "运营用户";
     },
-    simulateLabel() {
-      return this.activeObj.option.data.dataType === "1" ? "模拟数据" : "生产数据";
-    },
   },
   methods: {
+    bootstrapAuth() {
+      if (!sessionStorage.getItem("ticket") && !sessionStorage.getItem("token")) {
+        clearAuthStorage();
+        this.authLoading = false;
+        this.isAuthenticated = false;
+        return;
+      }
+      this.authLoading = true;
+      fetchCurrentUser()
+        .then(user => {
+          this.applyAuthUser(user, resolveInitialPage());
+        })
+        .catch(() => {
+          clearAuthStorage();
+          this.isAuthenticated = false;
+          this.currentUser = {};
+        })
+        .finally(() => {
+          this.authLoading = false;
+        });
+    },
+    applyAuthUser(user, preferredPage) {
+      const normalized = persistUserSession(user);
+      const allowedPages = getAllowedPages(normalized);
+      const nextPage = allowedPages.includes(preferredPage)
+        ? preferredPage
+        : getDefaultPage(normalized);
+      this.currentUser = normalized;
+      this.activePage = nextPage;
+      this.activeCompName = [thisComponentName(nextPage)];
+      this.isAuthenticated = true;
+      sessionStorage.setItem("ehub-authenticated", "1");
+    },
     switchPage(page) {
       if (!getAllowedPages(this.currentUser).includes(page)) {
         this.$message.warning("当前账号未开通该能力");
@@ -283,35 +345,30 @@ export default {
       return item.key === this.activePage;
     },
     handleLogin(form) {
-      const user = createUserSession(form);
-      const account = user.account;
-      sessionStorage.setItem("ehub-authenticated", "1");
-      persistUserSession(user);
-      if (!sessionStorage.getItem("ticket")) {
-        sessionStorage.setItem("ticket", `ehub-${Date.now()}`);
-      }
+      this.applyAuthUser(form.authUser || {}, getDefaultPage(form.authUser || {}));
+      const account = this.currentUser.account || this.currentUser.username;
       if (!sessionStorage.getItem("openId")) {
         sessionStorage.setItem("openId", account);
       }
       if (!sessionStorage.getItem("entId") && !sessionStorage.getItem("cid")) {
         sessionStorage.setItem("cid", account);
       }
-      this.currentUser = user;
-      const firstPage = getDefaultPage(user);
-      this.activePage = firstPage;
-      this.activeCompName = [thisComponentName(firstPage)];
-      this.isAuthenticated = true;
     },
     logout() {
-      sessionStorage.removeItem("ehub-authenticated");
-      clearUserSession();
-      this.isAuthenticated = false;
+      requestLogout().finally(() => {
+        clearAuthStorage();
+        clearUserSession();
+        this.currentUser = {};
+        this.activePage = "workbench";
+        this.activeCompName = [thisComponentName("workbench")];
+        this.isAuthenticated = false;
+      });
     },
   },
 };
 
 function thisComponentName(page) {
-  if (page === "load-history") {
+  if (historyPageViewMap[page]) {
     return "AggregationHistory";
   }
   if (page === "load-overview") {
@@ -343,6 +400,16 @@ button {
   font-family: inherit;
 }
 
+.auth-loading {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #eef3f7;
+  color: #234257;
+  font-size: 15px;
+}
+
 .platform-nav button {
   appearance: none;
   -webkit-appearance: none;
@@ -352,11 +419,7 @@ button {
 .ehub-platform {
   min-height: 100vh;
   display: flex;
-  background:
-    linear-gradient(90deg, rgba(7, 128, 237, 0.06) 1px, transparent 1px),
-    linear-gradient(0deg, rgba(7, 128, 237, 0.05) 1px, transparent 1px),
-    #eef3f7;
-  background-size: 28px 28px;
+  background: #eef3f7;
 }
 
 .platform-sidebar {
@@ -397,7 +460,6 @@ button {
 .nav-section,
 .eyebrow,
 .platform-header h1,
-.status-pill p,
 .operator p {
   margin: 0;
 }
@@ -535,26 +597,6 @@ button {
   display: flex;
   align-items: center;
   gap: 14px;
-}
-
-.status-pill {
-  height: 34px;
-  padding: 0 12px;
-  border: 1px solid #bfe8e4;
-  border-radius: 6px;
-  background: #f3fffd;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #057c78;
-  font-size: 13px;
-}
-
-.status-pill span {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #13c2c2;
 }
 
 .operator {

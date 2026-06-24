@@ -26,13 +26,13 @@ import java.util.List;
 public class HistoryQueryServiceImpl implements IHistoryQueryService {
 
     @Override
-    public HistoryQueryGraphVO userAdjustmentGraph(UserAdjustmentGraphReq userAdjustmentGraphReq, String simulate) {
+    public HistoryQueryGraphVO userAdjustmentGraph(UserAdjustmentGraphReq userAdjustmentGraphReq) {
         log.warn("userAdjustmentGraph called - empty implementation");
         return new HistoryQueryGraphVO();
     }
 
     @Override
-    public HistoryQueryGraphVO userAdjustmentGraphNew(NewUserAdjustmentGraphReq userAdjustmentGraphReq, String simulate) {
+    public HistoryQueryGraphVO userAdjustmentGraphNew(NewUserAdjustmentGraphReq userAdjustmentGraphReq) {
         log.warn("userAdjustmentGraphNew called - empty implementation");
         return new HistoryQueryGraphVO();
     }
@@ -44,7 +44,7 @@ public class HistoryQueryServiceImpl implements IHistoryQueryService {
     }
 
     @Override
-    public List<LineDataGraphResp> deviceRunStatusChart(DeviceRunStatusReq deviceRunStatusReq, String simulate) {
+    public List<LineDataGraphResp> deviceRunStatusChart(DeviceRunStatusReq deviceRunStatusReq) {
         log.warn("deviceRunStatusChart called - empty implementation");
         return new ArrayList<>();
     }
@@ -62,7 +62,7 @@ public class HistoryQueryServiceImpl implements IHistoryQueryService {
     }
 
     @Override
-    public IndexOverviewResp getTotalPowerChart(String simulate, String aggregatorId, String resourceTypeId, String startDate, String endDate) {
+    public IndexOverviewResp getTotalPowerChart(String aggregatorId, String resourceTypeId, String startDate, String endDate) {
         log.warn("getTotalPowerChart called - empty implementation");
         return new IndexOverviewResp();
     }
