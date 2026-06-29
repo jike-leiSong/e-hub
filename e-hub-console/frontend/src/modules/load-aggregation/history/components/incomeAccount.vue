@@ -154,6 +154,9 @@ export default {
       this.getProfitCalculationTable();
     },
     getProfitCalculationTable() {
+      if (!this.entItem || !this.entItem.value) {
+        return;
+      }
       const query = {
         entId: this.entItem.value,
         endDate: this.form.endTime,
@@ -167,6 +170,10 @@ export default {
       });
     },
     doExport() {
+      if (!this.entItem || !this.entItem.value) {
+        this.$message.warning("请先选择企业");
+        return;
+      }
       const query = {
         entId: this.entItem.value,
         endDate: this.form.endTime,

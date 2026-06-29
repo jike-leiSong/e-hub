@@ -238,9 +238,12 @@ export default {
       await getEntUserOptions(params).then(res => {
         if (res.data.code === 200) {
           if (res.data.data && res.data.data.length > 0) {
-            this.enterpriseList = JSON.parse(JSON.stringify(res.data.data))
-            this.form.enterpriseName = this.enterpriseList[0].value
-            // this.form.enterpriseName = ''
+            this.enterpriseList = JSON.parse(JSON.stringify(res.data.data)).filter(item => item != null)
+            if (this.enterpriseList.length > 0 && this.enterpriseList[0] && this.enterpriseList[0].value) {
+              this.form.enterpriseName = this.enterpriseList[0].value
+            } else {
+              this.form.enterpriseName = ''
+            }
           } else {
             this.enterpriseList = []
             this.form.enterpriseName = ''

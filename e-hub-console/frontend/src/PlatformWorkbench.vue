@@ -90,7 +90,7 @@ export default {
         {
           label: "负荷聚合",
           value: this.user.products.includes("load_aggregation") ? "已开通" : "未开通",
-          desc: "运营总览、调节情况、收益结算、设备运行",
+          desc: "运营总览、调节情况、收益结算、物联数据",
         },
         {
           label: "电价服务",
@@ -116,7 +116,7 @@ export default {
         domains.push({
           key: "load-overview",
           title: "负荷聚合",
-          desc: "聚合商运营、调节情况、收益结算、设备运行和企业设备管理",
+          desc: "聚合商运营、调节情况、收益结算、物联数据和企业设备管理",
         });
       }
       if (this.user.products.includes("tariff")) {

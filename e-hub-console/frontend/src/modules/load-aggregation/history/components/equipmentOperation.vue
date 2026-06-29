@@ -244,7 +244,7 @@ export default {
       getMetricList().then(res => {
         if (res.data.code === 200) {
           this.metricOptions = res.data.data;
-          if (res.data.data.length > 0) {
+          if (res.data.data && res.data.data.length > 0 && res.data.data[0]) {
             this.form.metricList = [res.data.data[0].metricCode];
             this.form.metricId = res.data.data[0].metricCode;
           }
@@ -362,8 +362,8 @@ export default {
         { aggregatorId: this.aggregatorId }
       ).then(res => {
         if (res.data.code === 200) {
-          this.entList = res.data.data;
-          if (this.entList.length > 0) {
+          this.entList = (res.data.data || []).filter(item => item != null);
+          if (this.entList.length > 0 && this.entList[0] && this.entList[0].value) {
             this.form.subEntId = this.entList[0].value;
             this.doGetResourceTypeList();
           }
@@ -382,10 +382,10 @@ export default {
       };
       getDeviceList(query).then(res => {
         if (res.data.code === 200) {
-          this.deviceList = res.data.data;
-          if (this.deviceList.length > 0) {
-            this.form.deviceBaseId = res.data.data[0].deviceBaseId;
-            this.form.deviceBaseListId = [res.data.data[0].deviceBaseId];
+          this.deviceList = (res.data.data || []).filter(item => item != null);
+          if (this.deviceList.length > 0 && this.deviceList[0] && this.deviceList[0].deviceBaseId) {
+            this.form.deviceBaseId = this.deviceList[0].deviceBaseId;
+            this.form.deviceBaseListId = [this.deviceList[0].deviceBaseId];
             if (this.isFirst) {
               this.doSearch();
             }

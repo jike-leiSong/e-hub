@@ -77,7 +77,7 @@ export default {
         { index: "3", label: "收益统计" },
         { index: "4", label: "用户收益统计" },
         { index: "5", label: "出清价格" },
-        { index: "2", label: "设备运行", group: "device-operation" },
+        { index: "2", label: "物联数据", group: "device-operation" },
       ],
     };
   },
@@ -149,7 +149,7 @@ const pageConfigs = {
     subtitle: "汇总收益统计、用户收益统计和出清价格，支撑运营结算与对账",
   },
   "device-operation": {
-    title: "设备运行",
+    title: "物联数据",
     subtitle: "查看各企业、各设备、各测点的历史运行数据，支持时间段查询",
   },
 };

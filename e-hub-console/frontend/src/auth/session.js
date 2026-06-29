@@ -116,8 +116,8 @@ function fallbackProfile(platformType, products) {
                 { key: "load-overview", label: "运营总览" },
                 { key: "load-adjustment", label: "调节情况" },
                 { key: "load-settlement", label: "收益结算" },
-                { key: "load-device-operation", label: "设备运行" },
-                { key: "load-resources", label: "企业与设备" },
+                { key: "load-resources", label: "资源管理" },
+                { key: "load-device-operation", label: "物联数据" },
               ],
             },
             {
@@ -144,14 +144,14 @@ function fallbackProfile(platformType, products) {
       "load:adjustment:view",
       "load:settlement:view",
       "load:device-operation:view",
-      "load:resources:view"
+      "load:resources:view",
     );
     allowedPages.push(
       "load-overview",
       "load-adjustment",
       "load-settlement",
-      "load-device-operation",
-      "load-resources"
+      "load-resources",
+      "load-device-operation"
     );
     productItems.push({
       key: "load",
@@ -161,8 +161,8 @@ function fallbackProfile(platformType, products) {
         { key: "load-overview", label: "运营总览" },
         { key: "load-adjustment", label: "调节情况" },
         { key: "load-settlement", label: "收益结算" },
-        { key: "load-device-operation", label: "设备运行" },
-        { key: "load-resources", label: "企业与设备" },
+        { key: "load-resources", label: "资源管理" },
+        { key: "load-device-operation", label: "物联数据" },
       ],
     });
   }
@@ -172,7 +172,7 @@ function fallbackProfile(platformType, products) {
     productItems.push({
       key: "tariff",
       label: "电价服务",
-      icon: "02",
+      icon: "04",
       children: [
         { key: "tariff-query", label: "全国电价查询" },
         { key: "tariff-api", label: "接口能力" },

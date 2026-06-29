@@ -77,7 +77,11 @@
           :active-comp-name="activeCompName"
           :view-type="historyViewType"
         />
-        <LoadResources v-else-if="activePage === 'load-resources'" />
+        <LoadResources
+          v-else-if="activePage === 'load-resources'"
+          :user="currentUser"
+          :active-page="activePage"
+        />
         <ProductProvisioning v-else-if="activePage === 'product-provisioning'" />
         <ComingSoon v-else v-bind="comingSoonConfig" />
       </main>
@@ -127,15 +131,11 @@ const pageMeta = {
     eyebrow: "LOAD AGGREGATION",
   },
   "load-device-operation": {
-    title: "负荷聚合 / 设备运行",
-    eyebrow: "LOAD AGGREGATION",
-  },
-  "load-history": {
-    title: "负荷聚合 / 调节情况",
+    title: "负荷聚合 / 物联数据",
     eyebrow: "LOAD AGGREGATION",
   },
   "load-resources": {
-    title: "负荷聚合 / 企业与设备",
+    title: "负荷聚合 / 资源管理",
     eyebrow: "LOAD AGGREGATION",
   },
   "tariff-query": {
@@ -179,9 +179,9 @@ const comingSoonMap = {
     items: ["负荷聚合", "电价服务", "产品开通", "权限生效"],
   },
   "load-resources": {
-    title: "企业与设备",
-    description: "维护企业、设备、测点、三方绑定和接入数据，支撑调节与结算分析。",
-    items: ["企业资产", "设备资源", "测点配置", "接入诊断"],
+    title: "企业设备管理",
+    description: "维护聚合商下企业档案和设备资产。",
+    items: ["企业档案", "设备资产"],
   },
   "tariff-query": {
     title: "全国电价查询",
@@ -350,8 +350,13 @@ export default {
       if (!sessionStorage.getItem("openId")) {
         sessionStorage.setItem("openId", account);
       }
+      // 确保 entId 或 cid 至少有一个被设置
       if (!sessionStorage.getItem("entId") && !sessionStorage.getItem("cid")) {
         sessionStorage.setItem("cid", account);
+      }
+      // 如果用户有 aggregatorId 但 sessionStorage 中没有，则设置它
+      if (this.currentUser.aggregatorId && !sessionStorage.getItem("aggregatorId")) {
+        sessionStorage.setItem("aggregatorId", this.currentUser.aggregatorId);
       }
     },
     logout() {

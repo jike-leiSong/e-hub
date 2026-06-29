@@ -1,17 +1,19 @@
 package cn.sl.ehub.console.auth;
 
-import cn.sl.ehub.console.auth.model.AuthLoginResp;
-import cn.sl.ehub.console.auth.model.AuthMenuGroupResp;
-import cn.sl.ehub.console.auth.model.AuthMenuItemResp;
-import cn.sl.ehub.console.auth.model.AuthUserInfoResp;
-import org.apache.commons.lang3.StringUtils;
-import org.springframework.stereotype.Service;
-
-import javax.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+
+import javax.servlet.http.HttpServletRequest;
+
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.stereotype.Service;
+
+import cn.sl.ehub.console.auth.model.AuthLoginResp;
+import cn.sl.ehub.console.auth.model.AuthMenuGroupResp;
+import cn.sl.ehub.console.auth.model.AuthMenuItemResp;
+import cn.sl.ehub.console.auth.model.AuthUserInfoResp;
 
 @Service
 public class ConsolePermissionService {
@@ -175,8 +177,8 @@ public class ConsolePermissionService {
             pages.add("load-overview");
             pages.add("load-adjustment");
             pages.add("load-settlement");
-            pages.add("load-device-operation");
             pages.add("load-resources");
+            pages.add("load-device-operation");
         }
         if (products.contains(ConsoleProductService.PRODUCT_TARIFF)) {
             pages.add("tariff-query");
@@ -235,8 +237,8 @@ public class ConsolePermissionService {
                     item("load-overview", "运营总览", null),
                     item("load-adjustment", "调节情况", null),
                     item("load-settlement", "收益结算", null),
-                    item("load-device-operation", "设备运行", null),
-                    item("load-resources", "企业与设备", null)
+                    item("load-resources", "资源管理", null),
+                    item("load-device-operation", "物联数据", null)
             )));
         }
         if (products.contains(ConsoleProductService.PRODUCT_TARIFF)) {
