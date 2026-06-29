@@ -3,9 +3,7 @@ package cn.sl.ehub.console.controller.iot;
 import cn.sl.ehub.common.enums.StatusCode;
 import cn.sl.ehub.common.exception.BaseException;
 import cn.sl.ehub.common.vo.ResultVO;
-import cn.sl.ehub.console.auth.AuthContext;
-import cn.sl.ehub.console.auth.AuthUser;
-import cn.sl.ehub.console.auth.ConsoleProductService;
+import cn.sl.ehub.console.auth.LoadAggregationScopeService;
 import cn.sl.ehub.console.model.vo.PageResultVO;
 import cn.sl.ehub.service.dto.iot.IotDeviceExternalRefSaveReq;
 import cn.sl.ehub.service.dto.iot.IotDevicePointSaveReq;
@@ -13,9 +11,7 @@ import cn.sl.ehub.service.dto.iot.IotDeviceQuery;
 import cn.sl.ehub.service.dto.iot.IotDeviceSaveReq;
 import cn.sl.ehub.service.dto.iot.IotPointExternalRefSaveReq;
 import cn.sl.ehub.service.dto.iot.IotTelemetryMinuteQuery;
-import cn.sl.ehub.service.mapper.AggregatorEntMapper;
 import cn.sl.ehub.service.service.IotDeviceService;
-import cn.sl.ehub.service.vo.AggregatorEnt;
 import cn.sl.ehub.service.vo.IotDevice;
 import cn.sl.ehub.service.vo.IotDeviceExternalRef;
 import cn.sl.ehub.service.vo.IotDevicePoint;
@@ -26,7 +22,6 @@ import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -45,11 +40,11 @@ import java.util.List;
 public class IotDeviceController {
 
     private final IotDeviceService iotDeviceService;
-    private final AggregatorEntMapper aggregatorEntMapper;
+    private final LoadAggregationScopeService loadScopeService;
 
-    public IotDeviceController(IotDeviceService iotDeviceService, AggregatorEntMapper aggregatorEntMapper) {
+    public IotDeviceController(IotDeviceService iotDeviceService, LoadAggregationScopeService loadScopeService) {
         this.iotDeviceService = iotDeviceService;
-        this.aggregatorEntMapper = aggregatorEntMapper;
+        this.loadScopeService = loadScopeService;
     }
 
     @GetMapping("/devices")
@@ -261,58 +256,27 @@ public class IotDeviceController {
     }
 
     private void applyDataScope(IotDeviceQuery query) {
-        AuthUser user = AuthContext.get();
-        if (user == null || isAdmin(user)) {
-            return;
-        }
-        if (isEntCustomer(user)) {
-            query.setAggregatorId(user.getAggregatorId());
-            query.setEntId(user.getEntId());
-            return;
-        }
-        if (isAggregatorCustomer(user)) {
-            query.setAggregatorId(user.getAggregatorId());
-            return;
-        }
-        throwNoPermission();
+        LoadAggregationScopeService.Scope scope = loadScopeService.resolveQueryScope(
+                query.getAggregatorId(), query.getEntId());
+        query.setAggregatorId(scope.getAggregatorId());
+        query.setEntId(scope.getEntId());
     }
 
     private void applyTelemetryScope(IotTelemetryMinuteQuery query) {
-        AuthUser user = AuthContext.get();
-        if (user == null || isAdmin(user)) {
-            return;
-        }
-        if (isEntCustomer(user)) {
-            query.setAggregatorId(user.getAggregatorId());
-            query.setEntId(user.getEntId());
-            return;
-        }
-        if (isAggregatorCustomer(user)) {
-            query.setAggregatorId(user.getAggregatorId());
-            return;
-        }
-        throwNoPermission();
+        LoadAggregationScopeService.Scope scope = loadScopeService.resolveQueryScope(
+                query.getAggregatorId(), query.getEntId());
+        query.setAggregatorId(scope.getAggregatorId());
+        query.setEntId(scope.getEntId());
     }
 
     private void fillDeviceReqScope(IotDeviceSaveReq req) {
         if (req == null) {
             return;
         }
-        AuthUser user = AuthContext.get();
-        if (user == null || isAdmin(user)) {
-            return;
-        }
-        if (isEntCustomer(user)) {
-            req.setAggregatorId(user.getAggregatorId());
-            req.setEntId(user.getEntId());
-            return;
-        }
-        if (isAggregatorCustomer(user)) {
-            req.setAggregatorId(user.getAggregatorId());
-            validateScope(req.getAggregatorId(), req.getEntId());
-            return;
-        }
-        throwNoPermission();
+        LoadAggregationScopeService.Scope scope = loadScopeService.resolveQueryScope(
+                req.getAggregatorId(), req.getEntId());
+        req.setAggregatorId(scope.getAggregatorId());
+        req.setEntId(scope.getEntId());
     }
 
     private IotDevice validateDeviceScope(Long deviceId) {
@@ -320,7 +284,7 @@ public class IotDeviceController {
         if (device == null) {
             throw new BaseException(StatusCode.C.getCode(), "设备不存在");
         }
-        validateScope(device.getAggregatorId(), device.getEntId());
+        loadScopeService.validateScope(device.getAggregatorId(), device.getEntId());
         return device;
     }
 
@@ -338,7 +302,7 @@ public class IotDeviceController {
         if (ref == null) {
             throw new BaseException(StatusCode.C.getCode(), "三方设备绑定不存在");
         }
-        validateScope(null, ref.getEntId());
+        loadScopeService.validateScope(null, ref.getEntId());
         return ref;
     }
 
@@ -351,57 +315,4 @@ public class IotDeviceController {
         return ref;
     }
 
-    private void validateScope(String aggregatorId, String entId) {
-        AuthUser user = AuthContext.get();
-        if (user == null || isAdmin(user)) {
-            return;
-        }
-        if (isEntCustomer(user)) {
-            if (StringUtils.isNotBlank(aggregatorId) && !StringUtils.equals(user.getAggregatorId(), aggregatorId)) {
-                throwNoPermission();
-            }
-            if (StringUtils.isBlank(entId) || !StringUtils.equals(user.getEntId(), entId)) {
-                throwNoPermission();
-            }
-            return;
-        }
-        if (isAggregatorCustomer(user)) {
-            if (StringUtils.isNotBlank(aggregatorId) && !StringUtils.equals(user.getAggregatorId(), aggregatorId)) {
-                throwNoPermission();
-            }
-            if (StringUtils.isNotBlank(entId)) {
-                AggregatorEnt query = new AggregatorEnt();
-                query.setAggregatorId(user.getAggregatorId());
-                query.setEntId(entId);
-                if (aggregatorEntMapper.selectCount(query) <= 0) {
-                    throwNoPermission();
-                }
-            }
-            return;
-        }
-        throwNoPermission();
-    }
-
-    private boolean isAdmin(AuthUser user) {
-        return StringUtils.equalsIgnoreCase(ConsoleProductService.USER_TYPE_ADMIN, user.getUserType())
-                || StringUtils.equalsIgnoreCase(ConsoleProductService.USER_TYPE_PLATFORM, user.getUserType());
-    }
-
-    private boolean isEntCustomer(AuthUser user) {
-        return isCustomer(user) && StringUtils.isNotBlank(user.getEntId());
-    }
-
-    private boolean isAggregatorCustomer(AuthUser user) {
-        return isCustomer(user) && StringUtils.isNotBlank(user.getAggregatorId()) && StringUtils.isBlank(user.getEntId());
-    }
-
-    private boolean isCustomer(AuthUser user) {
-        return StringUtils.equalsIgnoreCase(ConsoleProductService.USER_TYPE_CUSTOMER, user.getUserType())
-                || StringUtils.equalsIgnoreCase(ConsoleProductService.USER_TYPE_AGGREGATOR, user.getUserType())
-                || StringUtils.equalsIgnoreCase(ConsoleProductService.USER_TYPE_ENT, user.getUserType());
-    }
-
-    private void throwNoPermission() {
-        throw new BaseException(StatusCode.U.getCode(), StatusCode.U.getMsg());
-    }
 }

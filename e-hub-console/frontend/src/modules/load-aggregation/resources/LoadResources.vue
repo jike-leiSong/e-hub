@@ -29,6 +29,9 @@
 
         <div class="filter-panel">
           <el-form :inline="true" :model="enterpriseFilters" size="small">
+            <el-form-item label="聚合商">
+              <el-input :value="currentAggregatorLabel" disabled />
+            </el-form-item>
             <el-form-item label="企业名称">
               <el-input
                 v-model.trim="enterpriseFilters.entName"
@@ -281,6 +284,9 @@
 
         <div class="filter-panel">
           <el-form :inline="true" :model="deviceFilters" size="small">
+            <el-form-item label="聚合商">
+              <el-input :value="currentAggregatorLabel" disabled />
+            </el-form-item>
             <el-form-item label="企业">
               <el-select
                 v-model="deviceFilters.entId"
@@ -289,7 +295,7 @@
                 placeholder="选择企业"
               >
                 <el-option
-                  v-for="item in validEnterprises"
+                  v-for="item in filteredEnterpriseOptions"
                   :key="item.entId"
                   :label="enterpriseOptionLabel(item)"
                   :value="item.entId"
@@ -461,6 +467,7 @@
         <el-form-item label="聚合商ID" required>
           <el-input
             v-model.trim="enterpriseForm.aggregatorId"
+            :disabled="!isOwner"
             placeholder="aggregatorId"
           />
         </el-form-item>
@@ -568,6 +575,7 @@
         <el-form-item label="聚合商">
           <el-input
             v-model.trim="deviceForm.aggregatorId"
+            :disabled="!isOwner"
             placeholder="aggregatorId"
           />
         </el-form-item>
@@ -579,7 +587,7 @@
             @change="handleDeviceEntChange"
           >
             <el-option
-              v-for="item in validEnterprises"
+              v-for="item in deviceFormEnterpriseOptions"
               :key="item.entId"
               :label="enterpriseOptionLabel(item)"
               :value="item.entId"
@@ -663,18 +671,26 @@ export default {
       type: String,
       default: "load-resources",
     },
+    aggregatorId: {
+      type: String,
+      default: "",
+    },
   },
   data() {
+    const isOwner = this.user && this.user.platformType === "owner";
+    const fixedAggregatorId = isOwner
+      ? this.aggregatorId || sessionStorage.getItem("aggregatorId") || ""
+      : this.user.aggregatorId || sessionStorage.getItem("aggregatorId") || "";
     return {
       activeResourceTab: "enterprise",
-      scopeAggregatorId: sessionStorage.getItem("aggregatorId") || "",
+      scopeAggregatorId: fixedAggregatorId,
       resourceTabs: [
         { key: "enterprise", label: "企业管理" },
         { key: "model", label: "模型管理" },
         { key: "device", label: "设备管理" },
       ],
       enterpriseFilters: {
-        aggregatorId: sessionStorage.getItem("aggregatorId") || "",
+        aggregatorId: fixedAggregatorId,
         entId: "",
         entName: "",
         status: undefined,
@@ -698,7 +714,7 @@ export default {
         total: 0,
       },
       deviceFilters: {
-        aggregatorId: sessionStorage.getItem("aggregatorId") || "",
+        aggregatorId: fixedAggregatorId,
         entId: "",
         deviceName: "",
         deviceTypeCode: "",
@@ -735,17 +751,15 @@ export default {
     };
   },
   computed: {
+    isOwner() {
+      return this.user && this.user.platformType === "owner";
+    },
     aggregatorOptions() {
       const aggregatorMap = new Map();
 
-      // 从企业列表中提取聚合商信息
       this.enterprises.forEach((item) => {
         if (item && item.aggregatorId) {
-          // 如果还没有这个聚合商，添加它
-          // 使用企业名称的前缀作为聚合商名称（假设企业名称可能包含聚合商信息）
           if (!aggregatorMap.has(item.aggregatorId)) {
-            // 尝试从企业名称中提取可能的聚合商名称
-            // 如果有多个企业属于同一个聚合商，使用"聚合商"作为默认名称
             aggregatorMap.set(item.aggregatorId, {
               id: item.aggregatorId,
               name: item.aggregatorName || `聚合商${item.aggregatorId.slice(-4)}`,
@@ -775,6 +789,28 @@ export default {
     validEnterprises() {
       return this.enterprises.filter(item => item && item.entId);
     },
+    filteredEnterpriseOptions() {
+      const aggregatorId = this.deviceFilters.aggregatorId;
+      if (!aggregatorId) {
+        return this.validEnterprises;
+      }
+      return this.validEnterprises.filter(item => item.aggregatorId === aggregatorId);
+    },
+    deviceFormEnterpriseOptions() {
+      const aggregatorId = this.deviceForm && this.deviceForm.aggregatorId;
+      if (!aggregatorId) {
+        return this.validEnterprises;
+      }
+      return this.validEnterprises.filter(item => item.aggregatorId === aggregatorId);
+    },
+    currentAggregatorLabel() {
+      const aggregatorId = this.scopeAggregatorId;
+      if (!aggregatorId) {
+        return "-";
+      }
+      const option = this.aggregatorOptions.find(item => item.id === aggregatorId);
+      return option ? `${option.name} (${option.id})` : aggregatorId;
+    },
   },
   mounted() {
     this.enterpriseForm = this.defaultEnterpriseForm();
@@ -792,6 +828,23 @@ export default {
   watch: {
     activePage() {
       this.syncMenuFromActivePage();
+    },
+    aggregatorId(value) {
+      if (!this.isOwner || !value || value === this.scopeAggregatorId) {
+        return;
+      }
+      this.scopeAggregatorId = value;
+      this.enterpriseFilters.aggregatorId = value;
+      this.deviceFilters.aggregatorId = value;
+      this.deviceFilters.entId = "";
+      this.enterprisePage.pageIndex = 1;
+      this.devicePage.pageIndex = 1;
+      if (this.activeResourceTab === "enterprise") {
+        this.reloadEnterprises();
+      } else if (this.activeResourceTab === "device") {
+        this.reloadEnterprises();
+        this.reloadDevices();
+      }
     },
   },
   methods: {
@@ -814,10 +867,7 @@ export default {
     defaultEnterpriseForm() {
       return {
         id: null,
-        aggregatorId:
-          this.scopeAggregatorId ||
-          sessionStorage.getItem("aggregatorId") ||
-          "",
+        aggregatorId: this.defaultAggregatorId(this.enterpriseFilters.aggregatorId),
         entId: "",
         stationId: "",
         entName: "",
@@ -836,7 +886,7 @@ export default {
     defaultDeviceForm() {
       return {
         id: null,
-        aggregatorId: "",
+        aggregatorId: this.defaultAggregatorId(this.deviceFilters.aggregatorId),
         entId: "",
         projectId: undefined,
         deviceCode: "",
@@ -862,8 +912,12 @@ export default {
       if (!item) return "";
       return item.entName ? `${item.entName} (${item.entId})` : item.entId;
     },
+    defaultAggregatorId(selectedAggregatorId) {
+      return selectedAggregatorId || this.scopeAggregatorId;
+    },
     reloadEnterprises() {
       this.enterpriseLoading = true;
+      this.enterpriseFilters.aggregatorId = this.scopeAggregatorId;
       const params = {
         ...this.enterpriseFilters,
         pageIndex: this.enterprisePage.pageIndex,
@@ -874,16 +928,6 @@ export default {
           const page = this.unwrapPage(res);
           this.enterprises = (page.list || []).filter(item => item != null);
           this.enterprisePage.total = page.total || 0;
-
-          // 第一次加载时，如果没有选择聚合商，默认选择第一个
-          if (!this.scopeAggregatorId && this.aggregatorOptions.length > 0) {
-            this.scopeAggregatorId = this.aggregatorOptions[0].id;
-            this.enterpriseFilters.aggregatorId = this.aggregatorOptions[0].id;
-            // 选择后重新加载，以筛选该聚合商下的企业
-            this.reloadEnterprises();
-            return;
-          }
-
         })
         .catch((error) => {
           console.error("加载企业列表失败:", error);
@@ -896,10 +940,7 @@ export default {
     },
     resetEnterpriseFilters() {
       this.enterpriseFilters = {
-        aggregatorId:
-          this.scopeAggregatorId ||
-          sessionStorage.getItem("aggregatorId") ||
-          "",
+        aggregatorId: this.scopeAggregatorId,
         entId: "",
         entName: "",
         status: undefined,
@@ -909,10 +950,7 @@ export default {
     },
     resetDeviceFilters() {
       this.deviceFilters = {
-        aggregatorId:
-          this.scopeAggregatorId ||
-          sessionStorage.getItem("aggregatorId") ||
-          "",
+        aggregatorId: this.scopeAggregatorId,
         entId: "",
         deviceName: "",
         deviceTypeCode: "",
@@ -1022,6 +1060,9 @@ export default {
       this.enterpriseForm.serviceEndDate = range[1] || "";
     },
     submitEnterprise() {
+      if (!this.isOwner) {
+        this.enterpriseForm.aggregatorId = this.scopeAggregatorId;
+      }
       if (!this.enterpriseForm.aggregatorId) {
         this.$message.warning("聚合商ID不能为空");
         return;
@@ -1065,10 +1106,15 @@ export default {
       const ent = this.enterprises.find((item) => item && item.entId === entId);
       if (ent) {
         this.deviceForm.aggregatorId = ent.aggregatorId;
+      } else if (!this.isOwner) {
+        this.deviceForm.aggregatorId = this.scopeAggregatorId;
       }
     },
     reloadDevices() {
       this.deviceLoading = true;
+      if (!this.isOwner) {
+        this.deviceFilters.aggregatorId = this.scopeAggregatorId;
+      }
       const params = {
         ...this.deviceFilters,
         pageIndex: this.devicePage.pageIndex,
@@ -1094,7 +1140,7 @@ export default {
       this.deviceDialog.title = mode === "create" ? "新增设备" : "编辑设备";
       this.deviceForm = this.defaultDeviceForm();
       if (mode === "create") {
-        this.deviceForm.aggregatorId = this.deviceFilters.aggregatorId;
+        this.deviceForm.aggregatorId = this.defaultAggregatorId(this.deviceFilters.aggregatorId);
         this.deviceForm.entId = this.deviceFilters.entId;
         this.handleDeviceEntChange(this.deviceForm.entId);
       } else if (row) {
@@ -1103,9 +1149,15 @@ export default {
           ...row,
         };
       }
+      if (!this.isOwner) {
+        this.deviceForm.aggregatorId = this.scopeAggregatorId;
+      }
       this.deviceDialog.visible = true;
     },
     submitDevice() {
+      if (!this.isOwner) {
+        this.deviceForm.aggregatorId = this.scopeAggregatorId;
+      }
       if (!this.deviceForm.entId) {
         this.$message.warning("企业ID不能为空");
         return;

@@ -3,9 +3,7 @@ package cn.sl.ehub.console.controller.loadaggregation;
 import cn.sl.ehub.common.enums.StatusCode;
 import cn.sl.ehub.common.exception.BaseException;
 import cn.sl.ehub.common.vo.ResultVO;
-import cn.sl.ehub.console.auth.AuthContext;
-import cn.sl.ehub.console.auth.AuthUser;
-import cn.sl.ehub.console.auth.ConsoleProductService;
+import cn.sl.ehub.console.auth.LoadAggregationScopeService;
 import cn.sl.ehub.console.model.vo.PageResultVO;
 import cn.sl.ehub.console.service.IAggregatorEntService;
 import cn.sl.ehub.service.vo.AggregatorEnt;
@@ -35,6 +33,7 @@ import java.util.List;
 public class AggregatorEntController {
 
     private final IAggregatorEntService aggregatorEntService;
+    private final LoadAggregationScopeService loadScopeService;
 
     @ApiOperation(value = "分页查询企业维护列表")
     @GetMapping("/page")
@@ -44,10 +43,10 @@ public class AggregatorEntController {
                                                                    @RequestParam(value = "status", required = false) Integer status,
                                                                    @RequestParam(value = "pageIndex", defaultValue = "1") Integer pageIndex,
                                                                    @RequestParam(value = "pageSize", defaultValue = "20") Integer pageSize) {
-        ScopeQuery scopeQuery = applyQueryScope(aggregatorId, entId);
+        LoadAggregationScopeService.Scope scopeQuery = loadScopeService.resolveQueryScope(aggregatorId, entId);
         PageHelper.startPage(pageIndex, pageSize);
         List<AggregatorEnt> list = aggregatorEntService.pageAggregatorEntList(
-                scopeQuery.aggregatorId, scopeQuery.entId, entName, status);
+                scopeQuery.getAggregatorId(), scopeQuery.getEntId(), entName, status);
         return ResultVO.success(toPage(list, pageIndex, pageSize));
     }
 
@@ -55,59 +54,90 @@ public class AggregatorEntController {
     @GetMapping("/getAggregatorEnt")
     public ResultVO<AggregatorEnt> getAggregatorEnt(@RequestParam("entId") String entId) {
         log.info("查询企业信息: entId={}", entId);
-        return ResultVO.success(aggregatorEntService.getAggregatorEnt(entId));
+        AggregatorEnt ent = requireEnt(entId);
+        loadScopeService.validateScope(ent.getAggregatorId(), ent.getEntId());
+        return ResultVO.success(ent);
     }
 
     @ApiOperation(value = "根据聚合商ID查询企业列表")
     @GetMapping("/list")
     public ResultVO<List<AggregatorEnt>> getAggregatorEntList(@RequestParam("aggregatorId") String aggregatorId) {
         log.info("查询聚合商企业列表: aggregatorId={}", aggregatorId);
-        ScopeQuery scopeQuery = applyQueryScope(aggregatorId, null);
-        if (StringUtils.isNotBlank(scopeQuery.entId)) {
-            return ResultVO.success(aggregatorEntService.getAggregatorEntList(Collections.singletonList(scopeQuery.entId)));
-        }
-        return ResultVO.success(aggregatorEntService.getAggregatorEntList(scopeQuery.aggregatorId));
+        LoadAggregationScopeService.Scope scopeQuery = loadScopeService.resolveQueryScope(aggregatorId, null);
+        return ResultVO.success(listEntByScope(scopeQuery));
     }
 
     @ApiOperation(value = "查询响应计划的企业列表")
     @GetMapping("/planRunList")
     public ResultVO<List<AggregatorEnt>> getAggregatorPlanRunEntList(@RequestParam("aggregatorId") String aggregatorId) {
         log.info("查询响应计划的企业列表: aggregatorId={}", aggregatorId);
-        return ResultVO.success(aggregatorEntService.getAggregatorPlanRunEntList(aggregatorId));
+        LoadAggregationScopeService.Scope scopeQuery = loadScopeService.resolveQueryScope(aggregatorId, null);
+        if (StringUtils.isNotBlank(scopeQuery.getEntId())) {
+            AggregatorEnt ent = requireEnt(scopeQuery.getEntId());
+            loadScopeService.validateScope(ent.getAggregatorId(), ent.getEntId());
+            return ResultVO.success(Integer.valueOf(1).equals(ent.getPlanRunStatus())
+                    ? Collections.singletonList(ent)
+                    : Collections.emptyList());
+        }
+        return ResultVO.success(aggregatorEntService.getAggregatorPlanRunEntList(scopeQuery.getAggregatorId()));
     }
 
     @ApiOperation(value = "根据企业ID查询聚合商ID")
     @GetMapping("/getAggregatorId")
     public ResultVO<String> getAggregatorIdByEntId(@RequestParam("entId") String entId) {
         log.info("查询企业所属聚合商: entId={}", entId);
-        return ResultVO.success(aggregatorEntService.getAggregatorIdByEntId(entId));
+        AggregatorEnt ent = requireEnt(entId);
+        loadScopeService.validateScope(ent.getAggregatorId(), ent.getEntId());
+        return ResultVO.success(ent.getAggregatorId());
     }
 
     @ApiOperation(value = "统计聚合商下的企业数量")
     @GetMapping("/count")
     public ResultVO<Integer> getCount(@RequestParam("aggregatorId") String aggregatorId) {
         log.info("统计企业数量: aggregatorId={}", aggregatorId);
-        return ResultVO.success(aggregatorEntService.getCount(aggregatorId));
+        LoadAggregationScopeService.Scope scopeQuery = loadScopeService.resolveQueryScope(aggregatorId, null);
+        if (StringUtils.isNotBlank(scopeQuery.getEntId())) {
+            requireEnt(scopeQuery.getEntId());
+            return ResultVO.success(1);
+        }
+        return ResultVO.success(aggregatorEntService.getCount(scopeQuery.getAggregatorId()));
     }
 
     @ApiOperation(value = "查询所有企业列表")
     @GetMapping("/all")
     public ResultVO<List<AggregatorEnt>> getAllAggregatorEntList() {
         log.info("查询所有企业列表");
-        return ResultVO.success(aggregatorEntService.getAggregatorEntList());
+        LoadAggregationScopeService.Scope scopeQuery = loadScopeService.resolveQueryScope(null, null);
+        return ResultVO.success(scopeQuery.isAdmin()
+                ? aggregatorEntService.getAggregatorEntList()
+                : listEntByScope(scopeQuery));
     }
 
     @ApiOperation(value = "根据企业ID列表批量查询")
     @PostMapping("/listByIds")
     public ResultVO<List<AggregatorEnt>> getAggregatorEntListByIds(@RequestBody List<String> entIdList) {
         log.info("批量查询企业信息: entIdList.size={}", entIdList != null ? entIdList.size() : 0);
-        return ResultVO.success(aggregatorEntService.getAggregatorEntList(entIdList));
+        if (entIdList == null || entIdList.isEmpty()) {
+            return ResultVO.success(Collections.emptyList());
+        }
+        List<AggregatorEnt> list = aggregatorEntService.getAggregatorEntList(entIdList);
+        for (AggregatorEnt ent : list) {
+            if (ent != null) {
+                loadScopeService.validateScope(ent.getAggregatorId(), ent.getEntId());
+            }
+        }
+        return ResultVO.success(list);
     }
 
     @ApiOperation(value = "批量添加企业")
     @PostMapping("/addBatch")
     public ResultVO<Integer> addAggregatorEntList(@RequestBody List<AggregatorEnt> aggregatorEntList) {
         log.info("批量添加企业: size={}", aggregatorEntList != null ? aggregatorEntList.size() : 0);
+        if (aggregatorEntList != null) {
+            for (AggregatorEnt ent : aggregatorEntList) {
+                loadScopeService.fillAggregatorEntSaveScope(ent, false);
+            }
+        }
         int count = aggregatorEntService.addAggregatorEntList(aggregatorEntList);
         return ResultVO.success(count);
     }
@@ -115,7 +145,7 @@ public class AggregatorEntController {
     @ApiOperation(value = "新增企业")
     @PostMapping
     public ResultVO<AggregatorEnt> createAggregatorEnt(@RequestBody AggregatorEnt aggregatorEnt) {
-        fillSaveScope(aggregatorEnt, false);
+        loadScopeService.fillAggregatorEntSaveScope(aggregatorEnt, false);
         return ResultVO.success(aggregatorEntService.createAggregatorEnt(aggregatorEnt));
     }
 
@@ -124,8 +154,8 @@ public class AggregatorEntController {
     public ResultVO<AggregatorEnt> updateAggregatorEnt(@PathVariable("entId") String entId,
                                                        @RequestBody AggregatorEnt aggregatorEnt) {
         AggregatorEnt existing = requireEnt(entId);
-        validateScope(existing.getAggregatorId(), existing.getEntId());
-        fillSaveScope(aggregatorEnt, true);
+        loadScopeService.validateScope(existing.getAggregatorId(), existing.getEntId());
+        loadScopeService.fillAggregatorEntSaveScope(aggregatorEnt, true);
         return ResultVO.success(aggregatorEntService.updateAggregatorEnt(entId, aggregatorEnt));
     }
 
@@ -133,7 +163,7 @@ public class AggregatorEntController {
     @DeleteMapping("/{entId}")
     public ResultVO<Boolean> disableAggregatorEnt(@PathVariable("entId") String entId) {
         AggregatorEnt existing = requireEnt(entId);
-        validateScope(existing.getAggregatorId(), existing.getEntId());
+        loadScopeService.validateScope(existing.getAggregatorId(), existing.getEntId());
         aggregatorEntService.updateAggregatorEntStatus(entId, 0);
         return ResultVO.success(true);
     }
@@ -156,101 +186,10 @@ public class AggregatorEntController {
         return page;
     }
 
-    private ScopeQuery applyQueryScope(String aggregatorId, String entId) {
-        AuthUser user = AuthContext.get();
-        if (user == null || isAdmin(user)) {
-            return new ScopeQuery(aggregatorId, entId);
+    private List<AggregatorEnt> listEntByScope(LoadAggregationScopeService.Scope scopeQuery) {
+        if (StringUtils.isNotBlank(scopeQuery.getEntId())) {
+            return aggregatorEntService.getAggregatorEntList(Collections.singletonList(scopeQuery.getEntId()));
         }
-        if (isEntCustomer(user)) {
-            return new ScopeQuery(user.getAggregatorId(), user.getEntId());
-        }
-        if (isAggregatorCustomer(user)) {
-            if (StringUtils.isNotBlank(aggregatorId) && !StringUtils.equals(user.getAggregatorId(), aggregatorId)) {
-                throwNoPermission();
-            }
-            return new ScopeQuery(user.getAggregatorId(), entId);
-        }
-        throwNoPermission();
-        return new ScopeQuery(aggregatorId, entId);
-    }
-
-    private void fillSaveScope(AggregatorEnt aggregatorEnt, boolean update) {
-        if (aggregatorEnt == null) {
-            throw new BaseException(StatusCode.C.getCode(), "企业信息不能为空");
-        }
-        AuthUser user = AuthContext.get();
-        if (user == null || isAdmin(user)) {
-            return;
-        }
-        if (isEntCustomer(user)) {
-            if (!update) {
-                throwNoPermission();
-            }
-            aggregatorEnt.setAggregatorId(user.getAggregatorId());
-            aggregatorEnt.setEntId(user.getEntId());
-            return;
-        }
-        if (isAggregatorCustomer(user)) {
-            aggregatorEnt.setAggregatorId(user.getAggregatorId());
-            if (StringUtils.isNotBlank(aggregatorEnt.getEntId())) {
-                validateScope(user.getAggregatorId(), aggregatorEnt.getEntId());
-            }
-            return;
-        }
-        throwNoPermission();
-    }
-
-    private void validateScope(String aggregatorId, String entId) {
-        AuthUser user = AuthContext.get();
-        if (user == null || isAdmin(user)) {
-            return;
-        }
-        if (isEntCustomer(user)) {
-            if (!StringUtils.equals(user.getAggregatorId(), aggregatorId)
-                    || !StringUtils.equals(user.getEntId(), entId)) {
-                throwNoPermission();
-            }
-            return;
-        }
-        if (isAggregatorCustomer(user)) {
-            if (!StringUtils.equals(user.getAggregatorId(), aggregatorId)) {
-                throwNoPermission();
-            }
-            return;
-        }
-        throwNoPermission();
-    }
-
-    private boolean isAdmin(AuthUser user) {
-        return StringUtils.equalsIgnoreCase(ConsoleProductService.USER_TYPE_ADMIN, user.getUserType())
-                || StringUtils.equalsIgnoreCase(ConsoleProductService.USER_TYPE_PLATFORM, user.getUserType());
-    }
-
-    private boolean isEntCustomer(AuthUser user) {
-        return isCustomer(user) && StringUtils.isNotBlank(user.getEntId());
-    }
-
-    private boolean isAggregatorCustomer(AuthUser user) {
-        return isCustomer(user) && StringUtils.isNotBlank(user.getAggregatorId()) && StringUtils.isBlank(user.getEntId());
-    }
-
-    private boolean isCustomer(AuthUser user) {
-        return StringUtils.equalsIgnoreCase(ConsoleProductService.USER_TYPE_CUSTOMER, user.getUserType())
-                || StringUtils.equalsIgnoreCase(ConsoleProductService.USER_TYPE_AGGREGATOR, user.getUserType())
-                || StringUtils.equalsIgnoreCase(ConsoleProductService.USER_TYPE_ENT, user.getUserType());
-    }
-
-    private void throwNoPermission() {
-        throw new BaseException(StatusCode.U.getCode(), StatusCode.U.getMsg());
-    }
-
-    private static class ScopeQuery {
-        private final String aggregatorId;
-        private final String entId;
-
-        private ScopeQuery(String aggregatorId, String entId) {
-            this.aggregatorId = aggregatorId;
-            this.entId = entId;
-        }
+        return aggregatorEntService.getAggregatorEntList(scopeQuery.getAggregatorId());
     }
 }

@@ -3,8 +3,6 @@ package cn.sl.ehub.console.auth;
 import cn.sl.ehub.common.enums.StatusCode;
 import cn.sl.ehub.common.exception.BaseException;
 import cn.sl.ehub.common.vo.ResultVO;
-import cn.sl.ehub.service.mapper.AggregatorEntMapper;
-import cn.sl.ehub.service.vo.AggregatorEnt;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.MediaType;
@@ -20,17 +18,17 @@ public class AuthInterceptor implements HandlerInterceptor {
 
     private final AuthService authService;
     private final ConsolePermissionService permissionService;
+    private final LoadAggregationScopeService loadScopeService;
     private final ObjectMapper objectMapper;
-    private final AggregatorEntMapper aggregatorEntMapper;
 
     public AuthInterceptor(AuthService authService,
                            ConsolePermissionService permissionService,
-                           ObjectMapper objectMapper,
-                           AggregatorEntMapper aggregatorEntMapper) {
+                           LoadAggregationScopeService loadScopeService,
+                           ObjectMapper objectMapper) {
         this.authService = authService;
         this.permissionService = permissionService;
+        this.loadScopeService = loadScopeService;
         this.objectMapper = objectMapper;
-        this.aggregatorEntMapper = aggregatorEntMapper;
     }
 
     @Override
@@ -82,52 +80,16 @@ public class AuthInterceptor implements HandlerInterceptor {
     }
 
     private void validateDataScope(HttpServletRequest request, AuthUser user) {
-        if (user == null || isAdmin(user)) {
-            return;
-        }
-        if (isCustomer(user)) {
-            validateEqualIfPresent(user.getAggregatorId(), getValues(request, "aggregatorId", "aggregator_id"));
-            if (StringUtils.isNotBlank(user.getEntId())) {
-                validateEqualIfPresent(user.getEntId(), getValues(request, "entId", "ent_id", "entIds", "ent_ids"));
-            } else {
-                validateAggregatorEntScope(user.getAggregatorId(), getValues(request, "entId", "ent_id", "entIds", "ent_ids"));
-            }
-            return;
-        }
-        throwNoPermission();
+        loadScopeService.validateRequestScope(
+                user,
+                getValues(request, "aggregatorId", "aggregator_id"),
+                getValues(request, "entId", "ent_id", "entIds", "ent_ids")
+        );
     }
 
     private void validateApiPermission(HttpServletRequest request, AuthUser user) {
         if (!permissionService.hasRequestPermission(request, user)) {
             throwNoPermission();
-        }
-    }
-
-    private void validateAggregatorEntScope(String aggregatorId, String[] entIds) {
-        for (String entId : entIds) {
-            if (StringUtils.isBlank(entId)) {
-                continue;
-            }
-            if (StringUtils.isBlank(aggregatorId)) {
-                throwNoPermission();
-            }
-            AggregatorEnt query = new AggregatorEnt();
-            query.setAggregatorId(aggregatorId);
-            query.setEntId(entId);
-            if (aggregatorEntMapper.selectCount(query) <= 0) {
-                throwNoPermission();
-            }
-        }
-    }
-
-    private void validateEqualIfPresent(String expected, String[] actualValues) {
-        for (String actual : actualValues) {
-            if (StringUtils.isBlank(actual)) {
-                continue;
-            }
-            if (StringUtils.isBlank(expected) || !StringUtils.equals(expected, actual)) {
-                throwNoPermission();
-            }
         }
     }
 
@@ -160,17 +122,6 @@ public class AuthInterceptor implements HandlerInterceptor {
             values.append(',');
         }
         values.append(StringUtils.trim(value));
-    }
-
-    private boolean isAdmin(AuthUser user) {
-        return StringUtils.equalsIgnoreCase(ConsoleProductService.USER_TYPE_ADMIN, user.getUserType())
-                || StringUtils.equalsIgnoreCase(ConsoleProductService.USER_TYPE_PLATFORM, user.getUserType());
-    }
-
-    private boolean isCustomer(AuthUser user) {
-        return StringUtils.equalsIgnoreCase(ConsoleProductService.USER_TYPE_CUSTOMER, user.getUserType())
-                || StringUtils.equalsIgnoreCase(ConsoleProductService.USER_TYPE_AGGREGATOR, user.getUserType())
-                || StringUtils.equalsIgnoreCase(ConsoleProductService.USER_TYPE_ENT, user.getUserType());
     }
 
     private void throwNoPermission() {

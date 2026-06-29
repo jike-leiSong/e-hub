@@ -221,9 +221,13 @@ export function persistUserSession(user) {
   sessionStorage.setItem("ehub-user", normalized.account);
   if (normalized.aggregatorId) {
     sessionStorage.setItem("aggregatorId", normalized.aggregatorId);
+  } else {
+    sessionStorage.removeItem("aggregatorId");
   }
   if (normalized.entId) {
     sessionStorage.setItem("entId", normalized.entId);
+  } else {
+    sessionStorage.removeItem("entId");
   }
   return normalized;
 }
@@ -234,6 +238,8 @@ export function clearUserSession() {
   sessionStorage.removeItem("ehub-products");
   sessionStorage.removeItem("ehub-user");
   sessionStorage.removeItem("ehub-authenticated");
+  sessionStorage.removeItem("aggregatorId");
+  sessionStorage.removeItem("entId");
 }
 
 export function clearAuthStorage() {

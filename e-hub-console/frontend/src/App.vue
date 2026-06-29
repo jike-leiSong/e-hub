@@ -53,6 +53,24 @@
           <h1>{{ activeMeta.title }}</h1>
         </div>
         <div class="header-actions">
+          <div v-if="showLoadAggregatorSwitcher" class="load-scope-switcher">
+            <span>聚合商</span>
+            <el-select
+              v-model="selectedAggregatorId"
+              size="small"
+              filterable
+              :loading="aggregatorLoading"
+              placeholder="请选择聚合商"
+              @change="handleLoadAggregatorChange"
+            >
+              <el-option
+                v-for="item in aggregatorOptions"
+                :key="item.aggregatorId"
+                :label="aggregatorOptionLabel(item)"
+                :value="item.aggregatorId"
+              />
+            </el-select>
+          </div>
           <div class="operator">
             <p>{{ operatorName }}</p>
             <button type="button" @click="logout">退出</button>
@@ -68,19 +86,23 @@
         />
         <Aggregation
           v-else-if="activePage === 'load-overview'"
+          :key="loadPageKey"
           :active-obj="activeObj"
           :active-comp-name="activeCompName"
         />
         <AggregationHistory
           v-else-if="historyViewType"
+          :key="loadPageKey"
           :active-obj="activeObj"
           :active-comp-name="activeCompName"
           :view-type="historyViewType"
         />
         <LoadResources
           v-else-if="activePage === 'load-resources'"
+          :key="loadPageKey"
           :user="currentUser"
           :active-page="activePage"
+          :aggregator-id="selectedAggregatorId"
         />
         <ProductProvisioning v-else-if="activePage === 'product-provisioning'" />
         <ComingSoon v-else v-bind="comingSoonConfig" />
@@ -97,6 +119,7 @@ import ProductProvisioning from "./ProductProvisioning.vue";
 import Aggregation from "@/modules/load-aggregation/overview/Aggregation.vue";
 import AggregationHistory from "@/modules/load-aggregation/history/src/AggregationHistory.vue";
 import LoadResources from "@/modules/load-aggregation/resources/LoadResources.vue";
+import service from "@/services/http";
 import {
   buildMenu,
   clearAuthStorage,
@@ -247,6 +270,22 @@ const historyPageViewMap = {
   "load-history": "adjustment",
 };
 
+const loadPages = [
+  "load-overview",
+  "load-adjustment",
+  "load-settlement",
+  "load-resources",
+  "load-device-operation",
+  "load-history",
+];
+
+function fetchAggregators() {
+  return service({
+    method: "get",
+    url: "/aggregator/list",
+  });
+}
+
 export default {
   name: "App",
   components: {
@@ -271,6 +310,11 @@ export default {
       activePage: initialPage || getDefaultPage(currentUser),
       activeCompName: [thisComponentName(initialPage || getDefaultPage(currentUser))],
       activeObj: {},
+      aggregatorOptions: [],
+      aggregatorLoading: false,
+      aggregatorRequest: null,
+      selectedAggregatorId: sessionStorage.getItem("aggregatorId") || "",
+      loadContextVersion: 0,
     };
   },
   created() {
@@ -291,6 +335,15 @@ export default {
     },
     operatorName() {
       return this.currentUser.displayName || this.currentUser.account || "运营用户";
+    },
+    isOwner() {
+      return this.currentUser && this.currentUser.platformType === "owner";
+    },
+    showLoadAggregatorSwitcher() {
+      return this.isOwner && this.isLoadAggregationPage(this.activePage);
+    },
+    loadPageKey() {
+      return `${this.activePage}-${this.selectedAggregatorId || "none"}-${this.loadContextVersion}`;
     },
   },
   methods: {
@@ -322,18 +375,37 @@ export default {
         ? preferredPage
         : getDefaultPage(normalized);
       this.currentUser = normalized;
-      this.activePage = nextPage;
-      this.activeCompName = [thisComponentName(nextPage)];
-      this.isAuthenticated = true;
-      sessionStorage.setItem("ehub-authenticated", "1");
+      const finish = () => {
+        this.activatePage(nextPage);
+        this.isAuthenticated = true;
+        sessionStorage.setItem("ehub-authenticated", "1");
+      };
+      if (this.requiresLoadAggregatorContext(nextPage)) {
+        this.ensureLoadAggregatorContext().finally(finish);
+        return;
+      }
+      finish();
     },
     switchPage(page) {
       if (!getAllowedPages(this.currentUser).includes(page)) {
         this.$message.warning("当前账号未开通该能力");
         return;
       }
+      if (this.requiresLoadAggregatorContext(page)) {
+        this.ensureLoadAggregatorContext()
+          .then(() => {
+            this.activatePage(page);
+          })
+          .catch(() => {
+            this.$message.error("聚合商列表加载失败");
+          });
+        return;
+      }
+      this.activatePage(page);
+    },
+    activatePage(page) {
       this.activePage = page;
-      this.activeCompName = [thisComponentName(page)];
+      this.activeCompName = [thisComponentName(page), this.selectedAggregatorId, String(this.loadContextVersion)];
     },
     defaultPageOf(item) {
       return item.children && item.children.length ? item.children[0].key : item.key;
@@ -366,8 +438,84 @@ export default {
         this.currentUser = {};
         this.activePage = "workbench";
         this.activeCompName = [thisComponentName("workbench")];
+        this.aggregatorOptions = [];
+        this.selectedAggregatorId = "";
+        this.loadContextVersion += 1;
         this.isAuthenticated = false;
       });
+    },
+    isLoadAggregationPage(page) {
+      return loadPages.includes(page);
+    },
+    requiresLoadAggregatorContext(page) {
+      return this.isOwner && this.isLoadAggregationPage(page);
+    },
+    ensureLoadAggregatorContext() {
+      if (!this.requiresLoadAggregatorContext("load-overview") && !this.showLoadAggregatorSwitcher) {
+        return Promise.resolve();
+      }
+      if (this.aggregatorOptions.length && this.selectedAggregatorId) {
+        this.persistSelectedAggregator(this.selectedAggregatorId, false);
+        return Promise.resolve();
+      }
+      if (this.aggregatorRequest) {
+        return this.aggregatorRequest;
+      }
+      this.aggregatorLoading = true;
+      this.aggregatorRequest = fetchAggregators()
+        .then((res) => {
+          const body = res && res.data ? res.data : {};
+          if (body.code && body.code !== 200) {
+            throw new Error(body.msg || "聚合商列表加载失败");
+          }
+          const list = Array.isArray(body.data) ? body.data.filter(item => item && item.aggregatorId) : [];
+          this.aggregatorOptions = list;
+          if (!list.length) {
+            this.selectedAggregatorId = "";
+            sessionStorage.removeItem("aggregatorId");
+            sessionStorage.removeItem("entId");
+            return;
+          }
+          const storedAggregatorId = sessionStorage.getItem("aggregatorId");
+          const selected = list.some(item => item.aggregatorId === storedAggregatorId)
+            ? storedAggregatorId
+            : list[0].aggregatorId;
+          this.persistSelectedAggregator(selected, false);
+        })
+        .finally(() => {
+          this.aggregatorLoading = false;
+          this.aggregatorRequest = null;
+        });
+      return this.aggregatorRequest;
+    },
+    handleLoadAggregatorChange(aggregatorId) {
+      if (!aggregatorId) {
+        return;
+      }
+      this.persistSelectedAggregator(aggregatorId, true);
+    },
+    persistSelectedAggregator(aggregatorId, refresh) {
+      this.selectedAggregatorId = aggregatorId;
+      sessionStorage.setItem("aggregatorId", aggregatorId);
+      sessionStorage.setItem("entId", aggregatorId);
+      sessionStorage.setItem("cid", aggregatorId);
+      if (refresh) {
+        this.loadContextVersion += 1;
+        this.activeCompName = [
+          thisComponentName(this.activePage),
+          this.selectedAggregatorId,
+          String(this.loadContextVersion),
+        ];
+      }
+    },
+    aggregatorOptionLabel(item) {
+      if (!item) {
+        return "";
+      }
+      const name = item.aggregatorName || item.aggregatorAliasName || item.aggregatorId;
+      return item.aggregatorId && name !== item.aggregatorId
+        ? `${name} (${item.aggregatorId})`
+        : name;
     },
   },
 };
@@ -602,6 +750,25 @@ button {
   display: flex;
   align-items: center;
   gap: 14px;
+}
+
+.load-scope-switcher {
+  height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #334e5c;
+  font-size: 13px;
+}
+
+.load-scope-switcher span {
+  color: #607d8f;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.load-scope-switcher .el-select {
+  width: 260px;
 }
 
 .operator {
