@@ -29,9 +29,6 @@
 
         <div class="filter-panel">
           <el-form :inline="true" :model="enterpriseFilters" size="small">
-            <el-form-item label="聚合商">
-              <el-input :value="currentAggregatorLabel" disabled />
-            </el-form-item>
             <el-form-item label="企业名称">
               <el-input
                 v-model.trim="enterpriseFilters.entName"
@@ -87,33 +84,26 @@
             />
             <el-table-column prop="entId" label="企业ID" min-width="150" />
             <el-table-column
-              prop="aggregatorId"
-              label="聚合商ID"
-              min-width="150"
-            />
-            <el-table-column
-              prop="stationId"
-              label="企业编码"
+              prop="installCap"
+              label="装机容量(kW)"
               min-width="120"
             />
             <el-table-column
-              prop="installCap"
-              label="装机容量"
-              min-width="100"
-            />
+              label="经纬度"
+              min-width="140"
+            >
+              <template slot-scope="{ row }">
+                {{ formatLngLat(row) }}
+              </template>
+            </el-table-column>
             <el-table-column
-              prop="stateGridName"
-              label="电网名称"
+              prop="allowApplyTime"
+              label="允许申报时间"
               min-width="140"
             />
             <el-table-column
-              prop="serviceStartDate"
-              label="服务开始"
-              min-width="120"
-            />
-            <el-table-column
-              prop="serviceEndDate"
-              label="服务结束"
+              prop="percent"
+              label="企业用户占比"
               min-width="120"
             />
             <el-table-column prop="status" label="状态" width="80">
@@ -175,19 +165,42 @@
 
         <div class="filter-panel">
           <el-form :inline="true" :model="modelFilters" size="small">
-            <el-form-item label="模型名称">
-              <el-input
-                v-model.trim="modelFilters.modelName"
+            <el-form-item label="企业">
+              <el-select
+                v-model="modelFilters.entId"
                 clearable
-                placeholder="请输入模型名称"
+                filterable
+                placeholder="选择企业"
+              >
+                <el-option
+                  v-for="item in filteredEnterpriseOptions"
+                  :key="item.entId"
+                  :label="enterpriseOptionLabel(item)"
+                  :value="item.entId"
+                />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="项目名称">
+              <el-input
+                v-model.trim="modelFilters.energyStation"
+                clearable
+                placeholder="请输入项目名称"
               />
             </el-form-item>
-            <el-form-item label="模型类型">
-              <el-input
-                v-model.trim="modelFilters.modelType"
+            <el-form-item label="资源类型">
+              <el-select
+                v-model="modelFilters.resourceTypeId"
                 clearable
-                placeholder="请输入模型类型"
-              />
+                filterable
+                placeholder="全部"
+              >
+                <el-option
+                  v-for="item in modelResourceTypeOptions"
+                  :key="item.id"
+                  :label="item.name"
+                  :value="item.id"
+                />
+              </el-select>
             </el-form-item>
             <el-form-item>
               <el-button
@@ -212,33 +225,46 @@
             stripe
             border
           >
+            <el-table-column prop="entName" label="企业名称" min-width="180" />
+            <el-table-column prop="entId" label="企业ID" min-width="140" />
             <el-table-column
-              prop="modelName"
-              label="模型名称"
-              min-width="200"
+              prop="energyStation"
+              label="项目名称"
+              min-width="180"
             />
-            <el-table-column prop="modelType" label="模型类型" min-width="150" />
             <el-table-column
-              prop="description"
-              label="描述"
-              min-width="200"
-              show-overflow-tooltip
+              prop="energyStationCode"
+              label="项目编码"
+              min-width="160"
             />
-            <el-table-column prop="status" label="状态" width="80">
+            <el-table-column
+              prop="resourceTypeId"
+              label="资源类型"
+              min-width="120"
+            />
+            <el-table-column
+              prop="powerCap"
+              label="容量(kW)"
+              min-width="120"
+            />
+            <el-table-column prop="area" label="区域" min-width="120" />
+            <el-table-column prop="userType" label="用户类型" min-width="120" />
+            <el-table-column
+              prop="deviceManufacture"
+              label="设备制造商"
+              min-width="140"
+            />
+            <el-table-column prop="saveHeat" label="蓄热方式" min-width="120" />
+            <el-table-column prop="controll" label="是否参与" width="100">
               <template slot-scope="{ row }">
                 <el-tag
                   size="mini"
-                  :type="row.status === 1 ? 'success' : 'info'"
+                  :type="isControllable(row.controll) ? 'success' : 'info'"
                 >
-                  {{ row.status === 1 ? "启用" : "停用" }}
+                  {{ isControllable(row.controll) ? "参与" : "不参与" }}
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column
-              prop="createTime"
-              label="创建时间"
-              min-width="160"
-            />
             <el-table-column label="操作" width="180" fixed="right">
               <template slot-scope="{ row }">
                 <el-button
@@ -284,9 +310,6 @@
 
         <div class="filter-panel">
           <el-form :inline="true" :model="deviceFilters" size="small">
-            <el-form-item label="聚合商">
-              <el-input :value="currentAggregatorLabel" disabled />
-            </el-form-item>
             <el-form-item label="企业">
               <el-select
                 v-model="deviceFilters.entId"
@@ -302,18 +325,18 @@
                 />
               </el-select>
             </el-form-item>
+            <el-form-item label="项目名称">
+              <el-input
+                v-model.trim="deviceFilters.energyStation"
+                clearable
+                placeholder="请输入项目名称"
+              />
+            </el-form-item>
             <el-form-item label="设备名称">
               <el-input
                 v-model.trim="deviceFilters.deviceName"
                 clearable
                 placeholder="请输入设备名称"
-              />
-            </el-form-item>
-            <el-form-item label="设备类型">
-              <el-input
-                v-model.trim="deviceFilters.deviceTypeCode"
-                clearable
-                placeholder="请输入类型"
               />
             </el-form-item>
             <el-form-item>
@@ -339,46 +362,39 @@
             stripe
             border
           >
+            <el-table-column prop="username" label="企业名称" min-width="160" />
             <el-table-column
-              prop="deviceCode"
-              label="设备编码"
-              min-width="140"
-              fixed
+              prop="energyStation"
+              label="项目名称"
+              min-width="180"
             />
             <el-table-column
               prop="deviceName"
               label="设备名称"
-              min-width="180"
+              min-width="160"
             />
-            <el-table-column prop="entId" label="企业ID" min-width="140" />
             <el-table-column
-              prop="deviceTypeCode"
-              label="设备类型"
+              prop="resourceTypeName"
+              label="资源类型"
               min-width="100"
             />
-            <el-table-column
-              prop="manufacturer"
-              label="厂商"
-              min-width="120"
-            />
-            <el-table-column prop="model" label="型号" min-width="120" />
-            <el-table-column prop="onlineStatus" label="在线状态" width="90">
+            <el-table-column prop="status" label="状态" width="90">
               <template slot-scope="{ row }">
                 <el-tag
                   size="mini"
-                  :type="row.onlineStatus === 1 ? 'success' : 'info'"
+                  :type="row.status === 1 ? 'success' : 'info'"
                 >
-                  {{ row.onlineStatus === 1 ? "在线" : "离线" }}
+                  {{ row.status === 1 ? "启用" : "停用" }}
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="assetStatus" label="资产状态" width="90">
+            <el-table-column prop="modelFlag" label="参与状态" width="90">
               <template slot-scope="{ row }">
                 <el-tag
                   size="mini"
-                  :type="row.assetStatus === 1 ? 'success' : 'info'"
+                  :type="row.modelFlag === 1 ? 'success' : 'info'"
                 >
-                  {{ row.assetStatus === 1 ? "启用" : "停用" }}
+                  {{ row.modelFlag === 1 ? "参与" : "不参与" }}
                 </el-tag>
               </template>
             </el-table-column>
@@ -419,23 +435,64 @@
       width="620px"
     >
       <el-form :model="modelForm" label-width="96px" size="small">
-        <el-form-item label="模型名称" required>
-          <el-input v-model.trim="modelForm.modelName" />
+        <el-form-item label="企业" required>
+          <el-select
+            v-model="modelForm.entId"
+            filterable
+            placeholder="请选择企业"
+            @change="handleModelEntChange"
+          >
+            <el-option
+              v-for="item in deviceFormEnterpriseOptions"
+              :key="item.entId"
+              :label="enterpriseOptionLabel(item)"
+              :value="item.entId"
+            />
+          </el-select>
         </el-form-item>
-        <el-form-item label="模型类型" required>
-          <el-input v-model.trim="modelForm.modelType" placeholder="METE" />
+        <el-form-item label="项目名称" required>
+          <el-input v-model.trim="modelForm.energyStation" />
         </el-form-item>
-        <el-form-item label="描述">
+        <el-form-item label="项目编码">
           <el-input
-            v-model.trim="modelForm.description"
-            type="textarea"
-            :rows="3"
+            v-model.trim="modelForm.energyStationCode"
+            disabled
+            placeholder="自动生成"
           />
         </el-form-item>
-        <el-form-item label="状态">
-          <el-radio-group v-model="modelForm.status">
-            <el-radio :label="1">启用</el-radio>
-            <el-radio :label="0">停用</el-radio>
+        <el-form-item label="资源类型" required>
+          <el-select
+            v-model="modelForm.resourceTypeId"
+            filterable
+            placeholder="请选择资源类型"
+          >
+            <el-option
+              v-for="item in modelDialogResourceTypeOptions"
+              :key="item.id"
+              :label="item.name"
+              :value="item.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="容量(kW)">
+          <el-input v-model.trim="modelForm.powerCap" />
+        </el-form-item>
+        <el-form-item label="区域">
+          <el-input v-model.trim="modelForm.area" />
+        </el-form-item>
+        <el-form-item label="用户类型">
+          <el-input v-model.trim="modelForm.userType" />
+        </el-form-item>
+        <el-form-item label="制造商">
+          <el-input v-model.trim="modelForm.deviceManufacture" />
+        </el-form-item>
+        <el-form-item label="蓄热方式">
+          <el-input v-model.trim="modelForm.saveHeat" />
+        </el-form-item>
+        <el-form-item label="是否参与">
+          <el-radio-group v-model="modelForm.controll">
+            <el-radio label="1">参与</el-radio>
+            <el-radio label="0">不参与</el-radio>
           </el-radio-group>
         </el-form-item>
       </el-form>
@@ -464,25 +521,15 @@
         size="small"
         class="enterprise-form"
       >
-        <el-form-item label="聚合商ID" required>
-          <el-input
-            v-model.trim="enterpriseForm.aggregatorId"
-            :disabled="!isOwner"
-            placeholder="aggregatorId"
-          />
-        </el-form-item>
-        <el-form-item label="企业ID" required>
+        <el-form-item v-if="enterpriseDialog.mode === 'edit'" label="企业ID">
           <el-input
             v-model.trim="enterpriseForm.entId"
-            :disabled="enterpriseDialog.mode === 'edit'"
+            disabled
             placeholder="entId"
           />
         </el-form-item>
         <el-form-item label="企业名称" required>
           <el-input v-model.trim="enterpriseForm.entName" />
-        </el-form-item>
-        <el-form-item label="企业编码">
-          <el-input v-model.trim="enterpriseForm.stationId" />
         </el-form-item>
         <el-form-item label="装机容量">
           <el-input-number
@@ -504,28 +551,10 @@
             />
           </div>
         </el-form-item>
-        <el-form-item label="电网信息">
-          <div class="inline-fields">
-            <el-input
-              v-model.trim="enterpriseForm.stateGridCode"
-              placeholder="电网编码"
-            />
-            <el-input
-              v-model.trim="enterpriseForm.stateGridName"
-              placeholder="电网名称"
-            />
-          </div>
-        </el-form-item>
-        <el-form-item label="服务周期">
-          <el-date-picker
-            v-model="enterpriseServiceRange"
-            type="daterange"
-            size="small"
-            value-format="yyyy-MM-dd"
-            range-separator="至"
-            start-placeholder="开始日期"
-            end-placeholder="结束日期"
-            @change="handleEnterpriseServiceRange"
+        <el-form-item label="允许申报时间">
+          <el-input
+            v-model.trim="enterpriseForm.allowApplyTime"
+            placeholder="例如 08:55"
           />
         </el-form-item>
         <el-form-item label="企业收益占比">
@@ -535,13 +564,6 @@
             :max="100"
             :step="1"
             controls-position="right"
-          />
-        </el-form-item>
-        <el-form-item label="按计划运行">
-          <el-switch
-            v-model="enterpriseForm.planRunStatus"
-            :active-value="1"
-            :inactive-value="0"
           />
         </el-form-item>
         <el-form-item label="状态">
@@ -572,13 +594,6 @@
       width="620px"
     >
       <el-form :model="deviceForm" label-width="96px" size="small">
-        <el-form-item label="聚合商">
-          <el-input
-            v-model.trim="deviceForm.aggregatorId"
-            :disabled="!isOwner"
-            placeholder="aggregatorId"
-          />
-        </el-form-item>
         <el-form-item label="企业" required>
           <el-select
             v-model="deviceForm.entId"
@@ -594,41 +609,49 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="项目ID">
-          <el-input-number
-            v-model="deviceForm.projectId"
-            :min="1"
-            controls-position="right"
-          />
-        </el-form-item>
-        <el-form-item label="设备编码">
-          <el-input
-            v-model.trim="deviceForm.deviceCode"
-            placeholder="为空时自动生成"
-          />
+        <el-form-item label="项目">
+          <el-select
+            v-model="deviceForm.energyStationCode"
+            filterable
+            clearable
+            placeholder="请选择项目"
+          >
+            <el-option
+              v-for="item in deviceProjectOptions"
+              :key="item.energyStationCode"
+              :label="item.energyStation"
+              :value="item.energyStationCode"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="设备名称" required>
           <el-input v-model.trim="deviceForm.deviceName" />
         </el-form-item>
-        <el-form-item label="设备类型">
-          <el-input
-            v-model.trim="deviceForm.deviceTypeCode"
-            placeholder="METE"
-          />
-        </el-form-item>
-        <el-form-item label="类型名称">
-          <el-input v-model.trim="deviceForm.deviceTypeName" />
-        </el-form-item>
-        <el-form-item label="厂商">
-          <el-input v-model.trim="deviceForm.manufacturer" />
-        </el-form-item>
-        <el-form-item label="型号">
-          <el-input v-model.trim="deviceForm.model" />
+        <el-form-item label="资源类型">
+          <el-select
+            v-model="deviceForm.resourceTypeId"
+            filterable
+            clearable
+            placeholder="请选择资源类型"
+          >
+            <el-option
+              v-for="item in modelResourceTypeOptions"
+              :key="item.id"
+              :label="item.name"
+              :value="item.id"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="状态">
-          <el-radio-group v-model="deviceForm.assetStatus">
+          <el-radio-group v-model="deviceForm.status">
             <el-radio :label="1">启用</el-radio>
             <el-radio :label="0">停用</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="参与状态">
+          <el-radio-group v-model="deviceForm.modelFlag">
+            <el-radio :label="1">参与</el-radio>
+            <el-radio :label="0">不参与</el-radio>
           </el-radio-group>
         </el-form-item>
       </el-form>
@@ -652,10 +675,16 @@
 import {
   createDevice,
   createEnterprise,
+  createModel,
+  deleteModel,
   disableEnterprise,
   deleteDevice,
   listEnterprises,
   listDevices,
+  listModels,
+  listProjectsByEnt,
+  listResourceTypes,
+  updateModel,
   updateEnterprise,
   updateDevice,
 } from "./api";
@@ -703,8 +732,11 @@ export default {
         total: 0,
       },
       modelFilters: {
-        modelName: "",
-        modelType: "",
+        aggregatorId: fixedAggregatorId,
+        entId: "",
+        resourceTypeId: "",
+        energyStationCode: "",
+        energyStation: "",
       },
       models: [],
       modelLoading: false,
@@ -713,11 +745,11 @@ export default {
         pageSize: 20,
         total: 0,
       },
+      modelResourceTypeOptions: [],
       deviceFilters: {
-        aggregatorId: fixedAggregatorId,
         entId: "",
         deviceName: "",
-        deviceTypeCode: "",
+        energyStation: "",
       },
       devices: [],
       deviceLoading: false,
@@ -727,6 +759,7 @@ export default {
         total: 0,
       },
       enterpriseServiceRange: [],
+      deviceProjectOptions: [],
       deviceDialog: {
         visible: false,
         loading: false,
@@ -790,18 +823,10 @@ export default {
       return this.enterprises.filter(item => item && item.entId);
     },
     filteredEnterpriseOptions() {
-      const aggregatorId = this.deviceFilters.aggregatorId;
-      if (!aggregatorId) {
-        return this.validEnterprises;
-      }
-      return this.validEnterprises.filter(item => item.aggregatorId === aggregatorId);
+      return this.validEnterprises;
     },
     deviceFormEnterpriseOptions() {
-      const aggregatorId = this.deviceForm && this.deviceForm.aggregatorId;
-      if (!aggregatorId) {
-        return this.validEnterprises;
-      }
-      return this.validEnterprises.filter(item => item.aggregatorId === aggregatorId);
+      return this.validEnterprises;
     },
     currentAggregatorLabel() {
       const aggregatorId = this.scopeAggregatorId;
@@ -822,6 +847,7 @@ export default {
 
     this.reloadEnterprises();
     if (this.activeResourceTab === "model") {
+      this.loadModelResourceTypes();
       this.reloadModels();
     }
   },
@@ -835,15 +861,21 @@ export default {
       }
       this.scopeAggregatorId = value;
       this.enterpriseFilters.aggregatorId = value;
-      this.deviceFilters.aggregatorId = value;
+      this.modelFilters.aggregatorId = value;
+      this.modelFilters.entId = "";
       this.deviceFilters.entId = "";
       this.enterprisePage.pageIndex = 1;
+      this.modelPage.pageIndex = 1;
       this.devicePage.pageIndex = 1;
       if (this.activeResourceTab === "enterprise") {
         this.reloadEnterprises();
       } else if (this.activeResourceTab === "device") {
         this.reloadEnterprises();
         this.reloadDevices();
+      } else if (this.activeResourceTab === "model") {
+        this.reloadEnterprises();
+        this.loadModelResourceTypes();
+        this.reloadModels();
       }
     },
   },
@@ -858,6 +890,8 @@ export default {
       if (tabKey === "enterprise") {
         this.reloadEnterprises();
       } else if (tabKey === "model") {
+        this.reloadEnterprises();
+        this.loadModelResourceTypes();
         this.reloadModels();
       } else if (tabKey === "device") {
         this.reloadEnterprises();
@@ -869,43 +903,40 @@ export default {
         id: null,
         aggregatorId: this.defaultAggregatorId(this.enterpriseFilters.aggregatorId),
         entId: "",
-        stationId: "",
         entName: "",
         status: 1,
         longitude: "",
         latitude: "",
         percent: undefined,
-        serviceStartDate: "",
-        serviceEndDate: "",
-        stateGridCode: "",
-        stateGridName: "",
+        allowApplyTime: "",
         installCap: undefined,
-        planRunStatus: 1,
       };
     },
     defaultDeviceForm() {
       return {
         id: null,
-        aggregatorId: this.defaultAggregatorId(this.deviceFilters.aggregatorId),
         entId: "",
-        projectId: undefined,
-        deviceCode: "",
+        energyStationCode: "",
         deviceName: "",
-        deviceTypeCode: "METE",
-        deviceTypeName: "电表",
-        manufacturer: "",
-        model: "",
-        assetStatus: 1,
-        onlineStatus: 0,
+        resourceTypeId: "",
+        status: 1,
+        modelFlag: 1,
       };
     },
     defaultModelForm() {
       return {
         id: null,
-        modelName: "",
-        modelType: "",
-        description: "",
-        status: 1,
+        aggregatorId: this.defaultAggregatorId(this.modelFilters.aggregatorId),
+        entId: "",
+        resourceTypeId: "",
+        energyStation: "",
+        energyStationCode: "",
+        powerCap: "",
+        area: "",
+        userType: "",
+        deviceManufacture: "",
+        saveHeat: "",
+        controll: "1",
       };
     },
     enterpriseOptionLabel(item) {
@@ -950,20 +981,22 @@ export default {
     },
     resetDeviceFilters() {
       this.deviceFilters = {
-        aggregatorId: this.scopeAggregatorId,
         entId: "",
         deviceName: "",
-        deviceTypeCode: "",
+        energyStation: "",
       };
       this.devicePage.pageIndex = 1;
       this.reloadDevices();
     },
     resetModelFilters() {
       this.modelFilters = {
-        modelName: "",
-        modelType: "",
+        aggregatorId: this.scopeAggregatorId,
+        entId: "",
+        resourceTypeId: "",
+        energyStation: "",
       };
       this.modelPage.pageIndex = 1;
+      this.loadModelResourceTypes();
       this.reloadModels();
     },
     handleEnterpriseSizeChange(size) {
@@ -983,81 +1016,127 @@ export default {
     },
     reloadModels() {
       this.modelLoading = true;
-      // 模拟数据，实际需要调用API
-      setTimeout(() => {
-        this.models = [
-          {
-            id: 1,
-            modelName: "电表模型",
-            modelType: "METE",
-            description: "标准电表设备模型",
-            status: 1,
-            createTime: "2024-01-01 10:00:00",
-          },
-          {
-            id: 2,
-            modelName: "储能模型",
-            modelType: "STORAGE",
-            description: "储能设备模型",
-            status: 1,
-            createTime: "2024-01-02 10:00:00",
-          },
-        ];
-        this.modelPage.total = 2;
-        this.modelLoading = false;
-      }, 300);
+      if (!this.isOwner) {
+        this.modelFilters.aggregatorId = this.scopeAggregatorId;
+      }
+      const params = {
+        ...this.modelFilters,
+        pageIndex: this.modelPage.pageIndex,
+        pageSize: this.modelPage.pageSize,
+      };
+      listModels(params)
+        .then((res) => {
+          const page = this.unwrapPage(res);
+          this.models = page.list || [];
+          this.modelPage.total = page.total || 0;
+        })
+        .catch((error) => {
+          console.error("加载模型列表失败:", error);
+          this.models = [];
+          this.modelPage.total = 0;
+        })
+        .finally(() => {
+          this.modelLoading = false;
+        });
+    },
+    loadModelResourceTypes(entId) {
+      const aggregatorId = this.scopeAggregatorId;
+      if (!aggregatorId) {
+        this.modelResourceTypeOptions = [];
+        return Promise.resolve();
+      }
+      return listResourceTypes({
+        aggregatorId,
+        entId: entId || this.modelFilters.entId || "",
+      })
+        .then((res) => {
+          const list = this.unwrapData(res, []);
+          this.modelResourceTypeOptions = Array.isArray(list) ? list : [];
+        })
+        .catch((error) => {
+          console.error("加载资源类型失败:", error);
+          this.modelResourceTypeOptions = [];
+        });
     },
     openModelDialog(mode, row) {
       this.modelDialog.mode = mode;
       this.modelDialog.title = mode === "create" ? "新增模型" : "编辑模型";
-      this.modelForm =
-        mode === "create"
-          ? this.defaultModelForm()
-          : { ...this.defaultModelForm(), ...row };
+      this.modelForm = this.defaultModelForm();
+      if (mode === "create") {
+        this.modelForm.aggregatorId = this.defaultAggregatorId(this.modelFilters.aggregatorId);
+        this.modelForm.entId = this.modelFilters.entId;
+      } else if (row) {
+        this.modelForm = { ...this.defaultModelForm(), ...row };
+      }
+      if (!this.isOwner) {
+        this.modelForm.aggregatorId = this.scopeAggregatorId;
+      }
+      this.loadModelResourceTypes(this.modelForm.entId);
       this.modelDialog.visible = true;
     },
+    handleModelEntChange(entId) {
+      const ent = this.enterprises.find((item) => item && item.entId === entId);
+      if (ent) {
+        this.modelForm.aggregatorId = ent.aggregatorId;
+      } else if (!this.isOwner) {
+        this.modelForm.aggregatorId = this.scopeAggregatorId;
+      }
+      this.modelForm.resourceTypeId = "";
+      this.loadModelResourceTypes(entId);
+    },
     submitModel() {
-      if (!this.modelForm.modelName || !this.modelForm.modelType) {
-        this.$message.warning("模型名称和类型不能为空");
+      if (!this.isOwner) {
+        this.modelForm.aggregatorId = this.scopeAggregatorId;
+      }
+      if (!this.modelForm.entId) {
+        this.$message.warning("企业不能为空");
+        return;
+      }
+      if (!this.modelForm.energyStation) {
+        this.$message.warning("项目名称不能为空");
+        return;
+      }
+      if (!this.modelForm.resourceTypeId) {
+        this.$message.warning("资源类型不能为空");
         return;
       }
       this.modelDialog.loading = true;
-      // 模拟保存，实际需要调用API
-      setTimeout(() => {
-        this.$message.success("保存成功");
-        this.modelDialog.visible = false;
-        this.modelDialog.loading = false;
-        this.reloadModels();
-      }, 500);
+      const payload = { ...this.modelForm };
+      delete payload.entName;
+      const request =
+        this.modelDialog.mode === "create"
+          ? createModel(payload)
+          : updateModel(this.modelForm.id, payload);
+      request
+        .then((res) => {
+          this.ensureSuccess(res);
+          this.$message.success("保存成功");
+          this.modelDialog.visible = false;
+          this.reloadModels();
+        })
+        .finally(() => {
+          this.modelDialog.loading = false;
+        });
     },
     removeModel(row) {
-      this.$confirm(`确认删除模型 ${row.modelName}？`, "删除模型", {
+      this.$confirm(`确认删除项目 ${row.energyStation || row.energyStationCode}？`, "删除模型", {
         type: "warning",
       }).then(() => {
-        this.$message.success("已删除");
-        this.reloadModels();
+        deleteModel(row.id).then((res) => {
+          this.ensureSuccess(res);
+          this.$message.success("已删除");
+          this.reloadModels();
+        });
       });
     },
     openEnterpriseDialog(mode, row) {
       this.enterpriseDialog.mode = mode;
       this.enterpriseDialog.title = mode === "create" ? "新增企业" : "编辑企业";
       this.enterpriseForm = this.defaultEnterpriseForm();
-      this.enterpriseServiceRange = [];
       if (mode === "edit" && row) {
         this.enterpriseForm = { ...this.defaultEnterpriseForm(), ...row };
-        if (row.serviceStartDate && row.serviceEndDate) {
-          this.enterpriseServiceRange = [
-            row.serviceStartDate,
-            row.serviceEndDate,
-          ];
-        }
       }
       this.enterpriseDialog.visible = true;
-    },
-    handleEnterpriseServiceRange(value) {
-      const range = value || [];
-      this.enterpriseForm.serviceStartDate = range[0] || "";
-      this.enterpriseForm.serviceEndDate = range[1] || "";
     },
     submitEnterprise() {
       if (!this.isOwner) {
@@ -1067,7 +1146,7 @@ export default {
         this.$message.warning("聚合商ID不能为空");
         return;
       }
-      if (!this.enterpriseForm.entId) {
+      if (this.enterpriseDialog.mode === "edit" && !this.enterpriseForm.entId) {
         this.$message.warning("企业ID不能为空");
         return;
       }
@@ -1103,18 +1182,23 @@ export default {
       });
     },
     handleDeviceEntChange(entId) {
-      const ent = this.enterprises.find((item) => item && item.entId === entId);
-      if (ent) {
-        this.deviceForm.aggregatorId = ent.aggregatorId;
-      } else if (!this.isOwner) {
-        this.deviceForm.aggregatorId = this.scopeAggregatorId;
+      this.deviceForm.energyStationCode = "";
+      this.deviceProjectOptions = [];
+      if (entId) {
+        this.loadDeviceProjects(entId);
       }
+    },
+    loadDeviceProjects(entId) {
+      listProjectsByEnt(entId)
+        .then((res) => {
+          this.deviceProjectOptions = this.unwrapData(res, []);
+        })
+        .catch(() => {
+          this.deviceProjectOptions = [];
+        });
     },
     reloadDevices() {
       this.deviceLoading = true;
-      if (!this.isOwner) {
-        this.deviceFilters.aggregatorId = this.scopeAggregatorId;
-      }
       const params = {
         ...this.deviceFilters,
         pageIndex: this.devicePage.pageIndex,
@@ -1139,27 +1223,27 @@ export default {
       this.deviceDialog.mode = mode;
       this.deviceDialog.title = mode === "create" ? "新增设备" : "编辑设备";
       this.deviceForm = this.defaultDeviceForm();
+      this.deviceProjectOptions = [];
+      this.loadModelResourceTypes();
       if (mode === "create") {
-        this.deviceForm.aggregatorId = this.defaultAggregatorId(this.deviceFilters.aggregatorId);
         this.deviceForm.entId = this.deviceFilters.entId;
-        this.handleDeviceEntChange(this.deviceForm.entId);
+        if (this.deviceForm.entId) {
+          this.loadDeviceProjects(this.deviceForm.entId);
+        }
       } else if (row) {
         this.deviceForm = {
           ...this.defaultDeviceForm(),
           ...row,
         };
-      }
-      if (!this.isOwner) {
-        this.deviceForm.aggregatorId = this.scopeAggregatorId;
+        if (row.entId) {
+          this.loadDeviceProjects(row.entId);
+        }
       }
       this.deviceDialog.visible = true;
     },
     submitDevice() {
-      if (!this.isOwner) {
-        this.deviceForm.aggregatorId = this.scopeAggregatorId;
-      }
       if (!this.deviceForm.entId) {
-        this.$message.warning("企业ID不能为空");
+        this.$message.warning("企业不能为空");
         return;
       }
       if (!this.deviceForm.deviceName) {
@@ -1183,7 +1267,7 @@ export default {
         });
     },
     removeDevice(row) {
-      this.$confirm(`确认删除设备 ${row.deviceCode || row.deviceName}？`, "删除设备", {
+      this.$confirm(`确认删除设备 ${row.deviceName}？`, "删除设备", {
         type: "warning",
       }).then(() => {
         deleteDevice(row.id).then((res) => {
@@ -1216,6 +1300,17 @@ export default {
       if (body.code && body.code !== 200) {
         throw new Error(body.msg || "请求失败");
       }
+    },
+    formatLngLat(row) {
+      if (!row) {
+        return "-";
+      }
+      const longitude = row.longitude || "-";
+      const latitude = row.latitude || "-";
+      return `${longitude}, ${latitude}`;
+    },
+    isControllable(value) {
+      return String(value) === "1";
     },
   },
 };

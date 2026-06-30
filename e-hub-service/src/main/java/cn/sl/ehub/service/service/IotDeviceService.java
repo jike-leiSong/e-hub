@@ -20,6 +20,7 @@ import cn.sl.ehub.service.vo.IotDevicePoint;
 import cn.sl.ehub.service.vo.IotPointExternalRef;
 import cn.sl.ehub.service.vo.IotTelemetryMinute;
 import cn.sl.ehub.service.vo.IotUnmatchedTelemetryLog;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -72,8 +73,8 @@ public class IotDeviceService {
             if (StringUtils.isNotBlank(query.getEntId())) {
                 criteria.andEqualTo("entId", query.getEntId());
             }
-            if (query.getProjectId() != null) {
-                criteria.andEqualTo("projectId", query.getProjectId());
+            if (StringUtils.isNotBlank(query.getProjectId())) {
+                criteria.andEqualTo("projectId", StringUtils.trim(query.getProjectId()));
             }
             if (StringUtils.isNotBlank(query.getDeviceCode())) {
                 criteria.andLike("deviceCode", "%" + StringUtils.trim(query.getDeviceCode()) + "%");
@@ -112,7 +113,7 @@ public class IotDeviceService {
         IotDevice device = new IotDevice();
         device.setAggregatorId(StringUtils.trimToNull(req.getAggregatorId()));
         device.setEntId(StringUtils.trim(req.getEntId()));
-        device.setProjectId(req.getProjectId());
+        device.setProjectId(StringUtils.trimToNull(req.getProjectId()));
         device.setDeviceTypeCode(StringUtils.trimToNull(req.getDeviceTypeCode()));
         device.setDeviceTypeName(StringUtils.trimToNull(req.getDeviceTypeName()));
         device.setDeviceCode(StringUtils.trimToNull(req.getDeviceCode()));
@@ -158,7 +159,7 @@ public class IotDeviceService {
         }
         device.setAggregatorId(StringUtils.defaultIfBlank(req.getAggregatorId(), device.getAggregatorId()));
         device.setEntId(newEntId);
-        device.setProjectId(req.getProjectId() == null ? device.getProjectId() : req.getProjectId());
+        device.setProjectId(StringUtils.isNotBlank(req.getProjectId()) ? StringUtils.trim(req.getProjectId()) : device.getProjectId());
         device.setDeviceCode(newDeviceCode);
         device.setDeviceName(StringUtils.defaultIfBlank(req.getDeviceName(), device.getDeviceName()));
         device.setDeviceTypeCode(StringUtils.defaultIfBlank(req.getDeviceTypeCode(), device.getDeviceTypeCode()));
@@ -278,7 +279,7 @@ public class IotDeviceService {
         if (StringUtils.isBlank(req.getEntId())) {
             req.setEntId(device.getEntId());
         }
-        if (req.getProjectId() == null) {
+        if (StringUtils.isBlank(req.getProjectId())) {
             req.setProjectId(device.getProjectId());
         }
         validateDeviceExternalRefReq(req);
@@ -310,7 +311,7 @@ public class IotDeviceService {
         }
         ref.setSourceCode(sourceCode);
         ref.setEntId(entId);
-        ref.setProjectId(req.getProjectId() == null ? ref.getProjectId() : req.getProjectId());
+        ref.setProjectId(StringUtils.isNotBlank(req.getProjectId()) ? req.getProjectId() : ref.getProjectId());
         ref.setExternalDeviceId(externalDeviceId);
         ref.setExternalDeviceCode(req.getExternalDeviceCode() == null ? ref.getExternalDeviceCode() : StringUtils.trimToNull(req.getExternalDeviceCode()));
         ref.setExternalDeviceName(req.getExternalDeviceName() == null ? ref.getExternalDeviceName() : StringUtils.trimToNull(req.getExternalDeviceName()));
@@ -408,8 +409,8 @@ public class IotDeviceService {
             if (StringUtils.isNotBlank(query.getEntId())) {
                 criteria.andEqualTo("entId", query.getEntId());
             }
-            if (query.getProjectId() != null) {
-                criteria.andEqualTo("projectId", query.getProjectId());
+            if (StringUtils.isNotBlank(query.getProjectId())) {
+                criteria.andEqualTo("projectId", StringUtils.trim(query.getProjectId()));
             }
             if (query.getDeviceId() != null) {
                 criteria.andEqualTo("deviceId", query.getDeviceId());
@@ -490,7 +491,7 @@ public class IotDeviceService {
         IotDeviceExternalRef ref = new IotDeviceExternalRef();
         ref.setSourceCode(StringUtils.trim(req.getSourceCode()));
         ref.setEntId(StringUtils.trim(req.getEntId()));
-        ref.setProjectId(req.getProjectId());
+        ref.setProjectId(StringUtils.trimToNull(req.getProjectId()));
         ref.setDeviceId(req.getDeviceId());
         ref.setExternalDeviceId(StringUtils.trim(req.getExternalDeviceId()));
         ref.setExternalDeviceCode(StringUtils.trimToNull(req.getExternalDeviceCode()));

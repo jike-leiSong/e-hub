@@ -5,13 +5,19 @@ import cn.sl.ehub.common.exception.BaseException;
 import cn.sl.ehub.common.vo.ResultVO;
 import cn.sl.ehub.console.auth.LoadAggregationScopeService;
 import cn.sl.ehub.console.model.vo.PageResultVO;
+import cn.sl.ehub.console.service.IAggregatorEntService;
+import cn.sl.ehub.console.service.IAggregatorResourceTypeService;
 import cn.sl.ehub.service.dto.iot.IotDeviceExternalRefSaveReq;
 import cn.sl.ehub.service.dto.iot.IotDevicePointSaveReq;
 import cn.sl.ehub.service.dto.iot.IotDeviceQuery;
 import cn.sl.ehub.service.dto.iot.IotDeviceSaveReq;
 import cn.sl.ehub.service.dto.iot.IotPointExternalRefSaveReq;
 import cn.sl.ehub.service.dto.iot.IotTelemetryMinuteQuery;
+import cn.sl.ehub.service.service.AggregatorSingleModelDataService;
 import cn.sl.ehub.service.service.IotDeviceService;
+import cn.sl.ehub.service.vo.AggregatorEnt;
+import cn.sl.ehub.service.vo.AggregatorResourceType;
+import cn.sl.ehub.service.vo.AggregatorSingleModelData;
 import cn.sl.ehub.service.vo.IotDevice;
 import cn.sl.ehub.service.vo.IotDeviceExternalRef;
 import cn.sl.ehub.service.vo.IotDevicePoint;
@@ -22,6 +28,7 @@ import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -32,7 +39,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/iot")
@@ -41,17 +52,28 @@ public class IotDeviceController {
 
     private final IotDeviceService iotDeviceService;
     private final LoadAggregationScopeService loadScopeService;
+    private final IAggregatorEntService aggregatorEntService;
+    private final IAggregatorResourceTypeService aggregatorResourceTypeService;
+    private final AggregatorSingleModelDataService aggregatorSingleModelDataService;
 
-    public IotDeviceController(IotDeviceService iotDeviceService, LoadAggregationScopeService loadScopeService) {
+    public IotDeviceController(IotDeviceService iotDeviceService,
+                                LoadAggregationScopeService loadScopeService,
+                                IAggregatorEntService aggregatorEntService,
+                                IAggregatorResourceTypeService aggregatorResourceTypeService,
+                                AggregatorSingleModelDataService aggregatorSingleModelDataService) {
         this.iotDeviceService = iotDeviceService;
         this.loadScopeService = loadScopeService;
+        this.aggregatorEntService = aggregatorEntService;
+        this.aggregatorResourceTypeService = aggregatorResourceTypeService;
+        this.aggregatorSingleModelDataService = aggregatorSingleModelDataService;
     }
 
     @GetMapping("/devices")
     @ApiOperation("设备列表")
     public ResultVO<PageResultVO<IotDevice>> listDevices(@RequestParam(value = "aggregatorId", required = false) String aggregatorId,
                                                          @RequestParam(value = "entId", required = false) String entId,
-                                                         @RequestParam(value = "projectId", required = false) Long projectId,
+                                                         @RequestParam(value = "projectId", required = false) String projectId,
+                                                         @RequestParam(value = "energyStation", required = false) String energyStation,
                                                          @RequestParam(value = "deviceCode", required = false) String deviceCode,
                                                          @RequestParam(value = "deviceName", required = false) String deviceName,
                                                          @RequestParam(value = "deviceTypeCode", required = false) String deviceTypeCode,
@@ -63,14 +85,38 @@ public class IotDeviceController {
         query.setAggregatorId(aggregatorId);
         query.setEntId(entId);
         query.setProjectId(projectId);
+        query.setEnergyStation(energyStation);
         query.setDeviceCode(deviceCode);
         query.setDeviceName(deviceName);
         query.setDeviceTypeCode(deviceTypeCode);
         query.setAssetStatus(assetStatus);
         query.setOnlineStatus(onlineStatus);
         applyDataScope(query);
+        if (StringUtils.isNotBlank(energyStation)) {
+            List<AggregatorSingleModelData> models = aggregatorSingleModelDataService.list(
+                    null, null, null, energyStation, null);
+            List<String> stationCodes = models.stream()
+                    .map(AggregatorSingleModelData::getEnergyStationCode)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .collect(Collectors.toList());
+            if (stationCodes.isEmpty()) {
+                return ResultVO.success(emptyPage(pageIndex, pageSize));
+            }
+            query.setProjectId(null);
+            query.setEnergyStation(null);
+            PageHelper.startPage(pageIndex, pageSize);
+            List<IotDevice> list = iotDeviceService.listDevices(query);
+            list = list.stream()
+                    .filter(d -> stationCodes.contains(d.getProjectId()))
+                    .collect(Collectors.toList());
+            bindDeviceExtraInfo(list);
+            return ResultVO.success(toPage(list, pageIndex, pageSize));
+        }
+        query.setEnergyStation(null);
         PageHelper.startPage(pageIndex, pageSize);
         List<IotDevice> list = iotDeviceService.listDevices(query);
+        bindDeviceExtraInfo(list);
         return ResultVO.success(toPage(list, pageIndex, pageSize));
     }
 
@@ -211,7 +257,7 @@ public class IotDeviceController {
     @ApiOperation("分钟测点数据")
     public ResultVO<PageResultVO<IotTelemetryMinute>> listTelemetryMinute(@RequestParam(value = "aggregatorId", required = false) String aggregatorId,
                                                                           @RequestParam(value = "entId", required = false) String entId,
-                                                                          @RequestParam(value = "projectId", required = false) Long projectId,
+                                                                          @RequestParam(value = "projectId", required = false) String projectId,
                                                                           @RequestParam(value = "deviceId", required = false) Long deviceId,
                                                                           @RequestParam(value = "deviceCode", required = false) String deviceCode,
                                                                           @RequestParam(value = "pointCode", required = false) String pointCode,
@@ -250,6 +296,15 @@ public class IotDeviceController {
         PageResultVO<T> page = new PageResultVO<>();
         page.setList(list);
         page.setTotal((int) pageInfo.getTotal());
+        page.setPageIndex(pageIndex);
+        page.setPageSize(pageSize);
+        return page;
+    }
+
+    private <T> PageResultVO<T> emptyPage(Integer pageIndex, Integer pageSize) {
+        PageResultVO<T> page = new PageResultVO<>();
+        page.setList(Collections.emptyList());
+        page.setTotal(0);
         page.setPageIndex(pageIndex);
         page.setPageSize(pageSize);
         return page;
@@ -313,6 +368,56 @@ public class IotDeviceController {
         }
         validateDeviceScope(ref.getDeviceId());
         return ref;
+    }
+
+    private void bindDeviceExtraInfo(List<IotDevice> list) {
+        if (list == null || list.isEmpty()) {
+            return;
+        }
+        List<String> entIds = list.stream()
+                .map(IotDevice::getEntId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+        Map<String, String> entNameMap = Collections.emptyMap();
+        if (!entIds.isEmpty()) {
+            List<AggregatorEnt> ents = aggregatorEntService.getAggregatorEntList(entIds);
+            entNameMap = ents.stream().collect(Collectors.toMap(
+                    AggregatorEnt::getEntId, AggregatorEnt::getEntName, (a, b) -> a));
+        }
+
+        List<String> projectIds = list.stream()
+                .map(IotDevice::getProjectId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+        Map<String, AggregatorSingleModelData> modelMap = Collections.emptyMap();
+        if (!projectIds.isEmpty()) {
+            List<AggregatorSingleModelData> models = aggregatorSingleModelDataService.getByEnergyStationCodes(projectIds);
+            modelMap = models.stream().collect(Collectors.toMap(
+                    AggregatorSingleModelData::getEnergyStationCode, m -> m, (a, b) -> a));
+        }
+
+        List<String> resourceTypeIds = modelMap.values().stream()
+                .map(AggregatorSingleModelData::getResourceTypeId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+        Map<String, String> resourceTypeNameMap = Collections.emptyMap();
+        if (!resourceTypeIds.isEmpty()) {
+            List<AggregatorResourceType> types = aggregatorResourceTypeService.getAggregatorResourceTypeList();
+            resourceTypeNameMap = types.stream().collect(Collectors.toMap(
+                    AggregatorResourceType::getId, AggregatorResourceType::getName, (a, b) -> a));
+        }
+
+        for (IotDevice device : list) {
+            device.setEntName(entNameMap.get(device.getEntId()));
+            AggregatorSingleModelData model = modelMap.get(device.getProjectId());
+            if (model != null) {
+                device.setEnergyStation(model.getEnergyStation());
+                device.setResourceTypeName(resourceTypeNameMap.get(model.getResourceTypeId()));
+            }
+        }
     }
 
 }

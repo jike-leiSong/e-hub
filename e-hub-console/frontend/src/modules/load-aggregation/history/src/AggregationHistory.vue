@@ -149,7 +149,7 @@ const pageConfigs = {
     subtitle: "汇总收益统计、用户收益统计和出清价格，支撑运营结算与对账",
   },
   "device-operation": {
-    title: "物联数据",
+    title: "物联管理 / 物联数据",
     subtitle: "查看各企业、各设备、各测点的历史运行数据，支持时间段查询",
   },
 };

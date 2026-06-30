@@ -9,7 +9,7 @@ public class IotTelemetryMinuteQuery {
 
     private String entId;
 
-    private Long projectId;
+    private String projectId;
 
     private Long deviceId;
 

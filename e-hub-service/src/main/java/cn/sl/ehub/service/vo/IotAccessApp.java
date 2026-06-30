@@ -37,9 +37,9 @@ public class IotAccessApp {
     @Column(name = "ent_id")
     private String entId;
 
-    @ApiModelProperty("默认项目ID")
+    @ApiModelProperty("默认项目编码")
     @Column(name = "project_id")
-    private Long projectId;
+    private String projectId;
 
     @ApiModelProperty("X-GW-AccessKey")
     @Column(name = "access_key")

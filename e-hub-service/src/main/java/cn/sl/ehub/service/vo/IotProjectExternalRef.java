@@ -29,9 +29,9 @@ public class IotProjectExternalRef {
     @Column(name = "ent_id")
     private String entId;
 
-    @ApiModelProperty("我方项目ID")
+    @ApiModelProperty("我方项目编码")
     @Column(name = "project_id")
-    private Long projectId;
+    private String projectId;
 
     @ApiModelProperty("三方项目ID")
     @Column(name = "external_project_id")

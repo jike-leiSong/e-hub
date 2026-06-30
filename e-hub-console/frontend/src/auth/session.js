@@ -117,7 +117,7 @@ function fallbackProfile(platformType, products) {
                 { key: "load-adjustment", label: "调节情况" },
                 { key: "load-settlement", label: "收益结算" },
                 { key: "load-resources", label: "资源管理" },
-                { key: "load-device-operation", label: "物联数据" },
+                { key: "load-device-operation", label: "物联管理" },
               ],
             },
             {
@@ -162,7 +162,7 @@ function fallbackProfile(platformType, products) {
         { key: "load-adjustment", label: "调节情况" },
         { key: "load-settlement", label: "收益结算" },
         { key: "load-resources", label: "资源管理" },
-        { key: "load-device-operation", label: "物联数据" },
+        { key: "load-device-operation", label: "物联管理" },
       ],
     });
   }

@@ -11,6 +11,10 @@ public class IotDevicePointSaveReq {
 
     private String pointName;
 
+    private String dataType;
+
+    private String dataTypeName;
+
     private String valueType;
 
     private String unit;

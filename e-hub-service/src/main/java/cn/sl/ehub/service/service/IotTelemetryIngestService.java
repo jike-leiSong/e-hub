@@ -411,7 +411,7 @@ public class IotTelemetryIngestService {
     }
 
     private static class IngestContext {
-        private Long projectId;
+        private String projectId;
         private IotDevice device;
         private IotDeviceExternalRef deviceRef;
         private IotDevicePoint point;

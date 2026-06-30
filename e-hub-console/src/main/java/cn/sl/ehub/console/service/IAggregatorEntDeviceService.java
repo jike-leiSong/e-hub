@@ -5,6 +5,7 @@ import cn.sl.ehub.service.req.UpdateEntReq;
 import cn.sl.ehub.service.vo.AggregatorEntDevice;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 设备Service
@@ -37,6 +38,22 @@ public interface IAggregatorEntDeviceService {
      * @return
      */
     List<AggregatorEntDevice> getDeviceByStationCode(String energyStationCode);
+
+    /**
+     * 根据能源站编码查询绑定的企业设备
+     *
+     * @param energyStationCodes 能源站编码列表
+     * @return 设备列表
+     */
+    List<AggregatorEntDevice> getDevicesByEnergyStationCodes(List<String> energyStationCodes);
+
+    /**
+     * 根据企业ID查询绑定的能源站编码
+     *
+     * @param entId 企业ID
+     * @return 能源站编码列表
+     */
+    List<String> getEnergyStationCodesByEntId(String entId);
 
     /**
      * 根据电站查询数据
@@ -149,4 +166,14 @@ public interface IAggregatorEntDeviceService {
      * @date 2026-05-28
      */
     List<AggregatorEntDevice> getDeviceListByAggregatorId(String aggregatorId);
+
+    List<AggregatorEntDevice> queryDeviceList(String aggregatorId, String entId, String deviceName, Integer status);
+
+    AggregatorEntDevice getDeviceById(Integer id);
+
+    AggregatorEntDevice createDevice(AggregatorEntDevice device);
+
+    void updateDevice(AggregatorEntDevice device);
+
+    void deleteDevice(Integer id);
 }

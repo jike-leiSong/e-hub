@@ -9,6 +9,7 @@ import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.Table;
+import javax.persistence.Transient;
 import java.util.Date;
 
 @Data
@@ -30,9 +31,13 @@ public class IotDevice {
     @Column(name = "ent_id")
     private String entId;
 
-    @ApiModelProperty("项目ID")
+    @ApiModelProperty("项目编码(energyStationCode)")
     @Column(name = "project_id")
-    private Long projectId;
+    private String projectId;
+
+    @ApiModelProperty("设备组ID")
+    @Column(name = "device_group_id")
+    private Long deviceGroupId;
 
     @ApiModelProperty("标准设备编码")
     @Column(name = "device_code")
@@ -50,6 +55,10 @@ public class IotDevice {
     @Column(name = "device_type_name")
     private String deviceTypeName;
 
+    @ApiModelProperty("通讯方式")
+    @Column(name = "communication_method")
+    private String communicationMethod;
+
     @ApiModelProperty("厂商")
     @Column(name = "manufacturer")
     private String manufacturer;
@@ -57,6 +66,14 @@ public class IotDevice {
     @ApiModelProperty("型号")
     @Column(name = "model")
     private String model;
+
+    @ApiModelProperty("第三方API")
+    @Column(name = "third_party_api")
+    private String thirdPartyApi;
+
+    @ApiModelProperty("第三方标识")
+    @Column(name = "third_party_code")
+    private String thirdPartyCode;
 
     @ApiModelProperty("资产状态：1启用，0停用")
     @Column(name = "asset_status")
@@ -85,4 +102,36 @@ public class IotDevice {
     @ApiModelProperty("更新时间")
     @Column(name = "update_time")
     private Date updateTime;
+
+    @Transient
+    @ApiModelProperty("企业名称")
+    private String entName;
+
+    @Transient
+    @ApiModelProperty("项目名称")
+    private String energyStation;
+
+    @Transient
+    @ApiModelProperty("资源类型名称")
+    private String resourceTypeName;
+
+    @Transient
+    @ApiModelProperty("设备组名称")
+    private String deviceGroupName;
+
+    @Transient
+    @ApiModelProperty("网关ID")
+    private Long gatewayId;
+
+    @Transient
+    @ApiModelProperty("网关名称")
+    private String gatewayName;
+
+    @Transient
+    @ApiModelProperty("设备参数")
+    private java.util.List<IotDeviceParam> paramList;
+
+    @Transient
+    @ApiModelProperty("设备测点")
+    private java.util.List<IotDevicePoint> pointList;
 }

@@ -38,7 +38,7 @@ public class ConsoleProductService {
     public static final String PRODUCT_TARIFF = "tariff";
 
     private static final List<ProductOptionResp> PRODUCT_OPTIONS = Collections.unmodifiableList(Arrays.asList(
-            new ProductOptionResp(PRODUCT_LOAD, "负荷聚合", "运营总览、调节情况、收益结算、物联数据、资源管理"),
+            new ProductOptionResp(PRODUCT_LOAD, "负荷聚合", "运营总览、调节情况、收益结算、物联管理、资源管理"),
             new ProductOptionResp(PRODUCT_TARIFF, "电价服务", "全国电价查询、接口能力、调用记录")
     ));
 

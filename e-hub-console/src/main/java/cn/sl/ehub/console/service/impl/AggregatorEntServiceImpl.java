@@ -17,6 +17,7 @@ import tk.mybatis.mapper.weekend.WeekendCriteria;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -124,6 +125,9 @@ public class AggregatorEntServiceImpl implements IAggregatorEntService {
     @Transactional(rollbackFor = Exception.class)
     public AggregatorEnt createAggregatorEnt(AggregatorEnt aggregatorEnt) {
         validateRequired(aggregatorEnt);
+        if (StringUtils.isBlank(aggregatorEnt.getEntId())) {
+            aggregatorEnt.setEntId(generateEntId());
+        }
         if (getAggregatorEnt(aggregatorEnt.getEntId()) != null) {
             throw new BaseException(StatusCode.C.getCode(), "企业ID已存在");
         }
@@ -255,11 +259,18 @@ public class AggregatorEntServiceImpl implements IAggregatorEntService {
         if (StringUtils.isBlank(aggregatorEnt.getAggregatorId())) {
             throw new BaseException(StatusCode.C.getCode(), "聚合商ID不能为空");
         }
-        if (StringUtils.isBlank(aggregatorEnt.getEntId())) {
-            throw new BaseException(StatusCode.C.getCode(), "企业ID不能为空");
-        }
         if (StringUtils.isBlank(aggregatorEnt.getEntName())) {
             throw new BaseException(StatusCode.C.getCode(), "企业名称不能为空");
         }
+    }
+
+    private String generateEntId() {
+        for (int i = 0; i < 10; i++) {
+            String entId = "ENT" + System.currentTimeMillis() + ThreadLocalRandom.current().nextInt(100, 1000);
+            if (getAggregatorEnt(entId) == null) {
+                return entId;
+            }
+        }
+        throw new BaseException(StatusCode.C.getCode(), "企业ID生成失败，请稍后重试");
     }
 }

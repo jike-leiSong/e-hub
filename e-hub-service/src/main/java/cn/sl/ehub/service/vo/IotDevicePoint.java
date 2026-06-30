@@ -9,6 +9,7 @@ import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.Table;
+import javax.persistence.Transient;
 import java.util.Date;
 
 @Data
@@ -33,6 +34,14 @@ public class IotDevicePoint {
     @ApiModelProperty("测点名称")
     @Column(name = "point_name")
     private String pointName;
+
+    @ApiModelProperty("数据类型")
+    @Column(name = "data_type")
+    private String dataType;
+
+    @ApiModelProperty("数据类型名称")
+    @Column(name = "data_type_name")
+    private String dataTypeName;
 
     @ApiModelProperty("值类型")
     @Column(name = "value_type")
@@ -75,4 +84,28 @@ public class IotDevicePoint {
 
     @Column(name = "update_time")
     private Date updateTime;
+
+    @Transient
+    @ApiModelProperty("测点编码别名")
+    private String propertyCode;
+
+    @Transient
+    @ApiModelProperty("测点名称别名")
+    private String propertyName;
+
+    @Transient
+    @ApiModelProperty("第三方标识")
+    private String thirdPartyCode;
+
+    @Transient
+    @ApiModelProperty("读写权限名称")
+    private String readWriteRoleName;
+
+    @Transient
+    @ApiModelProperty("上报方式")
+    private String upWayName;
+
+    @Transient
+    @ApiModelProperty("上报周期")
+    private String upPeriodName;
 }

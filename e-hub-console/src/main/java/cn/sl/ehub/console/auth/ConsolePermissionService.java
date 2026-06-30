@@ -240,7 +240,7 @@ public class ConsolePermissionService {
                     item("load-adjustment", "调节情况", null),
                     item("load-settlement", "收益结算", null),
                     item("load-resources", "资源管理", null),
-                    item("load-device-operation", "物联数据", null)
+                    item("load-device-operation", "物联管理", null)
             )));
         }
         if (products.contains(ConsoleProductService.PRODUCT_TARIFF)) {

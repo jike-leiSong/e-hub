@@ -22,6 +22,7 @@ import tk.mybatis.mapper.weekend.WeekendCriteria;
 
 import javax.persistence.Column;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -69,6 +70,36 @@ public class AggregatorEntDeviceServiceImpl implements IAggregatorEntDeviceServi
             return deviceList;
         }
         return null;
+    }
+
+    @Override
+    public List<AggregatorEntDevice> getDevicesByEnergyStationCodes(List<String> energyStationCodes) {
+        if (CollectionUtils.isEmpty(energyStationCodes)) {
+            return Collections.emptyList();
+        }
+        Weekend<AggregatorEntDevice> weekend = Weekend.of(AggregatorEntDevice.class);
+        WeekendCriteria<AggregatorEntDevice, Object> criteria = weekend.weekendCriteria();
+        criteria.andIn(AggregatorEntDevice::getEnergyStationCode, energyStationCodes);
+        return aggregatorEntDeviceMapper.selectByExample(weekend);
+    }
+
+    @Override
+    public List<String> getEnergyStationCodesByEntId(String entId) {
+        if (StringUtils.isBlank(entId)) {
+            return Collections.emptyList();
+        }
+        Weekend<AggregatorEntDevice> weekend = Weekend.of(AggregatorEntDevice.class);
+        WeekendCriteria<AggregatorEntDevice, Object> criteria = weekend.weekendCriteria();
+        criteria.andEqualTo(AggregatorEntDevice::getEntId, entId);
+        List<AggregatorEntDevice> deviceList = aggregatorEntDeviceMapper.selectByExample(weekend);
+        if (CollectionUtils.isEmpty(deviceList)) {
+            return Collections.emptyList();
+        }
+        return deviceList.stream()
+                .map(AggregatorEntDevice::getEnergyStationCode)
+                .filter(StringUtils::isNotBlank)
+                .distinct()
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -282,5 +313,49 @@ public class AggregatorEntDeviceServiceImpl implements IAggregatorEntDeviceServi
         //  modify by sl 2024-10-23 删除不上送企业
         criteria.andEqualTo(AggregatorEntDevice::getModelFlag,1);
         return aggregatorEntDeviceMapper.selectByExample(weekend);
+    }
+
+    @Override
+    public List<AggregatorEntDevice> queryDeviceList(String aggregatorId, String entId, String deviceName, Integer status) {
+        Weekend<AggregatorEntDevice> weekend = Weekend.of(AggregatorEntDevice.class);
+        WeekendCriteria<AggregatorEntDevice, Object> criteria = weekend.weekendCriteria();
+        criteria.andEqualTo(AggregatorEntDevice::getDelFlag, 1);
+        if (StringUtils.isNotBlank(aggregatorId)) {
+            criteria.andEqualTo(AggregatorEntDevice::getAggregatorId, aggregatorId);
+        }
+        if (StringUtils.isNotBlank(entId)) {
+            criteria.andEqualTo(AggregatorEntDevice::getEntId, entId);
+        }
+        if (StringUtils.isNotBlank(deviceName)) {
+            criteria.andLike(AggregatorEntDevice::getDeviceName, "%" + deviceName + "%");
+        }
+        if (status != null) {
+            criteria.andEqualTo(AggregatorEntDevice::getStatus, status);
+        }
+        return aggregatorEntDeviceMapper.selectByExample(weekend);
+    }
+
+    @Override
+    public AggregatorEntDevice getDeviceById(Integer id) {
+        if (id == null) {
+            return null;
+        }
+        return aggregatorEntDeviceMapper.selectByPrimaryKey(id);
+    }
+
+    @Override
+    public AggregatorEntDevice createDevice(AggregatorEntDevice device) {
+        aggregatorEntDeviceMapper.insertSelective(device);
+        return device;
+    }
+
+    @Override
+    public void updateDevice(AggregatorEntDevice device) {
+        aggregatorEntDeviceMapper.updateByPrimaryKeySelective(device);
+    }
+
+    @Override
+    public void deleteDevice(Integer id) {
+        aggregatorEntDeviceMapper.deleteByPrimaryKey(id);
     }
 }

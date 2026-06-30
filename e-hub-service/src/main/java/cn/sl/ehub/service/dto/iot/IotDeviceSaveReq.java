@@ -9,7 +9,9 @@ public class IotDeviceSaveReq {
 
     private String entId;
 
-    private Long projectId;
+    private String projectId;
+
+    private Long deviceGroupId;
 
     private String deviceCode;
 
@@ -19,9 +21,17 @@ public class IotDeviceSaveReq {
 
     private String deviceTypeName;
 
+    private String communicationMethod;
+
     private String manufacturer;
 
     private String model;
+
+    private String thirdPartyApi;
+
+    private String thirdPartyCode;
+
+    private Long gatewayId;
 
     private Integer assetStatus;
 
@@ -30,4 +40,8 @@ public class IotDeviceSaveReq {
     private String remark;
 
     private Boolean createDefaultPowerPoint;
+
+    private java.util.List<IotDeviceParamSaveReq> paramList;
+
+    private java.util.List<IotDevicePointSaveReq> pointList;
 }

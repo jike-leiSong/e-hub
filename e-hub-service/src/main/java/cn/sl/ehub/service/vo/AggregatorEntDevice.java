@@ -7,6 +7,7 @@ import lombok.Data;
 import javax.persistence.Column;
 import javax.persistence.Id;
 import javax.persistence.Table;
+import javax.persistence.Transient;
 
 /**
  * 设备信息
@@ -107,4 +108,8 @@ public class AggregatorEntDevice {
     @ApiModelProperty("1-公用，0-专用")
     @Column(name = "is_direct")
     private Boolean isDirect;
+
+    @Transient
+    @ApiModelProperty("资源类型名称")
+    private String resourceTypeName;
 }

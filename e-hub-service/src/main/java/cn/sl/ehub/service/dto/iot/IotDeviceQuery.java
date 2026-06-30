@@ -9,7 +9,9 @@ public class IotDeviceQuery {
 
     private String entId;
 
-    private Long projectId;
+    private String projectId;
+
+    private String energyStation;
 
     private String deviceCode;
 

@@ -7,6 +7,7 @@ import lombok.Data;
 import javax.persistence.Column;
 import javax.persistence.Id;
 import javax.persistence.Table;
+import javax.persistence.Transient;
 
 /**
  * @Author sl
@@ -53,4 +54,10 @@ public class AggregatorSingleModelData {
     @ApiModelProperty("是否可控1可控")
     @Column(name = "controll")
     private String controll;
+    @Transient
+    @ApiModelProperty("企业ID")
+    private String entId;
+    @Transient
+    @ApiModelProperty("企业名称")
+    private String entName;
 }

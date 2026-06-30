@@ -104,6 +104,11 @@
           :active-page="activePage"
           :aggregator-id="selectedAggregatorId"
         />
+        <IotManagement
+          v-else-if="activePage === 'load-device-operation'"
+          :key="loadPageKey"
+          :aggregator-id="selectedAggregatorId"
+        />
         <ProductProvisioning v-else-if="activePage === 'product-provisioning'" />
         <ComingSoon v-else v-bind="comingSoonConfig" />
       </main>
@@ -118,6 +123,7 @@ import ComingSoon from "./ComingSoon.vue";
 import ProductProvisioning from "./ProductProvisioning.vue";
 import Aggregation from "@/modules/load-aggregation/overview/Aggregation.vue";
 import AggregationHistory from "@/modules/load-aggregation/history/src/AggregationHistory.vue";
+import IotManagement from "@/modules/load-aggregation/iot-management/IotManagement.vue";
 import LoadResources from "@/modules/load-aggregation/resources/LoadResources.vue";
 import service from "@/services/http";
 import {
@@ -154,7 +160,7 @@ const pageMeta = {
     eyebrow: "LOAD AGGREGATION",
   },
   "load-device-operation": {
-    title: "负荷聚合 / 物联数据",
+    title: "负荷聚合 / 物联管理",
     eyebrow: "LOAD AGGREGATION",
   },
   "load-resources": {
@@ -266,7 +272,6 @@ function resolveInitialPage() {
 const historyPageViewMap = {
   "load-adjustment": "adjustment",
   "load-settlement": "settlement",
-  "load-device-operation": "device-operation",
   "load-history": "adjustment",
 };
 
@@ -295,6 +300,7 @@ export default {
     ProductProvisioning,
     Aggregation,
     AggregationHistory,
+    IotManagement,
     LoadResources,
   },
   data() {

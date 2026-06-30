@@ -40,7 +40,7 @@ export function disableEnterprise(entId) {
 export function listDevices(params) {
   return service({
     method: "get",
-    url: "/iot/devices",
+    url: "/ent-device/page",
     params,
   });
 }
@@ -48,7 +48,7 @@ export function listDevices(params) {
 export function createDevice(data) {
   return service({
     method: "post",
-    url: "/iot/devices",
+    url: "/ent-device",
     data,
     headers: JSON_HEADERS,
   });
@@ -57,7 +57,7 @@ export function createDevice(data) {
 export function updateDevice(id, data) {
   return service({
     method: "put",
-    url: `/iot/devices/${id}`,
+    url: `/ent-device/${id}`,
     data,
     headers: JSON_HEADERS,
   });
@@ -66,6 +66,55 @@ export function updateDevice(id, data) {
 export function deleteDevice(id) {
   return service({
     method: "delete",
-    url: `/iot/devices/${id}`,
+    url: `/ent-device/${id}`,
+  });
+}
+
+export function listModels(params) {
+  return service({
+    method: "get",
+    url: "/model/page",
+    params,
+  });
+}
+
+export function createModel(data) {
+  return service({
+    method: "post",
+    url: "/model",
+    data,
+    headers: JSON_HEADERS,
+  });
+}
+
+export function updateModel(id, data) {
+  return service({
+    method: "put",
+    url: `/model/${id}`,
+    data,
+    headers: JSON_HEADERS,
+  });
+}
+
+export function deleteModel(id) {
+  return service({
+    method: "delete",
+    url: `/model/${id}`,
+  });
+}
+
+export function listProjectsByEnt(entId) {
+  return service({
+    method: "get",
+    url: "/model/listByEnt",
+    params: { entId },
+  });
+}
+
+export function listResourceTypes(params) {
+  return service({
+    method: "get",
+    url: "/yesterday/getResourceTypeList",
+    params,
   });
 }

@@ -1,0 +1,263 @@
+import service from "@/services/http";
+
+export function listEnterprises(params) {
+  return service({
+    method: "get",
+    url: "/ent/list",
+    params,
+  });
+}
+
+export function listDeviceGroups(params) {
+  return service({
+    method: "get",
+    url: "/iot/manage/device-groups",
+    params,
+  });
+}
+
+export function getDeviceGroupDetail(id) {
+  return service({
+    method: "get",
+    url: `/iot/manage/device-groups/${id}`,
+  });
+}
+
+export function createDeviceGroup(data) {
+  return service({
+    method: "post",
+    url: "/iot/manage/device-groups",
+    data,
+  });
+}
+
+export function updateDeviceGroup(id, data) {
+  return service({
+    method: "put",
+    url: `/iot/manage/device-groups/${id}`,
+    data,
+  });
+}
+
+export function deleteDeviceGroup(id) {
+  return service({
+    method: "delete",
+    url: `/iot/manage/device-groups/${id}`,
+  });
+}
+
+export function listGateways(params) {
+  return service({
+    method: "get",
+    url: "/iot/manage/gateways",
+    params,
+  });
+}
+
+export function listDevices(params) {
+  return service({
+    method: "get",
+    url: "/iot/manage/devices",
+    params,
+  });
+}
+
+export function getDeviceDetail(id) {
+  return service({
+    method: "get",
+    url: `/iot/manage/devices/${id}`,
+  });
+}
+
+export function createDevice(data) {
+  return service({
+    method: "post",
+    url: "/iot/manage/devices",
+    data,
+  });
+}
+
+export function updateDevice(id, data) {
+  return service({
+    method: "put",
+    url: `/iot/manage/devices/${id}`,
+    data,
+  });
+}
+
+export function deleteDevice(id) {
+  return service({
+    method: "delete",
+    url: `/iot/manage/devices/${id}`,
+  });
+}
+
+export function listDeviceTypes() {
+  return service({
+    method: "get",
+    url: "/iot/manage/options/device-types",
+  });
+}
+
+export function listCommunicationMethods() {
+  return service({
+    method: "get",
+    url: "/iot/manage/options/communication-methods",
+  });
+}
+
+export function listDeviceGroupTypes() {
+  return service({
+    method: "get",
+    url: "/iot/manage/options/device-group-types",
+  });
+}
+
+export function listEnergyTypes() {
+  return service({
+    method: "get",
+    url: "/iot/manage/options/energy-types",
+  });
+}
+
+export function listCarriers() {
+  return service({
+    method: "get",
+    url: "/iot/manage/options/carriers",
+  });
+}
+
+export function listThirdPartyApis() {
+  return service({
+    method: "get",
+    url: "/iot/manage/options/third-party-apis",
+  });
+}
+
+export function getDeviceTypeParamMetadata(deviceTypeCode) {
+  return service({
+    method: "get",
+    url: "/iot/manage/device-type-param-metadata",
+    params: { deviceTypeCode },
+  });
+}
+
+export function getDeviceTypePointMetadata(deviceTypeCode) {
+  return service({
+    method: "get",
+    url: "/iot/manage/device-type-point-metadata",
+    params: { deviceTypeCode },
+  });
+}
+
+export function getDeviceGroupParamMetadata() {
+  return service({
+    method: "get",
+    url: "/iot/manage/device-group-param-metadata",
+  });
+}
+
+export function listDevicePoints(deviceId, params) {
+  return service({
+    method: "get",
+    url: `/iot/manage/devices/${deviceId}/points/page`,
+    params,
+  });
+}
+
+export function listAvailablePoints(deviceId) {
+  return service({
+    method: "get",
+    url: `/iot/manage/devices/${deviceId}/available-points`,
+  });
+}
+
+export function batchAddDevicePoints(deviceId, data) {
+  return service({
+    method: "post",
+    url: `/iot/manage/devices/${deviceId}/points/batch`,
+    data,
+  });
+}
+
+export function deleteDevicePoint(id) {
+  return service({
+    method: "delete",
+    url: `/iot/manage/points/${id}`,
+  });
+}
+
+export function listDevicePointDefinitions(pointId) {
+  return service({
+    method: "get",
+    url: `/iot/manage/points/${pointId}/definitions`,
+  });
+}
+
+export function createDevicePointDefinition(pointId, data) {
+  return service({
+    method: "post",
+    url: `/iot/manage/points/${pointId}/definitions`,
+    data,
+  });
+}
+
+export function updateDevicePointDefinition(id, data) {
+  return service({
+    method: "put",
+    url: `/iot/manage/point-definitions/${id}`,
+    data,
+  });
+}
+
+export function deleteDevicePointDefinition(id) {
+  return service({
+    method: "delete",
+    url: `/iot/manage/point-definitions/${id}`,
+  });
+}
+
+export function getDeviceGroupPointMetadata(params) {
+  return service({
+    method: "get",
+    url: "/iot/manage/device-group-point-metadata",
+    params,
+  });
+}
+
+export function listDeviceGroupPoints(groupId) {
+  return service({
+    method: "get",
+    url: `/iot/manage/device-groups/${groupId}/points`,
+  });
+}
+
+export function listDeviceGroupPointDefinitions(pointId) {
+  return service({
+    method: "get",
+    url: `/iot/manage/group-points/${pointId}/definitions`,
+  });
+}
+
+export function createDeviceGroupPointDefinition(pointId, data) {
+  return service({
+    method: "post",
+    url: `/iot/manage/group-points/${pointId}/definitions`,
+    data,
+  });
+}
+
+export function updateDeviceGroupPointDefinition(id, data) {
+  return service({
+    method: "put",
+    url: `/iot/manage/group-point-definitions/${id}`,
+    data,
+  });
+}
+
+export function deleteDeviceGroupPointDefinition(id) {
+  return service({
+    method: "delete",
+    url: `/iot/manage/group-point-definitions/${id}`,
+  });
+}
