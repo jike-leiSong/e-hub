@@ -18,10 +18,10 @@
         <div class="point-list">
           <button
             v-for="item in filteredPoints"
-            :key="item.propertyCode"
+            :key="item.id"
             type="button"
             class="point-item"
-            :class="{ active: currentPoint && currentPoint.propertyCode === item.propertyCode }"
+            :class="{ active: currentPoint && currentPoint.id === item.id }"
             @click="selectPoint(item)"
           >
             <span>{{ item.propertyName }}</span>
@@ -130,17 +130,17 @@ export default {
   methods: {
     async selectPoint(point) {
       this.currentPoint = point;
-      if (!point || !point.propertyCode) {
+      if (!point || !point.id) {
         this.definitionRows = [];
         return;
       }
-      const res = await listDeviceGroupPointDefinitions(point.id || point.propertyCode);
+      const res = await listDeviceGroupPointDefinitions(point.id);
       const body = res.data || {};
       this.definitionRows = body.code === 200 && Array.isArray(body.data) ? body.data : [];
     },
     addRow() {
-      if (!this.currentPoint) {
-        this.$message.warning("请选择测点");
+      if (!this.currentPoint || !this.currentPoint.id) {
+        this.$message.warning("请选择已保存的测点");
         return;
       }
       this.definitionRows.push({
@@ -151,7 +151,7 @@ export default {
       });
     },
     async saveRow(row) {
-      if (!this.currentPoint || !row.value) {
+      if (!this.currentPoint || !this.currentPoint.id || !row.value) {
         this.$message.warning("请输入状态值");
         return;
       }
@@ -162,7 +162,7 @@ export default {
       };
       const res = row.id
         ? await updateDeviceGroupPointDefinition(row.id, payload)
-        : await createDeviceGroupPointDefinition(this.currentPoint.id || this.currentPoint.propertyCode, payload);
+        : await createDeviceGroupPointDefinition(this.currentPoint.id, payload);
       const body = res.data || {};
       if (body.code === 200) {
         this.$message.success("保存成功");

@@ -496,7 +496,9 @@ public class IotDeviceManagementService {
     public List<IotDevicePointDefinition> listDevicePointDefinitions(Long devicePointId) {
         requireDevicePoint(devicePointId);
         Example example = new Example(IotDevicePointDefinition.class);
-        example.createCriteria().andEqualTo("devicePointId", devicePointId);
+        example.createCriteria()
+                .andEqualTo("devicePointId", devicePointId)
+                .andEqualTo("deleted", 0);
         example.orderBy("sort").asc();
         example.orderBy("id").asc();
         return iotDevicePointDefinitionMapper.selectByExample(example);
@@ -504,15 +506,17 @@ public class IotDeviceManagementService {
 
     @Transactional(rollbackFor = Exception.class)
     public IotDevicePointDefinition saveDevicePointDefinition(Long devicePointId, IotPointDefinitionSaveReq req) {
-        requireDevicePoint(devicePointId);
+        IotDevicePoint point = requireDevicePoint(devicePointId);
         validatePointDefinitionReq(req);
         IotDevicePointDefinition definition = new IotDevicePointDefinition();
+        definition.setTenantId(point.getTenantId());
         definition.setDevicePointId(devicePointId);
         definition.setValue(StringUtils.trim(req.getValue()));
         definition.setDescription(StringUtils.trimToNull(req.getDescription()));
         definition.setTags(StringUtils.trimToNull(req.getTags()));
         definition.setSort(req.getSort() == null ? 0 : req.getSort());
         definition.setRemark(StringUtils.trimToNull(req.getRemark()));
+        definition.setDeleted(0);
         Date now = new Date();
         definition.setCreateTime(now);
         definition.setUpdateTime(now);
@@ -536,8 +540,10 @@ public class IotDeviceManagementService {
 
     @Transactional(rollbackFor = Exception.class)
     public void deleteDevicePointDefinition(Long id) {
-        requireDevicePointDefinition(id);
-        iotDevicePointDefinitionMapper.deleteByPrimaryKey(id);
+        IotDevicePointDefinition definition = requireDevicePointDefinition(id);
+        definition.setDeleted(1);
+        definition.setUpdateTime(new Date());
+        iotDevicePointDefinitionMapper.updateByPrimaryKeySelective(definition);
     }
 
     public List<IotDeviceGroupPoint> listDeviceGroupPoints(Long deviceGroupId) {
@@ -554,7 +560,9 @@ public class IotDeviceManagementService {
     public List<IotDeviceGroupPointDefinition> listDeviceGroupPointDefinitions(Long deviceGroupPointId) {
         requireDeviceGroupPoint(deviceGroupPointId);
         Example example = new Example(IotDeviceGroupPointDefinition.class);
-        example.createCriteria().andEqualTo("deviceGroupPointId", deviceGroupPointId);
+        example.createCriteria()
+                .andEqualTo("deviceGroupPointId", deviceGroupPointId)
+                .andEqualTo("deleted", 0);
         example.orderBy("sort").asc();
         example.orderBy("id").asc();
         return iotDeviceGroupPointDefinitionMapper.selectByExample(example);
@@ -562,15 +570,17 @@ public class IotDeviceManagementService {
 
     @Transactional(rollbackFor = Exception.class)
     public IotDeviceGroupPointDefinition saveDeviceGroupPointDefinition(Long deviceGroupPointId, IotPointDefinitionSaveReq req) {
-        requireDeviceGroupPoint(deviceGroupPointId);
+        IotDeviceGroupPoint point = requireDeviceGroupPoint(deviceGroupPointId);
         validatePointDefinitionReq(req);
         IotDeviceGroupPointDefinition definition = new IotDeviceGroupPointDefinition();
+        definition.setTenantId(point.getTenantId());
         definition.setDeviceGroupPointId(deviceGroupPointId);
         definition.setValue(StringUtils.trim(req.getValue()));
         definition.setDescription(StringUtils.trimToNull(req.getDescription()));
         definition.setTags(StringUtils.trimToNull(req.getTags()));
         definition.setSort(req.getSort() == null ? 0 : req.getSort());
         definition.setRemark(StringUtils.trimToNull(req.getRemark()));
+        definition.setDeleted(0);
         Date now = new Date();
         definition.setCreateTime(now);
         definition.setUpdateTime(now);
@@ -594,8 +604,10 @@ public class IotDeviceManagementService {
 
     @Transactional(rollbackFor = Exception.class)
     public void deleteDeviceGroupPointDefinition(Long id) {
-        requireDeviceGroupPointDefinition(id);
-        iotDeviceGroupPointDefinitionMapper.deleteByPrimaryKey(id);
+        IotDeviceGroupPointDefinition definition = requireDeviceGroupPointDefinition(id);
+        definition.setDeleted(1);
+        definition.setUpdateTime(new Date());
+        iotDeviceGroupPointDefinitionMapper.updateByPrimaryKeySelective(definition);
     }
 
     public List<IotDeviceTypeParamMetadata> listDeviceParamMetadata(String deviceTypeCode) {

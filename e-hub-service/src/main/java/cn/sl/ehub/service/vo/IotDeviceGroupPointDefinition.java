@@ -21,6 +21,10 @@ public class IotDeviceGroupPointDefinition {
     @Column(name = "id")
     private Long id;
 
+    @ApiModelProperty("租户ID")
+    @Column(name = "tenant_id")
+    private Long tenantId;
+
     @Column(name = "device_group_point_id")
     private Long deviceGroupPointId;
 
@@ -43,6 +47,10 @@ public class IotDeviceGroupPointDefinition {
     @ApiModelProperty("备注")
     @Column(name = "remark")
     private String remark;
+
+    @ApiModelProperty("删除标识：0正常，1删除")
+    @Column(name = "deleted")
+    private Integer deleted;
 
     @Column(name = "create_time")
     private Date createTime;

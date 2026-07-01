@@ -60,7 +60,7 @@
           <el-button type="primary" size="small" @click="handleSelectPoints">
             {{ isAllPointsSelected ? "取消选择全部测点" : "选择全部测点" }}
           </el-button>
-          <el-button v-if="editMode" type="primary" size="small" @click="showStatusDialog = true">状态值维护</el-button>
+          <el-button v-if="editMode" type="primary" size="small" @click="openStatusDialog">状态值维护</el-button>
         </div>
       </div>
       <el-table
@@ -95,7 +95,7 @@
     <DeviceGroupStatusMaintenanceDialog
       :visible.sync="showStatusDialog"
       :device-group-id="editData ? editData.id : null"
-      :points="selectedPoints"
+      :points="savedPointList"
     />
 
     <span slot="footer">
@@ -155,6 +155,7 @@ export default {
       allPointsData: [],
       selectedPoints: [],
       editPointList: [],
+      savedPointList: [],
       pointPage: {
         pageNum: 1,
         pageSize: 10,
@@ -249,10 +250,7 @@ export default {
       }
     },
     async loadDetail() {
-      const [detailRes, pointsRes] = await Promise.all([
-        getDeviceGroupDetail(this.editData.id),
-        listDeviceGroupPoints(this.editData.id),
-      ]);
+      const detailRes = await getDeviceGroupDetail(this.editData.id);
       const detail = ((detailRes.data || {}).data) || {};
       this.form = {
         deviceGroupName: detail.deviceGroupName || "",
@@ -261,6 +259,7 @@ export default {
         energyType: detail.energyType || "",
       };
       this.editPointList = Array.isArray(detail.pointList) ? [...detail.pointList] : [];
+      this.savedPointList = [...this.editPointList];
       await this.fetchPointsData();
     },
     handleEditPointsEcho() {
@@ -288,6 +287,7 @@ export default {
       this.allPointsData = [];
       this.selectedPoints = [];
       this.editPointList = [];
+      this.savedPointList = [];
       this.pointPage.pageNum = 1;
       this.$nextTick(() => {
         if (this.$refs.pointsTable) {
@@ -317,6 +317,15 @@ export default {
     handlePointSizeChange(pageSize) {
       this.pointPage.pageSize = pageSize;
       this.pointPage.pageNum = 1;
+    },
+    async openStatusDialog() {
+      if (!this.editData || !this.editData.id) {
+        return;
+      }
+      const res = await listDeviceGroupPoints(this.editData.id);
+      const body = res.data || {};
+      this.savedPointList = body.code === 200 && Array.isArray(body.data) ? body.data : [];
+      this.showStatusDialog = true;
     },
     async submit() {
       await this.$refs.form.validate();
