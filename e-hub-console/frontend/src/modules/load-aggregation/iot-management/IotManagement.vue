@@ -523,8 +523,8 @@ export default {
     },
     findParam(row, code) {
       const params = Array.isArray(row.paramList) ? row.paramList : [];
-      const item = params.find(param => param.paramCode === code);
-      return item && item.paramValue ? item.paramValue : "--";
+      const item = params.find(param => param.attrCode === code || param.paramCode === code);
+      return item && (item.attrValue || item.paramValue) ? (item.attrValue || item.paramValue) : "--";
     },
   },
 };

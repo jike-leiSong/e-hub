@@ -21,6 +21,10 @@ public class IotDeviceGroupPoint {
     @Column(name = "id")
     private Long id;
 
+    @ApiModelProperty("租户ID")
+    @Column(name = "tenant_id")
+    private Long tenantId;
+
     @Column(name = "device_group_id")
     private Long deviceGroupId;
 
@@ -52,6 +56,22 @@ public class IotDeviceGroupPoint {
     @Column(name = "read_write_role")
     private String readWriteRole;
 
+    @ApiModelProperty("下限值")
+    @Column(name = "value_lower_limit")
+    private String valueLowerLimit;
+
+    @ApiModelProperty("上限值")
+    @Column(name = "value_high_limit")
+    private String valueHighLimit;
+
+    @ApiModelProperty("死区类型")
+    @Column(name = "dead_zone_type")
+    private Integer deadZoneType;
+
+    @ApiModelProperty("类型")
+    @Column(name = "type")
+    private Integer type;
+
     @ApiModelProperty("排序")
     @Column(name = "sort")
     private Integer sort;
@@ -73,4 +93,20 @@ public class IotDeviceGroupPoint {
 
     @Column(name = "update_time")
     private Date updateTime;
+
+    public String getPointCode() {
+        return propertyCode;
+    }
+
+    public void setPointCode(String pointCode) {
+        this.propertyCode = pointCode;
+    }
+
+    public String getPointName() {
+        return propertyName;
+    }
+
+    public void setPointName(String pointName) {
+        this.propertyName = pointName;
+    }
 }

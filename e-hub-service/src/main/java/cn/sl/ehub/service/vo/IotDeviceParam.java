@@ -25,21 +25,33 @@ public class IotDeviceParam {
     @Column(name = "device_id")
     private Long deviceId;
 
-    @ApiModelProperty("参数编码")
-    @Column(name = "param_code")
-    private String paramCode;
+    @ApiModelProperty("租户ID")
+    @Column(name = "tenant_id")
+    private Long tenantId;
 
-    @ApiModelProperty("参数名称")
-    @Column(name = "param_name")
-    private String paramName;
+    @ApiModelProperty("属性编码")
+    @Column(name = "attr_code")
+    private String attrCode;
 
-    @ApiModelProperty("参数值")
-    @Column(name = "param_value")
-    private String paramValue;
+    @ApiModelProperty("属性名称")
+    @Column(name = "attr_name")
+    private String attrName;
+
+    @ApiModelProperty("别名")
+    @Column(name = "alias_name")
+    private String aliasName;
+
+    @ApiModelProperty("属性值")
+    @Column(name = "attr_value")
+    private String attrValue;
 
     @ApiModelProperty("单位")
-    @Column(name = "unit")
-    private String unit;
+    @Column(name = "attr_unit")
+    private String attrUnit;
+
+    @ApiModelProperty("属性类型")
+    @Column(name = "attr_type")
+    private String attrType;
 
     @ApiModelProperty("排序")
     @Column(name = "sort")
@@ -49,9 +61,45 @@ public class IotDeviceParam {
     @Column(name = "remark")
     private String remark;
 
+    @ApiModelProperty("删除标识：0正常，1删除")
+    @Column(name = "deleted")
+    private Integer deleted;
+
     @Column(name = "create_time")
     private Date createTime;
 
     @Column(name = "update_time")
     private Date updateTime;
+
+    public String getParamCode() {
+        return attrCode;
+    }
+
+    public void setParamCode(String paramCode) {
+        this.attrCode = paramCode;
+    }
+
+    public String getParamName() {
+        return attrName;
+    }
+
+    public void setParamName(String paramName) {
+        this.attrName = paramName;
+    }
+
+    public String getParamValue() {
+        return attrValue;
+    }
+
+    public void setParamValue(String paramValue) {
+        this.attrValue = paramValue;
+    }
+
+    public String getUnit() {
+        return attrUnit;
+    }
+
+    public void setUnit(String unit) {
+        this.attrUnit = unit;
+    }
 }

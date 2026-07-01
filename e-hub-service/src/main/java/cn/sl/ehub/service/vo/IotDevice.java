@@ -23,6 +23,10 @@ public class IotDevice {
     @Column(name = "id")
     private Long id;
 
+    @ApiModelProperty("租户ID")
+    @Column(name = "tenant_id")
+    private Long tenantId;
+
     @ApiModelProperty("聚合商ID")
     @Column(name = "aggregator_id")
     private String aggregatorId;
@@ -38,6 +42,10 @@ public class IotDevice {
     @ApiModelProperty("设备组ID")
     @Column(name = "device_group_id")
     private Long deviceGroupId;
+
+    @ApiModelProperty("网关ID")
+    @Column(name = "gateway_id")
+    private Long gatewayId;
 
     @ApiModelProperty("标准设备编码")
     @Column(name = "device_code")
@@ -74,6 +82,10 @@ public class IotDevice {
     @ApiModelProperty("第三方标识")
     @Column(name = "third_party_code")
     private String thirdPartyCode;
+
+    @ApiModelProperty("状态：1启用，0停用")
+    @Column(name = "status")
+    private Integer status;
 
     @ApiModelProperty("资产状态：1启用，0停用")
     @Column(name = "asset_status")
@@ -118,10 +130,6 @@ public class IotDevice {
     @Transient
     @ApiModelProperty("设备组名称")
     private String deviceGroupName;
-
-    @Transient
-    @ApiModelProperty("网关ID")
-    private Long gatewayId;
 
     @Transient
     @ApiModelProperty("网关名称")

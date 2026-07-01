@@ -111,6 +111,7 @@ public class IotDeviceService {
     public IotDevice createDevice(IotDeviceSaveReq req) {
         validateDeviceReq(req);
         IotDevice device = new IotDevice();
+        device.setTenantId(parseTenantId(req.getEntId()));
         device.setAggregatorId(StringUtils.trimToNull(req.getAggregatorId()));
         device.setEntId(StringUtils.trim(req.getEntId()));
         device.setProjectId(StringUtils.trimToNull(req.getProjectId()));
@@ -126,6 +127,7 @@ public class IotDeviceService {
         device.setDeviceName(StringUtils.trim(req.getDeviceName()));
         device.setManufacturer(StringUtils.trimToNull(req.getManufacturer()));
         device.setModel(StringUtils.trimToNull(req.getModel()));
+        device.setStatus(1);
         device.setAssetStatus(req.getAssetStatus() == null ? 1 : req.getAssetStatus());
         device.setOnlineStatus(req.getOnlineStatus() == null ? 0 : req.getOnlineStatus());
         device.setDeleted(0);
@@ -138,7 +140,7 @@ public class IotDeviceService {
             device = getDeviceByEntAndCode(device.getEntId(), device.getDeviceCode());
         }
         if (device != null && !Boolean.FALSE.equals(req.getCreateDefaultPowerPoint())) {
-            createDefaultPowerPoint(device.getId());
+            createDefaultPowerPoint(device.getId(), device.getTenantId());
         }
         return device;
     }
@@ -204,13 +206,16 @@ public class IotDeviceService {
 
     @Transactional(rollbackFor = Exception.class)
     public IotDevicePoint createPoint(Long deviceId, IotDevicePointSaveReq req) {
-        requireDevice(deviceId);
+        IotDevice device = requireDevice(deviceId);
         if (req == null) {
             throwParam("请求参数不能为空");
         }
         req.setDeviceId(deviceId);
+        if (req.getTenantId() == null) {
+            req.setTenantId(device.getTenantId());
+        }
         validatePointReq(req);
-        if (existsPointCode(deviceId, req.getPointCode(), null)) {
+        if (existsPointCode(deviceId, req.getPropertyCode(), null)) {
             throwParam("测点编码在当前设备下已存在");
         }
         IotDevicePoint point = buildPoint(req);
@@ -227,18 +232,29 @@ public class IotDeviceService {
         if (req == null) {
             throwParam("请求参数不能为空");
         }
-        String newPointCode = StringUtils.defaultIfBlank(req.getPointCode(), point.getPointCode());
-        if (!StringUtils.equals(point.getPointCode(), newPointCode)
+        String newPointCode = StringUtils.defaultIfBlank(req.getPropertyCode(), point.getPropertyCode());
+        if (!StringUtils.equals(point.getPropertyCode(), newPointCode)
                 && existsPointCode(point.getDeviceId(), newPointCode, id)) {
             throwParam("测点编码在当前设备下已存在");
         }
-        point.setPointCode(newPointCode);
-        point.setPointName(StringUtils.defaultIfBlank(req.getPointName(), point.getPointName()));
+        point.setPropertyCode(newPointCode);
+        point.setPropertyName(StringUtils.defaultIfBlank(req.getPropertyName(), point.getPropertyName()));
+        point.setThirdPartyCode(req.getThirdPartyCode() == null ? point.getThirdPartyCode() : StringUtils.trimToNull(req.getThirdPartyCode()));
+        point.setDataType(req.getDataType() == null ? point.getDataType() : StringUtils.trimToNull(req.getDataType()));
+        point.setDataTypeName(req.getDataTypeName() == null ? point.getDataTypeName() : StringUtils.trimToNull(req.getDataTypeName()));
         point.setValueType(StringUtils.defaultIfBlank(req.getValueType(), point.getValueType()));
         point.setUnit(req.getUnit() == null ? point.getUnit() : StringUtils.trimToNull(req.getUnit()));
         point.setDataFrequency(req.getDataFrequency() == null ? point.getDataFrequency() : req.getDataFrequency());
         point.setRequiredFlag(req.getRequiredFlag() == null ? point.getRequiredFlag() : req.getRequiredFlag());
         point.setReadWriteRole(StringUtils.defaultIfBlank(req.getReadWriteRole(), point.getReadWriteRole()));
+        point.setUpWay(req.getUpWay() == null ? point.getUpWay() : StringUtils.trimToNull(req.getUpWay()));
+        point.setUpWayName(req.getUpWayName() == null ? point.getUpWayName() : StringUtils.trimToNull(req.getUpWayName()));
+        point.setUpPeriod(req.getUpPeriod() == null ? point.getUpPeriod() : StringUtils.trimToNull(req.getUpPeriod()));
+        point.setUpPeriodName(req.getUpPeriodName() == null ? point.getUpPeriodName() : StringUtils.trimToNull(req.getUpPeriodName()));
+        point.setValueLowerLimit(req.getValueLowerLimit() == null ? point.getValueLowerLimit() : StringUtils.trimToNull(req.getValueLowerLimit()));
+        point.setValueHighLimit(req.getValueHighLimit() == null ? point.getValueHighLimit() : StringUtils.trimToNull(req.getValueHighLimit()));
+        point.setDeadZoneType(req.getDeadZoneType() == null ? point.getDeadZoneType() : req.getDeadZoneType());
+        point.setType(req.getType() == null ? point.getType() : req.getType());
         point.setStatus(req.getStatus() == null ? point.getStatus() : req.getStatus());
         point.setSort(req.getSort() == null ? point.getSort() : req.getSort());
         point.setRemark(req.getRemark() == null ? point.getRemark() : StringUtils.trimToNull(req.getRemark()));
@@ -448,14 +464,15 @@ public class IotDeviceService {
         return iotUnmatchedTelemetryLogMapper.selectByExample(example);
     }
 
-    private void createDefaultPowerPoint(Long deviceId) {
+    private void createDefaultPowerPoint(Long deviceId, Long tenantId) {
         if (existsPointCode(deviceId, DEFAULT_POINT_CODE, null)) {
             return;
         }
         IotDevicePointSaveReq req = new IotDevicePointSaveReq();
         req.setDeviceId(deviceId);
-        req.setPointCode(DEFAULT_POINT_CODE);
-        req.setPointName(DEFAULT_POINT_NAME);
+        req.setTenantId(tenantId);
+        req.setPropertyCode(DEFAULT_POINT_CODE);
+        req.setPropertyName(DEFAULT_POINT_NAME);
         req.setValueType(DEFAULT_VALUE_TYPE);
         req.setUnit(DEFAULT_UNIT);
         req.setDataFrequency(60);
@@ -472,14 +489,26 @@ public class IotDeviceService {
 
     private IotDevicePoint buildPoint(IotDevicePointSaveReq req) {
         IotDevicePoint point = new IotDevicePoint();
+        point.setTenantId(req.getTenantId());
         point.setDeviceId(req.getDeviceId());
-        point.setPointCode(StringUtils.trim(req.getPointCode()));
-        point.setPointName(StringUtils.trim(req.getPointName()));
+        point.setPropertyCode(StringUtils.trim(req.getPropertyCode()));
+        point.setPropertyName(StringUtils.trim(req.getPropertyName()));
+        point.setThirdPartyCode(StringUtils.trimToNull(req.getThirdPartyCode()));
+        point.setDataType(StringUtils.trimToNull(req.getDataType()));
+        point.setDataTypeName(StringUtils.trimToNull(req.getDataTypeName()));
         point.setValueType(StringUtils.defaultIfBlank(req.getValueType(), DEFAULT_VALUE_TYPE));
         point.setUnit(StringUtils.trimToNull(req.getUnit()));
         point.setDataFrequency(req.getDataFrequency());
         point.setRequiredFlag(req.getRequiredFlag() == null ? 0 : req.getRequiredFlag());
         point.setReadWriteRole(StringUtils.defaultIfBlank(req.getReadWriteRole(), READ_ONLY));
+        point.setUpWay(StringUtils.trimToNull(req.getUpWay()));
+        point.setUpWayName(StringUtils.trimToNull(req.getUpWayName()));
+        point.setUpPeriod(StringUtils.trimToNull(req.getUpPeriod()));
+        point.setUpPeriodName(StringUtils.trimToNull(req.getUpPeriodName()));
+        point.setValueLowerLimit(StringUtils.trimToNull(req.getValueLowerLimit()));
+        point.setValueHighLimit(StringUtils.trimToNull(req.getValueHighLimit()));
+        point.setDeadZoneType(req.getDeadZoneType());
+        point.setType(req.getType());
         point.setStatus(req.getStatus() == null ? 1 : req.getStatus());
         point.setDeleted(0);
         point.setSort(req.getSort() == null ? 0 : req.getSort());
@@ -552,7 +581,7 @@ public class IotDeviceService {
         Example example = new Example(IotDevicePoint.class);
         Example.Criteria criteria = example.createCriteria();
         criteria.andEqualTo("deviceId", deviceId);
-        criteria.andEqualTo("pointCode", pointCode);
+        criteria.andEqualTo("propertyCode", pointCode);
         criteria.andEqualTo("deleted", 0);
         List<IotDevicePoint> list = iotDevicePointMapper.selectByExample(example);
         for (IotDevicePoint point : list) {
@@ -644,8 +673,8 @@ public class IotDeviceService {
     }
 
     private void validatePointReq(IotDevicePointSaveReq req) {
-        requireNotBlank(req.getPointCode(), "测点编码不能为空");
-        requireNotBlank(req.getPointName(), "测点名称不能为空");
+        requireNotBlank(req.getPropertyCode(), "测点编码不能为空");
+        requireNotBlank(req.getPropertyName(), "测点名称不能为空");
     }
 
     private void validateDeviceExternalRefReq(IotDeviceExternalRefSaveReq req) {
@@ -676,6 +705,18 @@ public class IotDeviceService {
 
     private void throwParam(String message) {
         throw new BaseException(StatusCode.C.getCode(), message);
+    }
+
+    private Long parseTenantId(String entId) {
+        String value = StringUtils.trimToNull(entId);
+        if (value == null || !StringUtils.isNumeric(value)) {
+            return null;
+        }
+        try {
+            return Long.valueOf(value);
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
     }
 
     private Date parseDateTime(String value) {

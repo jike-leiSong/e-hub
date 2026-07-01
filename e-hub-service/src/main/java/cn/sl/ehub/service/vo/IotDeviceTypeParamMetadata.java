@@ -9,10 +9,12 @@ import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.Table;
+import javax.persistence.Transient;
+import java.util.Date;
 
 @Data
 @ApiModel("IoT设备类型参数元数据")
-@Table(name = "iot_device_type_param_metadata")
+@Table(name = "iot_device_param_metadata")
 public class IotDeviceTypeParamMetadata {
 
     @Id
@@ -24,6 +26,10 @@ public class IotDeviceTypeParamMetadata {
     @Column(name = "device_type_code")
     private String deviceTypeCode;
 
+    @ApiModelProperty("设备类型名称")
+    @Column(name = "device_type_name")
+    private String deviceTypeName;
+
     @ApiModelProperty("属性编码")
     @Column(name = "attr_code")
     private String attrCode;
@@ -32,8 +38,20 @@ public class IotDeviceTypeParamMetadata {
     @Column(name = "attr_name")
     private String attrName;
 
+    @ApiModelProperty("属性名称英文")
+    @Column(name = "attr_name_en")
+    private String attrNameEn;
+
+    @ApiModelProperty("属性类型")
+    @Column(name = "attr_type")
+    private String attrType;
+
+    @ApiModelProperty("属性单位")
+    @Column(name = "attr_unit")
+    private String attrUnit;
+
     @ApiModelProperty("是否必填")
-    @Column(name = "required_flag")
+    @Transient
     private Integer requiredFlag;
 
     @ApiModelProperty("排序")
@@ -41,6 +59,20 @@ public class IotDeviceTypeParamMetadata {
     private Integer sort;
 
     @ApiModelProperty("示例值")
-    @Column(name = "sample_value")
+    @Transient
     private String sampleValue;
+
+    @ApiModelProperty("备注")
+    @Column(name = "remark")
+    private String remark;
+
+    @Column(name = "create_time")
+    private Date createTime;
+
+    @Column(name = "update_time")
+    private Date updateTime;
+
+    @ApiModelProperty("删除标识：0正常，1删除")
+    @Column(name = "deleted")
+    private Integer deleted;
 }

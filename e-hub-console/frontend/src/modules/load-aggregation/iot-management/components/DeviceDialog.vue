@@ -70,21 +70,22 @@
       </el-row>
     </el-form>
 
-    <div class="meta-section">
-      <div class="section-head">设备参数</div>
-      <el-table :data="paramRows" border size="small">
-        <el-table-column prop="attrName" label="参数名称" min-width="120" />
-        <el-table-column label="参数值" min-width="160">
-          <template slot-scope="{ row }">
-            <el-input v-model.trim="row.paramValue" size="small" />
-          </template>
-        </el-table-column>
-      </el-table>
-    </div>
-
     <div v-if="!editMode" class="meta-section">
-      <div class="section-head">初始化测点</div>
-      <el-table :data="pointRows" border size="small" max-height="320">
+      <div class="section-head">
+        <span>初始化测点</span>
+        <span class="section-count">已选 {{ selectedPoints.length }} 个</span>
+      </div>
+      <el-table
+        ref="pointsTable"
+        :data="pointRows"
+        border
+        stripe
+        size="small"
+        max-height="320"
+        row-key="propertyCode"
+        @selection-change="handlePointSelectionChange"
+      >
+        <el-table-column type="selection" width="55" align="center" reserve-selection />
         <el-table-column prop="propertyName" label="测点名称" min-width="140" />
         <el-table-column prop="propertyCode" label="测点编码" min-width="120" />
         <el-table-column prop="dataTypeName" label="数据类型" min-width="100" />
@@ -103,7 +104,6 @@
 import {
   createDevice,
   getDeviceDetail,
-  getDeviceTypeParamMetadata,
   getDeviceTypePointMetadata,
   listCommunicationMethods,
   listDeviceTypes,
@@ -151,8 +151,8 @@ export default {
       communicationMethods: [],
       gatewayOptions: [],
       thirdPartyApis: [],
-      paramRows: [],
       pointRows: [],
+      selectedPoints: [],
     };
   },
   computed: {
@@ -182,7 +182,9 @@ export default {
         await this.loadDetail();
       } else {
         this.resetForm();
-        await this.handleDeviceTypeChange(this.form.deviceTypeCode);
+        if (this.form.deviceTypeCode) {
+          await this.handleDeviceTypeChange(this.form.deviceTypeCode);
+        }
       }
     },
     async loadOptions() {
@@ -206,8 +208,9 @@ export default {
         thirdPartyApi: this.thirdPartyApis[0] ? this.thirdPartyApis[0].value : "",
         thirdPartyCode: "",
       };
-      this.paramRows = [];
       this.pointRows = [];
+      this.selectedPoints = [];
+      this.clearPointSelection();
     },
     async loadDetail() {
       const res = await getDeviceDetail(this.editData.id);
@@ -220,39 +223,37 @@ export default {
         thirdPartyApi: detail.thirdPartyApi || "",
         thirdPartyCode: detail.thirdPartyCode || "",
       };
-      await this.handleDeviceTypeChange(this.form.deviceTypeCode);
-      const params = Array.isArray(detail.paramList) ? detail.paramList : [];
-      this.paramRows = this.paramRows.map(item => {
-        const matched = params.find(param => param.paramCode === item.paramCode);
-        return {
-          ...item,
-          paramValue: matched ? matched.paramValue : "",
-        };
-      });
+      this.pointRows = [];
+      this.selectedPoints = [];
+      this.clearPointSelection();
     },
     async handleDeviceTypeChange(deviceTypeCode) {
-      if (!deviceTypeCode) {
-        this.paramRows = [];
+      this.selectedPoints = [];
+      this.clearPointSelection();
+      if (!deviceTypeCode || this.editMode) {
         this.pointRows = [];
         return;
       }
-      const [paramRes, pointRes] = await Promise.all([
-        getDeviceTypeParamMetadata(deviceTypeCode),
-        getDeviceTypePointMetadata(deviceTypeCode),
-      ]);
-      const params = ((paramRes.data || {}).data) || [];
+      const pointRes = await getDeviceTypePointMetadata(deviceTypeCode);
       const points = ((pointRes.data || {}).data) || [];
-      this.paramRows = params.map((item, index) => ({
-        paramCode: item.attrCode,
-        paramName: item.attrName,
-        attrName: item.attrName,
-        paramValue: "",
-        sort: item.sort || index + 1,
-      }));
       this.pointRows = points;
+    },
+    clearPointSelection() {
+      this.$nextTick(() => {
+        if (this.$refs.pointsTable) {
+          this.$refs.pointsTable.clearSelection();
+        }
+      });
+    },
+    handlePointSelectionChange(selection) {
+      this.selectedPoints = selection;
     },
     async submit() {
       await this.$refs.form.validate();
+      if (!this.editMode && !this.selectedPoints.length) {
+        this.$message.warning("请选择初始化测点");
+        return;
+      }
       this.submitting = true;
       try {
         const selectedType = this.deviceTypeOptions.find(item => item.value === this.form.deviceTypeCode);
@@ -267,18 +268,19 @@ export default {
           gatewayId: this.form.gatewayId,
           thirdPartyApi: this.form.thirdPartyApi,
           thirdPartyCode: this.form.thirdPartyCode,
-          paramList: this.paramRows,
-          pointList: this.pointRows.map((item, index) => ({
-            pointCode: item.propertyCode,
-            pointName: item.propertyName,
+        };
+        if (!this.editMode) {
+          payload.pointList = this.selectedPoints.map((item, index) => ({
+            propertyCode: item.propertyCode,
+            propertyName: item.propertyName,
             dataType: item.dataType,
             dataTypeName: item.dataTypeName,
             valueType: item.valueType,
             unit: item.unit,
             readWriteRole: item.readWriteRole,
             sort: item.sort || index + 1,
-          })),
-        };
+          }));
+        }
         const res = this.editMode
           ? await updateDevice(this.editData.id, payload)
           : await createDevice(payload);
@@ -304,8 +306,17 @@ export default {
 }
 
 .section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: 10px;
   font-weight: 600;
   color: #18364a;
+}
+
+.section-count {
+  color: #607d8f;
+  font-size: 12px;
+  font-weight: 500;
 }
 </style>

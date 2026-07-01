@@ -12,21 +12,22 @@ import javax.persistence.Table;
 import java.util.Date;
 
 @Data
-@ApiModel("IoT设备组参数")
-@Table(name = "iot_device_group_param")
-public class IotDeviceGroupParam {
+@ApiModel("IoT设备组参数元数据")
+@Table(name = "iot_device_group_param_metadata")
+public class IotDeviceGroupParamMetadata {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
     private Long id;
 
-    @ApiModelProperty("租户ID")
-    @Column(name = "tenant_id")
-    private Long tenantId;
+    @ApiModelProperty("设备组类型编码")
+    @Column(name = "device_group_type")
+    private String deviceGroupType;
 
-    @Column(name = "device_group_id")
-    private Long deviceGroupId;
+    @ApiModelProperty("设备组类型名称")
+    @Column(name = "device_group_type_name")
+    private String deviceGroupTypeName;
 
     @ApiModelProperty("属性编码")
     @Column(name = "attr_code")
@@ -36,21 +37,17 @@ public class IotDeviceGroupParam {
     @Column(name = "attr_name")
     private String attrName;
 
-    @ApiModelProperty("别名")
-    @Column(name = "alias_name")
-    private String aliasName;
-
-    @ApiModelProperty("属性值")
-    @Column(name = "attr_value")
-    private String attrValue;
-
-    @ApiModelProperty("单位")
-    @Column(name = "attr_unit")
-    private String attrUnit;
+    @ApiModelProperty("属性名称英文")
+    @Column(name = "attr_name_en")
+    private String attrNameEn;
 
     @ApiModelProperty("属性类型")
     @Column(name = "attr_type")
     private String attrType;
+
+    @ApiModelProperty("属性单位")
+    @Column(name = "attr_unit")
+    private String attrUnit;
 
     @ApiModelProperty("排序")
     @Column(name = "sort")
@@ -60,13 +57,13 @@ public class IotDeviceGroupParam {
     @Column(name = "remark")
     private String remark;
 
-    @ApiModelProperty("删除标识：0正常，1删除")
-    @Column(name = "deleted")
-    private Integer deleted;
-
     @Column(name = "create_time")
     private Date createTime;
 
     @Column(name = "update_time")
     private Date updateTime;
+
+    @ApiModelProperty("删除标识：0正常，1删除")
+    @Column(name = "deleted")
+    private Integer deleted;
 }

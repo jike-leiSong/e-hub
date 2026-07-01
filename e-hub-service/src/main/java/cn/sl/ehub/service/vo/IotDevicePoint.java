@@ -27,13 +27,21 @@ public class IotDevicePoint {
     @Column(name = "device_id")
     private Long deviceId;
 
-    @ApiModelProperty("标准测点编码")
-    @Column(name = "point_code")
-    private String pointCode;
+    @ApiModelProperty("租户ID")
+    @Column(name = "tenant_id")
+    private Long tenantId;
+
+    @ApiModelProperty("测点编码")
+    @Column(name = "property_code")
+    private String propertyCode;
 
     @ApiModelProperty("测点名称")
-    @Column(name = "point_name")
-    private String pointName;
+    @Column(name = "property_name")
+    private String propertyName;
+
+    @ApiModelProperty("第三方测点编码")
+    @Column(name = "third_party_code")
+    private String thirdPartyCode;
 
     @ApiModelProperty("数据类型")
     @Column(name = "data_type")
@@ -63,6 +71,38 @@ public class IotDevicePoint {
     @Column(name = "read_write_role")
     private String readWriteRole;
 
+    @ApiModelProperty("上报方式")
+    @Column(name = "up_way")
+    private String upWay;
+
+    @ApiModelProperty("上报方式名称")
+    @Column(name = "up_way_name")
+    private String upWayName;
+
+    @ApiModelProperty("上报周期")
+    @Column(name = "up_period")
+    private String upPeriod;
+
+    @ApiModelProperty("上报周期名称")
+    @Column(name = "up_period_name")
+    private String upPeriodName;
+
+    @ApiModelProperty("下限值")
+    @Column(name = "value_lower_limit")
+    private String valueLowerLimit;
+
+    @ApiModelProperty("上限值")
+    @Column(name = "value_high_limit")
+    private String valueHighLimit;
+
+    @ApiModelProperty("死区类型")
+    @Column(name = "dead_zone_type")
+    private Integer deadZoneType;
+
+    @ApiModelProperty("类型")
+    @Column(name = "type")
+    private Integer type;
+
     @ApiModelProperty("状态：1启用，0停用")
     @Column(name = "status")
     private Integer status;
@@ -86,26 +126,22 @@ public class IotDevicePoint {
     private Date updateTime;
 
     @Transient
-    @ApiModelProperty("测点编码别名")
-    private String propertyCode;
-
-    @Transient
-    @ApiModelProperty("测点名称别名")
-    private String propertyName;
-
-    @Transient
-    @ApiModelProperty("第三方标识")
-    private String thirdPartyCode;
-
-    @Transient
     @ApiModelProperty("读写权限名称")
     private String readWriteRoleName;
 
-    @Transient
-    @ApiModelProperty("上报方式")
-    private String upWayName;
+    public String getPointCode() {
+        return propertyCode;
+    }
 
-    @Transient
-    @ApiModelProperty("上报周期")
-    private String upPeriodName;
+    public void setPointCode(String pointCode) {
+        this.propertyCode = pointCode;
+    }
+
+    public String getPointName() {
+        return propertyName;
+    }
+
+    public void setPointName(String pointName) {
+        this.propertyName = pointName;
+    }
 }

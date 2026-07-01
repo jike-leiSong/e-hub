@@ -21,6 +21,10 @@ public class IotGateway {
     @Column(name = "id")
     private Long id;
 
+    @ApiModelProperty("租户ID")
+    @Column(name = "tenant_id")
+    private Long tenantId;
+
     @ApiModelProperty("聚合商ID")
     @Column(name = "aggregator_id")
     private String aggregatorId;
@@ -36,6 +40,46 @@ public class IotGateway {
     @ApiModelProperty("网关名称")
     @Column(name = "gateway_name")
     private String gatewayName;
+
+    @ApiModelProperty("网关类型编码")
+    @Column(name = "gateway_type_code")
+    private String gatewayTypeCode;
+
+    @ApiModelProperty("网关类型名称")
+    @Column(name = "gateway_type_name")
+    private String gatewayTypeName;
+
+    @ApiModelProperty("通讯方式编码")
+    @Column(name = "communication_method_code")
+    private String communicationMethodCode;
+
+    @ApiModelProperty("通讯方式名称")
+    @Column(name = "communication_method_name")
+    private String communicationMethodName;
+
+    @ApiModelProperty("厂家")
+    @Column(name = "manufacturer")
+    private String manufacturer;
+
+    @ApiModelProperty("型号")
+    @Column(name = "model")
+    private String model;
+
+    @ApiModelProperty("网关序列号")
+    @Column(name = "gateway_serial_number")
+    private String gatewaySerialNumber;
+
+    @ApiModelProperty("网关SN号")
+    @Column(name = "gateway_sn_number")
+    private String gatewaySnNumber;
+
+    @ApiModelProperty("物联状态")
+    @Column(name = "iot_status")
+    private String iotStatus;
+
+    @ApiModelProperty("绑定设备数量")
+    @Column(name = "bound_device_count")
+    private Integer boundDeviceCount;
 
     @ApiModelProperty("状态")
     @Column(name = "status")

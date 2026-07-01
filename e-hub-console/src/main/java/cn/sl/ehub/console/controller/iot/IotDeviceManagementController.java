@@ -218,6 +218,16 @@ public class IotDeviceManagementController {
         return ResultVO.success(iotDeviceManagementService.listDeviceGroupParamMetadata());
     }
 
+    @GetMapping("/device-group-point-metadata")
+    @ApiOperation("设备组测点元数据")
+    public ResultVO<PageResultVO<IotDeviceTypePointMetadata>> deviceGroupPointMetadata(
+            @RequestParam(value = "deviceGroupType", required = false) String deviceGroupType,
+            @RequestParam(value = "pageNum", defaultValue = "1") Integer pageNum,
+            @RequestParam(value = "pageSize", defaultValue = "1000") Integer pageSize) {
+        List<IotDeviceTypePointMetadata> list = iotDeviceManagementService.listDeviceGroupPointMetadata(deviceGroupType);
+        return ResultVO.success(toPage(list, pageNum, pageSize));
+    }
+
     @GetMapping("/devices/{deviceId}/points/page")
     @ApiOperation("设备测点分页")
     public ResultVO<PageResultVO<IotDevicePoint>> devicePoints(@PathVariable("deviceId") Long deviceId,
@@ -408,11 +418,13 @@ public class IotDeviceManagementController {
             return;
         }
         for (IotDevicePoint point : list) {
-            point.setPropertyCode(point.getPointCode());
-            point.setPropertyName(point.getPointName());
             point.setReadWriteRoleName(StringUtils.equalsIgnoreCase("readWrite", point.getReadWriteRole()) ? "读写" : "只读");
-            point.setUpWayName("周期上报");
-            point.setUpPeriodName(point.getDataFrequency() == null ? "--" : point.getDataFrequency() + "s");
+            if (StringUtils.isBlank(point.getUpWayName())) {
+                point.setUpWayName("周期上报");
+            }
+            if (StringUtils.isBlank(point.getUpPeriodName())) {
+                point.setUpPeriodName(point.getDataFrequency() == null ? "--" : point.getDataFrequency() + "s");
+            }
         }
     }
 

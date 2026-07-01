@@ -197,7 +197,8 @@ public class IotTelemetryIngestService {
         Date minuteTime = toMinute(dataTime);
         Double standardValue = value * defaultDouble(context.pointRef.getRatio(), 1D)
                 + defaultDouble(context.pointRef.getOffsetValue(), 0D);
-        IotTelemetryMinute existed = findTelemetry(context.device.getId(), context.point.getPointCode(), minuteTime);
+        String pointCode = context.point.getPropertyCode();
+        IotTelemetryMinute existed = findTelemetry(context.device.getId(), pointCode, minuteTime);
         Date now = new Date();
         if (existed == null) {
             IotTelemetryMinute telemetry = new IotTelemetryMinute();
@@ -206,7 +207,7 @@ public class IotTelemetryIngestService {
             telemetry.setProjectId(context.projectId);
             telemetry.setDeviceId(context.device.getId());
             telemetry.setDeviceCode(context.device.getDeviceCode());
-            telemetry.setPointCode(context.point.getPointCode());
+            telemetry.setPointCode(pointCode);
             telemetry.setDataTime(dataTime);
             telemetry.setMinuteTime(minuteTime);
             telemetry.setPointValue(standardValue);

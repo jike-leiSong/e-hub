@@ -19,6 +19,14 @@ public class IotDeviceGroupPointSaveReq {
 
     private String readWriteRole;
 
+    private String valueLowerLimit;
+
+    private String valueHighLimit;
+
+    private Integer deadZoneType;
+
+    private Integer type;
+
     private Integer sort;
 
     private Integer status;

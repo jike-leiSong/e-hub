@@ -12,22 +12,22 @@ import javax.persistence.Table;
 import java.util.Date;
 
 @Data
-@ApiModel("IoT设备类型测点元数据")
-@Table(name = "iot_device_type_point_metadata")
-public class IotDeviceTypePointMetadata {
+@ApiModel("IoT设备组测点元数据")
+@Table(name = "iot_device_group_point_metadata")
+public class IotDeviceGroupPointMetadata {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
     private Long id;
 
-    @ApiModelProperty("设备类型编码")
-    @Column(name = "device_type_code")
-    private String deviceTypeCode;
+    @ApiModelProperty("设备组类型编码")
+    @Column(name = "device_group_type")
+    private String deviceGroupType;
 
-    @ApiModelProperty("设备类型名称")
-    @Column(name = "device_type_name")
-    private String deviceTypeName;
+    @ApiModelProperty("设备组类型名称")
+    @Column(name = "device_group_type_name")
+    private String deviceGroupTypeName;
 
     @ApiModelProperty("测点编码")
     @Column(name = "property_code")
@@ -36,6 +36,10 @@ public class IotDeviceTypePointMetadata {
     @ApiModelProperty("测点名称")
     @Column(name = "property_name")
     private String propertyName;
+
+    @ApiModelProperty("测点名称英文")
+    @Column(name = "property_name_en")
+    private String propertyNameEn;
 
     @ApiModelProperty("数据类型")
     @Column(name = "data_type")
@@ -49,25 +53,13 @@ public class IotDeviceTypePointMetadata {
     @Column(name = "value_type")
     private String valueType;
 
-    @ApiModelProperty("单位")
-    @Column(name = "unit")
-    private String unit;
-
-    @ApiModelProperty("读写权限")
+    @ApiModelProperty("读写角色")
     @Column(name = "read_write_role")
     private String readWriteRole;
 
-    @ApiModelProperty("上报方式")
-    @Column(name = "up_way")
-    private String upWay;
-
-    @ApiModelProperty("上报周期")
-    @Column(name = "up_period")
-    private String upPeriod;
-
-    @ApiModelProperty("类型")
-    @Column(name = "type")
-    private String type;
+    @ApiModelProperty("单位")
+    @Column(name = "unit")
+    private String unit;
 
     @ApiModelProperty("排序")
     @Column(name = "sort")

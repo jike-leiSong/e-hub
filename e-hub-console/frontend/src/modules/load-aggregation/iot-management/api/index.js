@@ -1,5 +1,9 @@
 import service from "@/services/http";
 
+const JSON_HEADERS = {
+  "Content-Type": "application/json",
+};
+
 export function listEnterprises(params) {
   return service({
     method: "get",
@@ -28,6 +32,7 @@ export function createDeviceGroup(data) {
     method: "post",
     url: "/iot/manage/device-groups",
     data,
+    headers: JSON_HEADERS,
   });
 }
 
@@ -36,6 +41,7 @@ export function updateDeviceGroup(id, data) {
     method: "put",
     url: `/iot/manage/device-groups/${id}`,
     data,
+    headers: JSON_HEADERS,
   });
 }
 
@@ -74,6 +80,7 @@ export function createDevice(data) {
     method: "post",
     url: "/iot/manage/devices",
     data,
+    headers: JSON_HEADERS,
   });
 }
 
@@ -82,6 +89,7 @@ export function updateDevice(id, data) {
     method: "put",
     url: `/iot/manage/devices/${id}`,
     data,
+    headers: JSON_HEADERS,
   });
 }
 
@@ -177,6 +185,7 @@ export function batchAddDevicePoints(deviceId, data) {
     method: "post",
     url: `/iot/manage/devices/${deviceId}/points/batch`,
     data,
+    headers: JSON_HEADERS,
   });
 }
 
@@ -199,6 +208,7 @@ export function createDevicePointDefinition(pointId, data) {
     method: "post",
     url: `/iot/manage/points/${pointId}/definitions`,
     data,
+    headers: JSON_HEADERS,
   });
 }
 
@@ -207,6 +217,7 @@ export function updateDevicePointDefinition(id, data) {
     method: "put",
     url: `/iot/manage/point-definitions/${id}`,
     data,
+    headers: JSON_HEADERS,
   });
 }
 
@@ -244,6 +255,7 @@ export function createDeviceGroupPointDefinition(pointId, data) {
     method: "post",
     url: `/iot/manage/group-points/${pointId}/definitions`,
     data,
+    headers: JSON_HEADERS,
   });
 }
 
@@ -252,6 +264,7 @@ export function updateDeviceGroupPointDefinition(id, data) {
     method: "put",
     url: `/iot/manage/group-point-definitions/${id}`,
     data,
+    headers: JSON_HEADERS,
   });
 }
 

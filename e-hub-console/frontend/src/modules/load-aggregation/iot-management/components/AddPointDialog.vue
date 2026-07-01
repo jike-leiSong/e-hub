@@ -141,8 +141,8 @@ export default {
       this.submitting = true;
       try {
         const payload = this.selectedPoints.map((item, index) => ({
-          pointCode: item.propertyCode,
-          pointName: item.propertyName,
+          propertyCode: item.propertyCode,
+          propertyName: item.propertyName,
           dataType: item.dataType,
           dataTypeName: item.dataTypeName,
           valueType: item.valueType,
