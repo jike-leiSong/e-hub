@@ -25,10 +25,6 @@ public class IotDeviceParam {
     @Column(name = "device_id")
     private Long deviceId;
 
-    @ApiModelProperty("租户ID")
-    @Column(name = "tenant_id")
-    private Long tenantId;
-
     @ApiModelProperty("属性编码")
     @Column(name = "attr_code")
     private String attrCode;

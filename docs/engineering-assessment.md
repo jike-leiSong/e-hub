@@ -113,7 +113,7 @@ mvn -s /Users/sl/.m2/settings.xml clean package -DskipTests -Pconsole-frontend
 ```js
 {
   platformType: "owner" | "customer",
-  tenantId: "customer_a",
+  entId: "customer_a",
   products: ["load_aggregation", "tariff"],
   permissions: ["load:overview:view"]
 }

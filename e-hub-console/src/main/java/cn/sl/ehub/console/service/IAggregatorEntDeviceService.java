@@ -167,7 +167,8 @@ public interface IAggregatorEntDeviceService {
      */
     List<AggregatorEntDevice> getDeviceListByAggregatorId(String aggregatorId);
 
-    List<AggregatorEntDevice> queryDeviceList(String aggregatorId, String entId, String deviceName, Integer status);
+    List<AggregatorEntDevice> queryDeviceList(String aggregatorId, String entId, String deviceName,
+                                              Integer status, List<String> energyStationCodes);
 
     AggregatorEntDevice getDeviceById(Integer id);
 

@@ -316,7 +316,11 @@ public class AggregatorEntDeviceServiceImpl implements IAggregatorEntDeviceServi
     }
 
     @Override
-    public List<AggregatorEntDevice> queryDeviceList(String aggregatorId, String entId, String deviceName, Integer status) {
+    public List<AggregatorEntDevice> queryDeviceList(String aggregatorId, String entId, String deviceName,
+                                                     Integer status, List<String> energyStationCodes) {
+        if (energyStationCodes != null && energyStationCodes.isEmpty()) {
+            return Collections.emptyList();
+        }
         Weekend<AggregatorEntDevice> weekend = Weekend.of(AggregatorEntDevice.class);
         WeekendCriteria<AggregatorEntDevice, Object> criteria = weekend.weekendCriteria();
         criteria.andEqualTo(AggregatorEntDevice::getDelFlag, 1);
@@ -331,6 +335,9 @@ public class AggregatorEntDeviceServiceImpl implements IAggregatorEntDeviceServi
         }
         if (status != null) {
             criteria.andEqualTo(AggregatorEntDevice::getStatus, status);
+        }
+        if (CollectionUtils.isNotEmpty(energyStationCodes)) {
+            criteria.andIn(AggregatorEntDevice::getEnergyStationCode, energyStationCodes);
         }
         return aggregatorEntDeviceMapper.selectByExample(weekend);
     }

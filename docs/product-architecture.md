@@ -56,7 +56,7 @@ e-hub
 ```js
 {
   platformType: "owner" | "customer",
-  tenantId: "customer_a",
+  entId: "customer_a",
   role: "customer_admin",
   products: ["load_aggregation", "tariff"],
   permissions: [

@@ -24,6 +24,9 @@ public class AggregatorSingleModelData {
     @ApiModelProperty("聚合商ID")
     @Column(name = "aggregator_id")
     private String aggregatorId;
+    @ApiModelProperty("企业ID")
+    @Column(name = "ent_id")
+    private String entId;
     @ApiModelProperty("资源类型ID")
     @Column(name = "resource_type_id")
     private String resourceTypeId;
@@ -54,9 +57,6 @@ public class AggregatorSingleModelData {
     @ApiModelProperty("是否可控1可控")
     @Column(name = "controll")
     private String controll;
-    @Transient
-    @ApiModelProperty("企业ID")
-    private String entId;
     @Transient
     @ApiModelProperty("企业名称")
     private String entName;

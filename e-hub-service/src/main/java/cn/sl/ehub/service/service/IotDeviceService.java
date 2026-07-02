@@ -2,25 +2,18 @@ package cn.sl.ehub.service.service;
 
 import cn.sl.ehub.common.enums.StatusCode;
 import cn.sl.ehub.common.exception.BaseException;
-import cn.sl.ehub.service.dto.iot.IotDeviceExternalRefSaveReq;
 import cn.sl.ehub.service.dto.iot.IotDevicePointSaveReq;
 import cn.sl.ehub.service.dto.iot.IotDeviceQuery;
 import cn.sl.ehub.service.dto.iot.IotDeviceSaveReq;
-import cn.sl.ehub.service.dto.iot.IotPointExternalRefSaveReq;
 import cn.sl.ehub.service.dto.iot.IotTelemetryMinuteQuery;
-import cn.sl.ehub.service.mapper.IotDeviceExternalRefMapper;
 import cn.sl.ehub.service.mapper.IotDeviceMapper;
 import cn.sl.ehub.service.mapper.IotDevicePointMapper;
-import cn.sl.ehub.service.mapper.IotPointExternalRefMapper;
 import cn.sl.ehub.service.mapper.IotTelemetryMinuteMapper;
 import cn.sl.ehub.service.mapper.IotUnmatchedTelemetryLogMapper;
 import cn.sl.ehub.service.vo.IotDevice;
-import cn.sl.ehub.service.vo.IotDeviceExternalRef;
 import cn.sl.ehub.service.vo.IotDevicePoint;
-import cn.sl.ehub.service.vo.IotPointExternalRef;
 import cn.sl.ehub.service.vo.IotTelemetryMinute;
 import cn.sl.ehub.service.vo.IotUnmatchedTelemetryLog;
-import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,7 +23,6 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
-import java.util.Locale;
 
 @Service
 public class IotDeviceService {
@@ -43,21 +35,15 @@ public class IotDeviceService {
 
     private final IotDeviceMapper iotDeviceMapper;
     private final IotDevicePointMapper iotDevicePointMapper;
-    private final IotDeviceExternalRefMapper iotDeviceExternalRefMapper;
-    private final IotPointExternalRefMapper iotPointExternalRefMapper;
     private final IotTelemetryMinuteMapper iotTelemetryMinuteMapper;
     private final IotUnmatchedTelemetryLogMapper iotUnmatchedTelemetryLogMapper;
 
     public IotDeviceService(IotDeviceMapper iotDeviceMapper,
                             IotDevicePointMapper iotDevicePointMapper,
-                            IotDeviceExternalRefMapper iotDeviceExternalRefMapper,
-                            IotPointExternalRefMapper iotPointExternalRefMapper,
                             IotTelemetryMinuteMapper iotTelemetryMinuteMapper,
                             IotUnmatchedTelemetryLogMapper iotUnmatchedTelemetryLogMapper) {
         this.iotDeviceMapper = iotDeviceMapper;
         this.iotDevicePointMapper = iotDevicePointMapper;
-        this.iotDeviceExternalRefMapper = iotDeviceExternalRefMapper;
-        this.iotPointExternalRefMapper = iotPointExternalRefMapper;
         this.iotTelemetryMinuteMapper = iotTelemetryMinuteMapper;
         this.iotUnmatchedTelemetryLogMapper = iotUnmatchedTelemetryLogMapper;
     }
@@ -111,7 +97,6 @@ public class IotDeviceService {
     public IotDevice createDevice(IotDeviceSaveReq req) {
         validateDeviceReq(req);
         IotDevice device = new IotDevice();
-        device.setTenantId(parseTenantId(req.getEntId()));
         device.setAggregatorId(StringUtils.trimToNull(req.getAggregatorId()));
         device.setEntId(StringUtils.trim(req.getEntId()));
         device.setProjectId(StringUtils.trimToNull(req.getProjectId()));
@@ -124,6 +109,9 @@ public class IotDeviceService {
         if (existsDeviceCode(device.getEntId(), device.getDeviceCode(), null)) {
             throwParam("设备编码在当前企业下已存在");
         }
+        device.setThirdPartyApi(StringUtils.trimToNull(req.getThirdPartyApi()));
+        device.setThirdPartyCode(StringUtils.trimToNull(req.getThirdPartyCode()));
+        validateThirdPartyDeviceUnique(device.getEntId(), device.getThirdPartyApi(), device.getThirdPartyCode(), null);
         device.setDeviceName(StringUtils.trim(req.getDeviceName()));
         device.setManufacturer(StringUtils.trimToNull(req.getManufacturer()));
         device.setModel(StringUtils.trimToNull(req.getModel()));
@@ -140,7 +128,7 @@ public class IotDeviceService {
             device = getDeviceByEntAndCode(device.getEntId(), device.getDeviceCode());
         }
         if (device != null && !Boolean.FALSE.equals(req.getCreateDefaultPowerPoint())) {
-            createDefaultPowerPoint(device.getId(), device.getTenantId());
+            createDefaultPowerPoint(device.getId());
         }
         return device;
     }
@@ -166,6 +154,11 @@ public class IotDeviceService {
         device.setDeviceName(StringUtils.defaultIfBlank(req.getDeviceName(), device.getDeviceName()));
         device.setDeviceTypeCode(StringUtils.defaultIfBlank(req.getDeviceTypeCode(), device.getDeviceTypeCode()));
         device.setDeviceTypeName(StringUtils.defaultIfBlank(req.getDeviceTypeName(), device.getDeviceTypeName()));
+        String thirdPartyApi = req.getThirdPartyApi() == null ? device.getThirdPartyApi() : StringUtils.trimToNull(req.getThirdPartyApi());
+        String thirdPartyCode = req.getThirdPartyCode() == null ? device.getThirdPartyCode() : StringUtils.trimToNull(req.getThirdPartyCode());
+        validateThirdPartyDeviceUnique(newEntId, thirdPartyApi, thirdPartyCode, id);
+        device.setThirdPartyApi(thirdPartyApi);
+        device.setThirdPartyCode(thirdPartyCode);
         device.setManufacturer(req.getManufacturer() == null ? device.getManufacturer() : StringUtils.trimToNull(req.getManufacturer()));
         device.setModel(req.getModel() == null ? device.getModel() : StringUtils.trimToNull(req.getModel()));
         device.setAssetStatus(req.getAssetStatus() == null ? device.getAssetStatus() : req.getAssetStatus());
@@ -206,18 +199,16 @@ public class IotDeviceService {
 
     @Transactional(rollbackFor = Exception.class)
     public IotDevicePoint createPoint(Long deviceId, IotDevicePointSaveReq req) {
-        IotDevice device = requireDevice(deviceId);
+        requireDevice(deviceId);
         if (req == null) {
             throwParam("请求参数不能为空");
         }
         req.setDeviceId(deviceId);
-        if (req.getTenantId() == null) {
-            req.setTenantId(device.getTenantId());
-        }
         validatePointReq(req);
         if (existsPointCode(deviceId, req.getPropertyCode(), null)) {
             throwParam("测点编码在当前设备下已存在");
         }
+        validateThirdPartyPointUnique(deviceId, req.getThirdPartyCode(), null);
         IotDevicePoint point = buildPoint(req);
         Date now = new Date();
         point.setCreateTime(now);
@@ -237,9 +228,11 @@ public class IotDeviceService {
                 && existsPointCode(point.getDeviceId(), newPointCode, id)) {
             throwParam("测点编码在当前设备下已存在");
         }
+        String thirdPartyCode = req.getThirdPartyCode() == null ? point.getThirdPartyCode() : StringUtils.trimToNull(req.getThirdPartyCode());
+        validateThirdPartyPointUnique(point.getDeviceId(), thirdPartyCode, id);
         point.setPropertyCode(newPointCode);
         point.setPropertyName(StringUtils.defaultIfBlank(req.getPropertyName(), point.getPropertyName()));
-        point.setThirdPartyCode(req.getThirdPartyCode() == null ? point.getThirdPartyCode() : StringUtils.trimToNull(req.getThirdPartyCode()));
+        point.setThirdPartyCode(thirdPartyCode);
         point.setDataType(req.getDataType() == null ? point.getDataType() : StringUtils.trimToNull(req.getDataType()));
         point.setDataTypeName(req.getDataTypeName() == null ? point.getDataTypeName() : StringUtils.trimToNull(req.getDataTypeName()));
         point.setValueType(StringUtils.defaultIfBlank(req.getValueType(), point.getValueType()));
@@ -269,150 +262,6 @@ public class IotDeviceService {
         point.setDeleted(1);
         point.setUpdateTime(new Date());
         iotDevicePointMapper.updateByPrimaryKeySelective(point);
-    }
-
-    public List<IotDeviceExternalRef> listDeviceExternalRefs(Long deviceId) {
-        Example example = new Example(IotDeviceExternalRef.class);
-        example.createCriteria().andEqualTo("deviceId", deviceId);
-        example.orderBy("createTime").desc();
-        return iotDeviceExternalRefMapper.selectByExample(example);
-    }
-
-    public IotDeviceExternalRef getDeviceExternalRef(Long id) {
-        if (id == null) {
-            return null;
-        }
-        return iotDeviceExternalRefMapper.selectByPrimaryKey(id);
-    }
-
-    @Transactional(rollbackFor = Exception.class)
-    public IotDeviceExternalRef createDeviceExternalRef(Long deviceId, IotDeviceExternalRefSaveReq req) {
-        IotDevice device = requireDevice(deviceId);
-        if (req == null) {
-            throwParam("请求参数不能为空");
-        }
-        req.setDeviceId(deviceId);
-        if (StringUtils.isBlank(req.getEntId())) {
-            req.setEntId(device.getEntId());
-        }
-        if (StringUtils.isBlank(req.getProjectId())) {
-            req.setProjectId(device.getProjectId());
-        }
-        validateDeviceExternalRefReq(req);
-        if (existsDeviceExternalRef(req.getSourceCode(), req.getEntId(), req.getExternalDeviceId(), null)) {
-            throwParam("三方设备标识已绑定");
-        }
-        IotDeviceExternalRef ref = buildDeviceExternalRef(req);
-        Date now = new Date();
-        ref.setCreateTime(now);
-        ref.setUpdateTime(now);
-        iotDeviceExternalRefMapper.insertSelective(ref);
-        return ref;
-    }
-
-    @Transactional(rollbackFor = Exception.class)
-    public IotDeviceExternalRef updateDeviceExternalRef(Long id, IotDeviceExternalRefSaveReq req) {
-        IotDeviceExternalRef ref = requireDeviceExternalRef(id);
-        if (req == null) {
-            throwParam("请求参数不能为空");
-        }
-        String sourceCode = StringUtils.defaultIfBlank(req.getSourceCode(), ref.getSourceCode());
-        String entId = StringUtils.defaultIfBlank(req.getEntId(), ref.getEntId());
-        String externalDeviceId = StringUtils.defaultIfBlank(req.getExternalDeviceId(), ref.getExternalDeviceId());
-        if ((!StringUtils.equals(sourceCode, ref.getSourceCode())
-                || !StringUtils.equals(entId, ref.getEntId())
-                || !StringUtils.equals(externalDeviceId, ref.getExternalDeviceId()))
-                && existsDeviceExternalRef(sourceCode, entId, externalDeviceId, id)) {
-            throwParam("三方设备标识已绑定");
-        }
-        ref.setSourceCode(sourceCode);
-        ref.setEntId(entId);
-        ref.setProjectId(StringUtils.isNotBlank(req.getProjectId()) ? req.getProjectId() : ref.getProjectId());
-        ref.setExternalDeviceId(externalDeviceId);
-        ref.setExternalDeviceCode(req.getExternalDeviceCode() == null ? ref.getExternalDeviceCode() : StringUtils.trimToNull(req.getExternalDeviceCode()));
-        ref.setExternalDeviceName(req.getExternalDeviceName() == null ? ref.getExternalDeviceName() : StringUtils.trimToNull(req.getExternalDeviceName()));
-        ref.setGatewayCode(req.getGatewayCode() == null ? ref.getGatewayCode() : StringUtils.trimToNull(req.getGatewayCode()));
-        ref.setStatus(req.getStatus() == null ? ref.getStatus() : req.getStatus());
-        ref.setUpdateTime(new Date());
-        iotDeviceExternalRefMapper.updateByPrimaryKeySelective(ref);
-        return iotDeviceExternalRefMapper.selectByPrimaryKey(id);
-    }
-
-    @Transactional(rollbackFor = Exception.class)
-    public void disableDeviceExternalRef(Long id) {
-        IotDeviceExternalRef ref = requireDeviceExternalRef(id);
-        ref.setStatus(0);
-        ref.setUpdateTime(new Date());
-        iotDeviceExternalRefMapper.updateByPrimaryKeySelective(ref);
-    }
-
-    public List<IotPointExternalRef> listPointExternalRefs(Long pointId) {
-        Example example = new Example(IotPointExternalRef.class);
-        example.createCriteria().andEqualTo("pointId", pointId);
-        example.orderBy("createTime").desc();
-        return iotPointExternalRefMapper.selectByExample(example);
-    }
-
-    public IotPointExternalRef getPointExternalRef(Long id) {
-        if (id == null) {
-            return null;
-        }
-        return iotPointExternalRefMapper.selectByPrimaryKey(id);
-    }
-
-    @Transactional(rollbackFor = Exception.class)
-    public IotPointExternalRef createPointExternalRef(Long pointId, IotPointExternalRefSaveReq req) {
-        IotDevicePoint point = requirePoint(pointId);
-        if (req == null) {
-            throwParam("请求参数不能为空");
-        }
-        req.setPointId(pointId);
-        req.setDeviceId(point.getDeviceId());
-        validatePointExternalRefReq(req);
-        if (existsPointExternalRef(req.getSourceCode(), req.getDeviceId(), req.getExternalMetric(), null)) {
-            throwParam("三方测点标识已绑定");
-        }
-        IotPointExternalRef ref = buildPointExternalRef(req);
-        Date now = new Date();
-        ref.setCreateTime(now);
-        ref.setUpdateTime(now);
-        iotPointExternalRefMapper.insertSelective(ref);
-        return ref;
-    }
-
-    @Transactional(rollbackFor = Exception.class)
-    public IotPointExternalRef updatePointExternalRef(Long id, IotPointExternalRefSaveReq req) {
-        IotPointExternalRef ref = requirePointExternalRef(id);
-        if (req == null) {
-            throwParam("请求参数不能为空");
-        }
-        String sourceCode = StringUtils.defaultIfBlank(req.getSourceCode(), ref.getSourceCode());
-        String externalMetric = StringUtils.defaultIfBlank(req.getExternalMetric(), ref.getExternalMetric());
-        Long deviceId = req.getDeviceId() == null ? ref.getDeviceId() : req.getDeviceId();
-        if ((!StringUtils.equals(sourceCode, ref.getSourceCode())
-                || !StringUtils.equals(externalMetric, ref.getExternalMetric())
-                || !deviceId.equals(ref.getDeviceId()))
-                && existsPointExternalRef(sourceCode, deviceId, externalMetric, id)) {
-            throwParam("三方测点标识已绑定");
-        }
-        ref.setSourceCode(sourceCode);
-        ref.setDeviceId(deviceId);
-        ref.setExternalMetric(externalMetric);
-        ref.setExternalMetricName(req.getExternalMetricName() == null ? ref.getExternalMetricName() : StringUtils.trimToNull(req.getExternalMetricName()));
-        ref.setRatio(req.getRatio() == null ? ref.getRatio() : req.getRatio());
-        ref.setOffsetValue(req.getOffsetValue() == null ? ref.getOffsetValue() : req.getOffsetValue());
-        ref.setStatus(req.getStatus() == null ? ref.getStatus() : req.getStatus());
-        ref.setUpdateTime(new Date());
-        iotPointExternalRefMapper.updateByPrimaryKeySelective(ref);
-        return iotPointExternalRefMapper.selectByPrimaryKey(id);
-    }
-
-    @Transactional(rollbackFor = Exception.class)
-    public void disablePointExternalRef(Long id) {
-        IotPointExternalRef ref = requirePointExternalRef(id);
-        ref.setStatus(0);
-        ref.setUpdateTime(new Date());
-        iotPointExternalRefMapper.updateByPrimaryKeySelective(ref);
     }
 
     public List<IotTelemetryMinute> listTelemetryMinute(IotTelemetryMinuteQuery query) {
@@ -464,13 +313,12 @@ public class IotDeviceService {
         return iotUnmatchedTelemetryLogMapper.selectByExample(example);
     }
 
-    private void createDefaultPowerPoint(Long deviceId, Long tenantId) {
+    private void createDefaultPowerPoint(Long deviceId) {
         if (existsPointCode(deviceId, DEFAULT_POINT_CODE, null)) {
             return;
         }
         IotDevicePointSaveReq req = new IotDevicePointSaveReq();
         req.setDeviceId(deviceId);
-        req.setTenantId(tenantId);
         req.setPropertyCode(DEFAULT_POINT_CODE);
         req.setPropertyName(DEFAULT_POINT_NAME);
         req.setValueType(DEFAULT_VALUE_TYPE);
@@ -489,7 +337,6 @@ public class IotDeviceService {
 
     private IotDevicePoint buildPoint(IotDevicePointSaveReq req) {
         IotDevicePoint point = new IotDevicePoint();
-        point.setTenantId(req.getTenantId());
         point.setDeviceId(req.getDeviceId());
         point.setPropertyCode(StringUtils.trim(req.getPropertyCode()));
         point.setPropertyName(StringUtils.trim(req.getPropertyName()));
@@ -516,52 +363,6 @@ public class IotDeviceService {
         return point;
     }
 
-    private IotDeviceExternalRef buildDeviceExternalRef(IotDeviceExternalRefSaveReq req) {
-        IotDeviceExternalRef ref = new IotDeviceExternalRef();
-        ref.setSourceCode(StringUtils.trim(req.getSourceCode()));
-        ref.setEntId(StringUtils.trim(req.getEntId()));
-        ref.setProjectId(StringUtils.trimToNull(req.getProjectId()));
-        ref.setDeviceId(req.getDeviceId());
-        ref.setExternalDeviceId(StringUtils.trim(req.getExternalDeviceId()));
-        ref.setExternalDeviceCode(StringUtils.trimToNull(req.getExternalDeviceCode()));
-        ref.setExternalDeviceName(StringUtils.trimToNull(req.getExternalDeviceName()));
-        ref.setGatewayCode(StringUtils.trimToNull(req.getGatewayCode()));
-        ref.setStatus(req.getStatus() == null ? 1 : req.getStatus());
-        return ref;
-    }
-
-    private IotPointExternalRef buildPointExternalRef(IotPointExternalRefSaveReq req) {
-        IotPointExternalRef ref = new IotPointExternalRef();
-        ref.setSourceCode(StringUtils.trim(req.getSourceCode()));
-        ref.setDeviceId(req.getDeviceId());
-        ref.setPointId(req.getPointId());
-        ref.setExternalMetric(StringUtils.trim(req.getExternalMetric()));
-        ref.setExternalMetricName(StringUtils.trimToNull(req.getExternalMetricName()));
-        ref.setRatio(req.getRatio() == null ? 1D : req.getRatio());
-        ref.setOffsetValue(req.getOffsetValue() == null ? 0D : req.getOffsetValue());
-        ref.setStatus(req.getStatus() == null ? 1 : req.getStatus());
-        return ref;
-    }
-
-    private String generateDeviceCode(String entId, String deviceTypeCode) {
-        String prefix = normalizeDevicePrefix(deviceTypeCode);
-        int index = 1;
-        String code;
-        do {
-            code = prefix + String.format(Locale.ROOT, "%03d", index++);
-        } while (existsDeviceCode(entId, code, null));
-        return code;
-    }
-
-    private String normalizeDevicePrefix(String deviceTypeCode) {
-        String prefix = StringUtils.defaultIfBlank(deviceTypeCode, "DEV").toUpperCase(Locale.ROOT);
-        prefix = prefix.replaceAll("[^A-Z0-9]", "");
-        if (StringUtils.isBlank(prefix)) {
-            prefix = "DEV";
-        }
-        return prefix;
-    }
-
     private boolean existsDeviceCode(String entId, String deviceCode, Long excludeId) {
         Example example = new Example(IotDevice.class);
         Example.Criteria criteria = example.createCriteria();
@@ -575,6 +376,24 @@ public class IotDeviceService {
             }
         }
         return false;
+    }
+
+    private void validateThirdPartyDeviceUnique(String entId, String thirdPartyApi, String thirdPartyCode, Long excludeId) {
+        if (StringUtils.isBlank(thirdPartyApi) || StringUtils.isBlank(thirdPartyCode)) {
+            return;
+        }
+        Example example = new Example(IotDevice.class);
+        example.createCriteria()
+                .andEqualTo("entId", entId)
+                .andEqualTo("thirdPartyApi", thirdPartyApi)
+                .andEqualTo("thirdPartyCode", thirdPartyCode)
+                .andEqualTo("deleted", 0);
+        List<IotDevice> list = iotDeviceMapper.selectByExample(example);
+        for (IotDevice device : list) {
+            if (excludeId == null || !excludeId.equals(device.getId())) {
+                throwParam("设备第三方标识在当前企业和第三方API下已存在");
+            }
+        }
     }
 
     private boolean existsPointCode(Long deviceId, String pointCode, Long excludeId) {
@@ -592,34 +411,21 @@ public class IotDeviceService {
         return false;
     }
 
-    private boolean existsDeviceExternalRef(String sourceCode, String entId, String externalDeviceId, Long excludeId) {
-        Example example = new Example(IotDeviceExternalRef.class);
-        Example.Criteria criteria = example.createCriteria();
-        criteria.andEqualTo("sourceCode", sourceCode);
-        criteria.andEqualTo("entId", entId);
-        criteria.andEqualTo("externalDeviceId", externalDeviceId);
-        List<IotDeviceExternalRef> list = iotDeviceExternalRefMapper.selectByExample(example);
-        for (IotDeviceExternalRef ref : list) {
-            if (excludeId == null || !excludeId.equals(ref.getId())) {
-                return true;
+    private void validateThirdPartyPointUnique(Long deviceId, String thirdPartyCode, Long excludeId) {
+        if (StringUtils.isBlank(thirdPartyCode)) {
+            return;
+        }
+        Example example = new Example(IotDevicePoint.class);
+        example.createCriteria()
+                .andEqualTo("deviceId", deviceId)
+                .andEqualTo("thirdPartyCode", StringUtils.trim(thirdPartyCode))
+                .andEqualTo("deleted", 0);
+        List<IotDevicePoint> list = iotDevicePointMapper.selectByExample(example);
+        for (IotDevicePoint point : list) {
+            if (excludeId == null || !excludeId.equals(point.getId())) {
+                throwParam("测点第三方标识在当前设备下已存在");
             }
         }
-        return false;
-    }
-
-    private boolean existsPointExternalRef(String sourceCode, Long deviceId, String externalMetric, Long excludeId) {
-        Example example = new Example(IotPointExternalRef.class);
-        Example.Criteria criteria = example.createCriteria();
-        criteria.andEqualTo("sourceCode", sourceCode);
-        criteria.andEqualTo("deviceId", deviceId);
-        criteria.andEqualTo("externalMetric", externalMetric);
-        List<IotPointExternalRef> list = iotPointExternalRefMapper.selectByExample(example);
-        for (IotPointExternalRef ref : list) {
-            if (excludeId == null || !excludeId.equals(ref.getId())) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private IotDevice getDeviceByEntAndCode(String entId, String deviceCode) {
@@ -648,22 +454,6 @@ public class IotDeviceService {
         return point;
     }
 
-    private IotDeviceExternalRef requireDeviceExternalRef(Long id) {
-        IotDeviceExternalRef ref = iotDeviceExternalRefMapper.selectByPrimaryKey(id);
-        if (ref == null) {
-            throwParam("三方设备绑定不存在");
-        }
-        return ref;
-    }
-
-    private IotPointExternalRef requirePointExternalRef(Long id) {
-        IotPointExternalRef ref = iotPointExternalRefMapper.selectByPrimaryKey(id);
-        if (ref == null) {
-            throwParam("三方测点绑定不存在");
-        }
-        return ref;
-    }
-
     private void validateDeviceReq(IotDeviceSaveReq req) {
         if (req == null) {
             throwParam("请求参数不能为空");
@@ -677,26 +467,6 @@ public class IotDeviceService {
         requireNotBlank(req.getPropertyName(), "测点名称不能为空");
     }
 
-    private void validateDeviceExternalRefReq(IotDeviceExternalRefSaveReq req) {
-        requireNotBlank(req.getSourceCode(), "三方来源编码不能为空");
-        requireNotBlank(req.getEntId(), "企业ID不能为空");
-        requireNotBlank(req.getExternalDeviceId(), "三方设备唯一标识不能为空");
-        if (req.getDeviceId() == null) {
-            throwParam("设备ID不能为空");
-        }
-    }
-
-    private void validatePointExternalRefReq(IotPointExternalRefSaveReq req) {
-        requireNotBlank(req.getSourceCode(), "三方来源编码不能为空");
-        requireNotBlank(req.getExternalMetric(), "三方测点编码不能为空");
-        if (req.getDeviceId() == null) {
-            throwParam("设备ID不能为空");
-        }
-        if (req.getPointId() == null) {
-            throwParam("测点ID不能为空");
-        }
-    }
-
     private void requireNotBlank(String value, String message) {
         if (StringUtils.isBlank(value)) {
             throwParam(message);
@@ -705,18 +475,6 @@ public class IotDeviceService {
 
     private void throwParam(String message) {
         throw new BaseException(StatusCode.C.getCode(), message);
-    }
-
-    private Long parseTenantId(String entId) {
-        String value = StringUtils.trimToNull(entId);
-        if (value == null || !StringUtils.isNumeric(value)) {
-            return null;
-        }
-        try {
-            return Long.valueOf(value);
-        } catch (NumberFormatException ignored) {
-            return null;
-        }
     }
 
     private Date parseDateTime(String value) {
@@ -741,5 +499,10 @@ public class IotDeviceService {
         }
         throwParam("时间格式错误：" + value);
         return null;
+    }
+
+    private String generateDeviceCode(String entId, String deviceTypeCode) {
+        String prefix = StringUtils.isNotBlank(deviceTypeCode) ? deviceTypeCode.toUpperCase() : "DEV";
+        return prefix + "_" + entId + "_" + System.currentTimeMillis();
     }
 }

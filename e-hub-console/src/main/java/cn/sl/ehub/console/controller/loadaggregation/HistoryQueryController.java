@@ -77,7 +77,7 @@ public class HistoryQueryController {
 
     @PostMapping("/userAdjustmentGraphNew")
     @ApiOperation(value = "用户完成调节情况曲线图接口", notes = "用户完成调节情况曲线图接口")
-    public ResultVO<HistoryQueryGraphVO> userAdjustmentGraphNew(@RequestBody @Valid NewUserAdjustmentGraphReq userAdjustmentGraphReq, BindingResult results) {
+    public ResultVO<HistoryQueryGraphVO> userAdjustmentGraphNew(@Valid NewUserAdjustmentGraphReq userAdjustmentGraphReq, BindingResult results) {
         if (results.hasErrors()) {
             return ResultVO.fail(StatusCode.ERROR.getCode(), results.getFieldError().getDefaultMessage());
         }

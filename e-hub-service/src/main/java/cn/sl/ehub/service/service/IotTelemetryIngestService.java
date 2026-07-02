@@ -9,22 +9,18 @@ import cn.sl.ehub.service.dto.iot.IotDataReceiveResp;
 import cn.sl.ehub.service.dto.iot.IotOriginDataItem;
 import cn.sl.ehub.service.dto.iot.IotOriginDataReceiveReq;
 import cn.sl.ehub.service.mapper.IotAccessAppMapper;
-import cn.sl.ehub.service.mapper.IotDeviceExternalRefMapper;
 import cn.sl.ehub.service.mapper.IotDeviceMapper;
 import cn.sl.ehub.service.mapper.IotDevicePointMapper;
-import cn.sl.ehub.service.mapper.IotPointExternalRefMapper;
-import cn.sl.ehub.service.mapper.IotProjectExternalRefMapper;
 import cn.sl.ehub.service.mapper.IotTelemetryMinuteMapper;
+import cn.sl.ehub.service.mapper.IotTelemetryRawMapper;
 import cn.sl.ehub.service.mapper.IotUnmatchedTelemetryLogMapper;
 import cn.sl.ehub.service.vo.IotAccessApp;
 import cn.sl.ehub.service.vo.IotDevice;
-import cn.sl.ehub.service.vo.IotDeviceExternalRef;
 import cn.sl.ehub.service.vo.IotDevicePoint;
-import cn.sl.ehub.service.vo.IotPointExternalRef;
-import cn.sl.ehub.service.vo.IotProjectExternalRef;
 import cn.sl.ehub.service.vo.IotTelemetryMinute;
+import cn.sl.ehub.service.vo.IotTelemetryRaw;
 import cn.sl.ehub.service.vo.IotUnmatchedTelemetryLog;
-import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
@@ -44,31 +40,33 @@ public class IotTelemetryIngestService {
     private static final String INTERFACE_ORIGIN = "originData";
     private static final String INTERFACE_CIM = "cimData";
     private static final String QUALITY_NORMAL = "normal";
+    private static final String MATCH_STATUS_MATCHED = "matched";
+    private static final String MATCH_STATUS_DEVICE_NOT_FOUND = "device_not_found";
+    private static final String MATCH_STATUS_DEVICE_INVALID = "device_invalid";
+    private static final String MATCH_STATUS_POINT_NOT_FOUND = "point_not_found";
+    private static final String MATCH_STATUS_POINT_INVALID = "point_invalid";
+    private static final String MATCH_STATUS_PARAM_INVALID = "param_invalid";
+    private static final String MATCH_STATUS_TIME_INVALID = "time_invalid";
+    private static final String MATCH_STATUS_VALUE_INVALID = "value_invalid";
 
     private final IotAccessAppMapper iotAccessAppMapper;
-    private final IotProjectExternalRefMapper iotProjectExternalRefMapper;
-    private final IotDeviceExternalRefMapper iotDeviceExternalRefMapper;
-    private final IotPointExternalRefMapper iotPointExternalRefMapper;
     private final IotDeviceMapper iotDeviceMapper;
     private final IotDevicePointMapper iotDevicePointMapper;
     private final IotTelemetryMinuteMapper iotTelemetryMinuteMapper;
+    private final IotTelemetryRawMapper iotTelemetryRawMapper;
     private final IotUnmatchedTelemetryLogMapper iotUnmatchedTelemetryLogMapper;
 
     public IotTelemetryIngestService(IotAccessAppMapper iotAccessAppMapper,
-                                     IotProjectExternalRefMapper iotProjectExternalRefMapper,
-                                     IotDeviceExternalRefMapper iotDeviceExternalRefMapper,
-                                     IotPointExternalRefMapper iotPointExternalRefMapper,
                                      IotDeviceMapper iotDeviceMapper,
                                      IotDevicePointMapper iotDevicePointMapper,
                                      IotTelemetryMinuteMapper iotTelemetryMinuteMapper,
+                                     IotTelemetryRawMapper iotTelemetryRawMapper,
                                      IotUnmatchedTelemetryLogMapper iotUnmatchedTelemetryLogMapper) {
         this.iotAccessAppMapper = iotAccessAppMapper;
-        this.iotProjectExternalRefMapper = iotProjectExternalRefMapper;
-        this.iotDeviceExternalRefMapper = iotDeviceExternalRefMapper;
-        this.iotPointExternalRefMapper = iotPointExternalRefMapper;
         this.iotDeviceMapper = iotDeviceMapper;
         this.iotDevicePointMapper = iotDevicePointMapper;
         this.iotTelemetryMinuteMapper = iotTelemetryMinuteMapper;
+        this.iotTelemetryRawMapper = iotTelemetryRawMapper;
         this.iotUnmatchedTelemetryLogMapper = iotUnmatchedTelemetryLogMapper;
     }
 
@@ -81,7 +79,7 @@ public class IotTelemetryIngestService {
             return resp;
         }
         for (IotOriginDataItem item : req.getDataList()) {
-            processOriginItem(resp, accessApp, item);
+            processOriginItem(resp, accessApp, req, item);
         }
         return resp;
     }
@@ -95,144 +93,216 @@ public class IotTelemetryIngestService {
             return resp;
         }
         for (IotCimDataItem item : req.getData()) {
-            processCimItem(resp, accessApp, item);
+            processCimItem(resp, accessApp, req, item);
         }
         return resp;
     }
 
-    private void processOriginItem(IotDataReceiveResp resp, IotAccessApp accessApp, IotOriginDataItem item) {
-        String rawPayload = JSON.toJSONString(item);
+    private void processOriginItem(IotDataReceiveResp resp, IotAccessApp accessApp,
+                                   IotOriginDataReceiveReq req, IotOriginDataItem item) {
+        String rawPayload = buildOriginRawPayload(req, item);
+        String externalDeviceId = item == null ? null : item.getDeviceId();
+        String externalMetric = item == null ? null : item.getMetric();
+        String rawValue = item == null ? null : item.getValue();
         Date dataTime;
         try {
             dataTime = parseDataTime(item == null ? null : item.getDataTime());
         } catch (BaseException e) {
+            saveRawRecord(accessApp, INTERFACE_ORIGIN, resolveProjectId(accessApp, null),
+                    null, null, externalDeviceId, externalMetric, null, rawValue,
+                    rawPayload, MATCH_STATUS_TIME_INVALID, "TIME_INVALID");
             failOrigin(resp, accessApp, item, "TIME_INVALID", rawPayload, null);
             return;
         }
         if (item == null || StringUtils.isBlank(item.getDeviceId()) || StringUtils.isBlank(item.getMetric())) {
+            saveRawRecord(accessApp, INTERFACE_ORIGIN, resolveProjectId(accessApp, null),
+                    null, null, externalDeviceId, externalMetric, dataTime, rawValue,
+                    rawPayload, MATCH_STATUS_PARAM_INVALID, "PARAM_INVALID");
             failOrigin(resp, accessApp, item, "PARAM_INVALID", rawPayload, dataTime);
             return;
         }
-        IngestContext context = resolveContext(accessApp, item.getProjectId(), item.getDeviceId(), item.getMetric());
-        if (context.reason != null) {
-            failOrigin(resp, accessApp, item, context.reason, rawPayload, dataTime);
+        MatchResult result = resolveMatch(accessApp, item.getDeviceId(), item.getMetric());
+        String projectId = resolveProjectId(accessApp, result.device);
+        if (!result.matched()) {
+            saveRawRecord(accessApp, INTERFACE_ORIGIN, projectId, result.device, result.point,
+                    externalDeviceId, externalMetric, dataTime, rawValue, rawPayload, result.matchStatus, result.reason);
+            failOrigin(resp, accessApp, item, result.reason, rawPayload, dataTime);
             return;
         }
         Double value = parseValue(item.getValue());
         if (value == null) {
+            saveRawRecord(accessApp, INTERFACE_ORIGIN, projectId, result.device, result.point,
+                    externalDeviceId, externalMetric, dataTime, rawValue, rawPayload, MATCH_STATUS_VALUE_INVALID, "VALUE_INVALID");
             failOrigin(resp, accessApp, item, "VALUE_INVALID", rawPayload, dataTime);
             return;
         }
-        upsertTelemetry(accessApp, context, dataTime, item.getValue(), value);
+        saveRawRecord(accessApp, INTERFACE_ORIGIN, projectId, result.device, result.point,
+                externalDeviceId, externalMetric, dataTime, rawValue, rawPayload, MATCH_STATUS_MATCHED, null);
+        saveMinuteRecord(accessApp, projectId, result.device, result.point, dataTime, value, item.getValue());
+        updateDeviceOnline(result.device, dataTime);
         resp.addSuccess();
     }
 
-    private void processCimItem(IotDataReceiveResp resp, IotAccessApp accessApp, IotCimDataItem item) {
-        String rawPayload = JSON.toJSONString(item);
+    private void processCimItem(IotDataReceiveResp resp, IotAccessApp accessApp,
+                                IotCimDataReceiveReq req, IotCimDataItem item) {
+        String rawPayload = buildCimRawPayload(req, item);
+        String externalDeviceId = item == null ? null : item.getDeviceId();
+        String externalMetric = item == null ? null : item.getMetric();
+        String rawValue = item == null ? null : item.getValue();
         Date dataTime;
         try {
             dataTime = parseDataTime(item == null ? null : item.getDataTime());
         } catch (BaseException e) {
-            failCim(resp, accessApp, item, "TIME_INVALID", rawPayload, null);
+            saveRawRecord(accessApp, INTERFACE_CIM, resolveProjectId(accessApp, null),
+                    null, null, externalDeviceId, externalMetric, null, rawValue,
+                    rawPayload, MATCH_STATUS_TIME_INVALID, "TIME_INVALID");
+            failCim(resp, accessApp, req, item, "TIME_INVALID", rawPayload, null);
             return;
         }
         if (item == null || StringUtils.isBlank(item.getDeviceId()) || StringUtils.isBlank(item.getMetric())) {
-            failCim(resp, accessApp, item, "PARAM_INVALID", rawPayload, dataTime);
+            saveRawRecord(accessApp, INTERFACE_CIM, resolveProjectId(accessApp, null),
+                    null, null, externalDeviceId, externalMetric, dataTime, rawValue,
+                    rawPayload, MATCH_STATUS_PARAM_INVALID, "PARAM_INVALID");
+            failCim(resp, accessApp, req, item, "PARAM_INVALID", rawPayload, dataTime);
             return;
         }
-        IngestContext context = resolveContext(accessApp, null, item.getDeviceId(), item.getMetric());
-        if (context.reason != null) {
-            failCim(resp, accessApp, item, context.reason, rawPayload, dataTime);
+        MatchResult result = resolveMatch(accessApp, item.getDeviceId(), item.getMetric());
+        String projectId = resolveProjectId(accessApp, result.device);
+        if (!result.matched()) {
+            saveRawRecord(accessApp, INTERFACE_CIM, projectId, result.device, result.point,
+                    externalDeviceId, externalMetric, dataTime, rawValue, rawPayload, result.matchStatus, result.reason);
+            failCim(resp, accessApp, req, item, result.reason, rawPayload, dataTime);
             return;
         }
         Double value = parseValue(item.getValue());
         if (value == null) {
-            failCim(resp, accessApp, item, "VALUE_INVALID", rawPayload, dataTime);
+            saveRawRecord(accessApp, INTERFACE_CIM, projectId, result.device, result.point,
+                    externalDeviceId, externalMetric, dataTime, rawValue, rawPayload, MATCH_STATUS_VALUE_INVALID, "VALUE_INVALID");
+            failCim(resp, accessApp, req, item, "VALUE_INVALID", rawPayload, dataTime);
             return;
         }
-        upsertTelemetry(accessApp, context, dataTime, item.getValue(), value);
+        saveRawRecord(accessApp, INTERFACE_CIM, projectId, result.device, result.point,
+                externalDeviceId, externalMetric, dataTime, rawValue, rawPayload, MATCH_STATUS_MATCHED, null);
+        saveMinuteRecord(accessApp, projectId, result.device, result.point, dataTime, value, item.getValue());
+        updateDeviceOnline(result.device, dataTime);
         resp.addSuccess();
     }
 
-    private IngestContext resolveContext(IotAccessApp accessApp, String externalProjectId, String externalDeviceId, String externalMetric) {
-        IngestContext context = new IngestContext();
-        context.projectId = accessApp.getProjectId();
-        if (StringUtils.isNotBlank(externalProjectId)) {
-            IotProjectExternalRef projectRef = findProjectExternalRef(accessApp.getSourceCode(), accessApp.getEntId(), externalProjectId);
-            if (projectRef != null && projectRef.getProjectId() != null) {
-                context.projectId = projectRef.getProjectId();
-            }
+    private MatchResult resolveMatch(IotAccessApp accessApp, String externalDeviceId, String externalMetric) {
+        MatchResult result = new MatchResult();
+        IotDevice device = findDeviceByExternalId(accessApp.getSourceCode(), accessApp.getEntId(), externalDeviceId);
+        if (device == null) {
+            result.reason = "DEVICE_NOT_MATCHED";
+            result.matchStatus = MATCH_STATUS_DEVICE_NOT_FOUND;
+            return result;
         }
-        IotDeviceExternalRef deviceRef = findDeviceExternalRef(accessApp.getSourceCode(), accessApp.getEntId(), externalDeviceId);
-        if (deviceRef == null) {
-            context.reason = "DEVICE_NOT_MATCHED";
-            return context;
+        result.device = device;
+        if (Integer.valueOf(1).equals(device.getDeleted())
+                || Integer.valueOf(0).equals(device.getStatus())
+                || Integer.valueOf(0).equals(device.getAssetStatus())) {
+            result.reason = "DEVICE_INVALID";
+            result.matchStatus = MATCH_STATUS_DEVICE_INVALID;
+            return result;
         }
-        IotDevice device = iotDeviceMapper.selectByPrimaryKey(deviceRef.getDeviceId());
-        if (device == null || Integer.valueOf(1).equals(device.getDeleted())) {
-            context.reason = "DEVICE_INVALID";
-            return context;
+        IotDevicePoint point = findPointByExternalMetric(device.getId(), externalMetric);
+        if (point == null) {
+            result.reason = "POINT_NOT_MATCHED";
+            result.matchStatus = MATCH_STATUS_POINT_NOT_FOUND;
+            return result;
         }
-        IotPointExternalRef pointRef = findPointExternalRef(accessApp.getSourceCode(), deviceRef.getDeviceId(), externalMetric);
-        if (pointRef == null) {
-            context.reason = "POINT_NOT_MATCHED";
-            return context;
+        result.point = point;
+        if (Integer.valueOf(1).equals(point.getDeleted()) || Integer.valueOf(0).equals(point.getStatus())) {
+            result.reason = "POINT_INVALID";
+            result.matchStatus = MATCH_STATUS_POINT_INVALID;
+            return result;
         }
-        IotDevicePoint point = iotDevicePointMapper.selectByPrimaryKey(pointRef.getPointId());
-        if (point == null || Integer.valueOf(1).equals(point.getDeleted()) || Integer.valueOf(0).equals(point.getStatus())) {
-            context.reason = "POINT_INVALID";
-            return context;
-        }
-        context.device = device;
-        context.deviceRef = deviceRef;
-        context.point = point;
-        context.pointRef = pointRef;
-        if (context.projectId == null) {
-            context.projectId = device.getProjectId();
-        }
-        return context;
+        result.matchStatus = MATCH_STATUS_MATCHED;
+        return result;
     }
 
-    private void upsertTelemetry(IotAccessApp accessApp, IngestContext context, Date dataTime, String rawValue, Double value) {
-        Date minuteTime = toMinute(dataTime);
-        Double standardValue = value * defaultDouble(context.pointRef.getRatio(), 1D)
-                + defaultDouble(context.pointRef.getOffsetValue(), 0D);
-        String pointCode = context.point.getPropertyCode();
-        IotTelemetryMinute existed = findTelemetry(context.device.getId(), pointCode, minuteTime);
-        Date now = new Date();
-        if (existed == null) {
-            IotTelemetryMinute telemetry = new IotTelemetryMinute();
-            telemetry.setAggregatorId(accessApp.getAggregatorId());
-            telemetry.setEntId(accessApp.getEntId());
-            telemetry.setProjectId(context.projectId);
-            telemetry.setDeviceId(context.device.getId());
-            telemetry.setDeviceCode(context.device.getDeviceCode());
-            telemetry.setPointCode(pointCode);
-            telemetry.setDataTime(dataTime);
-            telemetry.setMinuteTime(minuteTime);
-            telemetry.setPointValue(standardValue);
-            telemetry.setUnit(context.point.getUnit());
-            telemetry.setQuality(QUALITY_NORMAL);
-            telemetry.setSourceCode(accessApp.getSourceCode());
-            telemetry.setReceiveTime(now);
-            telemetry.setRawValue(rawValue);
-            iotTelemetryMinuteMapper.insertSelective(telemetry);
-        } else {
-            existed.setDataTime(dataTime);
-            existed.setPointValue(standardValue);
-            existed.setUnit(context.point.getUnit());
-            existed.setQuality(QUALITY_NORMAL);
-            existed.setSourceCode(accessApp.getSourceCode());
-            existed.setReceiveTime(now);
-            existed.setRawValue(rawValue);
-            iotTelemetryMinuteMapper.updateByPrimaryKeySelective(existed);
+    private IotDevice findDeviceByExternalId(String sourceCode, String entId, String externalDeviceId) {
+        Example example = new Example(IotDevice.class);
+        example.createCriteria()
+                .andEqualTo("thirdPartyApi", StringUtils.trim(sourceCode))
+                .andEqualTo("entId", StringUtils.trim(entId))
+                .andEqualTo("thirdPartyCode", StringUtils.trim(externalDeviceId))
+                .andEqualTo("deleted", 0);
+        List<IotDevice> devices = iotDeviceMapper.selectByExample(example);
+        return devices.isEmpty() ? null : devices.get(0);
+    }
+
+    private IotDevicePoint findPointByExternalMetric(Long deviceId, String externalMetric) {
+        Example example = new Example(IotDevicePoint.class);
+        example.createCriteria()
+                .andEqualTo("deviceId", deviceId)
+                .andEqualTo("thirdPartyCode", StringUtils.trim(externalMetric))
+                .andEqualTo("deleted", 0);
+        List<IotDevicePoint> points = iotDevicePointMapper.selectByExample(example);
+        return points.isEmpty() ? null : points.get(0);
+    }
+
+    private String resolveProjectId(IotAccessApp accessApp, IotDevice device) {
+        String projectId = null;
+        if (device != null) {
+            projectId = device.getProjectId();
         }
-        updateDeviceOnline(context.device, dataTime);
+        if (StringUtils.isBlank(projectId)) {
+            projectId = accessApp.getProjectId();
+        }
+        return projectId;
+    }
+
+    private void saveRawRecord(IotAccessApp accessApp, String interfaceType, String projectId,
+                               IotDevice device, IotDevicePoint point, String externalDeviceId,
+                               String externalMetric, Date dataTime, String rawValue,
+                               String rawPayload, String matchStatus, String matchReason) {
+        IotTelemetryRaw raw = new IotTelemetryRaw();
+        raw.setInterfaceType(interfaceType);
+        raw.setSourceCode(accessApp.getSourceCode());
+        raw.setEntId(accessApp.getEntId());
+        raw.setProjectId(projectId);
+        raw.setDeviceId(device == null ? null : device.getId());
+        raw.setDeviceCode(device == null ? null : device.getDeviceCode());
+        raw.setPointCode(point == null ? null : point.getPropertyCode());
+        raw.setExternalDeviceId(externalDeviceId);
+        raw.setExternalMetric(externalMetric);
+        raw.setDataTime(dataTime);
+        raw.setRawValue(rawValue);
+        raw.setReceiveTime(new Date());
+        raw.setRawPayload(rawPayload);
+        raw.setMatchStatus(matchStatus);
+        raw.setMatchReason(matchReason);
+        raw.setCreateTime(new Date());
+        iotTelemetryRawMapper.insertRaw(raw);
+    }
+
+    private void saveMinuteRecord(IotAccessApp accessApp, String projectId, IotDevice device, IotDevicePoint point,
+                                  Date dataTime, Double standardValue, String rawValue) {
+        Date minuteTime = toMinute(dataTime);
+        Date now = new Date();
+        IotTelemetryMinute record = new IotTelemetryMinute();
+        record.setAggregatorId(accessApp.getAggregatorId());
+        record.setEntId(accessApp.getEntId());
+        record.setProjectId(projectId);
+        record.setDeviceId(device.getId());
+        record.setDeviceCode(device.getDeviceCode());
+        record.setPointCode(point.getPropertyCode());
+        record.setDataTime(dataTime);
+        record.setMinuteTime(minuteTime);
+        record.setPointValue(standardValue);
+        record.setUnit(point.getUnit());
+        record.setQuality(QUALITY_NORMAL);
+        record.setSourceCode(accessApp.getSourceCode());
+        record.setReceiveTime(now);
+        record.setRawValue(rawValue);
+        iotTelemetryMinuteMapper.upsertMinute(record);
     }
 
     private void updateDeviceOnline(IotDevice device, Date dataTime) {
         device.setOnlineStatus(1);
-        device.setLastDataTime(dataTime);
+        if (dataTime != null && (device.getLastDataTime() == null || !device.getLastDataTime().after(dataTime))) {
+            device.setLastDataTime(dataTime);
+        }
         device.setUpdateTime(new Date());
         iotDeviceMapper.updateByPrimaryKeySelective(device);
     }
@@ -264,49 +334,6 @@ public class IotTelemetryIngestService {
         return apps.get(0);
     }
 
-    private IotProjectExternalRef findProjectExternalRef(String sourceCode, String entId, String externalProjectId) {
-        Example example = new Example(IotProjectExternalRef.class);
-        example.createCriteria()
-                .andEqualTo("sourceCode", sourceCode)
-                .andEqualTo("entId", entId)
-                .andEqualTo("externalProjectId", externalProjectId)
-                .andEqualTo("status", 1);
-        List<IotProjectExternalRef> refs = iotProjectExternalRefMapper.selectByExample(example);
-        return refs.isEmpty() ? null : refs.get(0);
-    }
-
-    private IotDeviceExternalRef findDeviceExternalRef(String sourceCode, String entId, String externalDeviceId) {
-        Example example = new Example(IotDeviceExternalRef.class);
-        example.createCriteria()
-                .andEqualTo("sourceCode", sourceCode)
-                .andEqualTo("entId", entId)
-                .andEqualTo("externalDeviceId", externalDeviceId)
-                .andEqualTo("status", 1);
-        List<IotDeviceExternalRef> refs = iotDeviceExternalRefMapper.selectByExample(example);
-        return refs.isEmpty() ? null : refs.get(0);
-    }
-
-    private IotPointExternalRef findPointExternalRef(String sourceCode, Long deviceId, String externalMetric) {
-        Example example = new Example(IotPointExternalRef.class);
-        example.createCriteria()
-                .andEqualTo("sourceCode", sourceCode)
-                .andEqualTo("deviceId", deviceId)
-                .andEqualTo("externalMetric", externalMetric)
-                .andEqualTo("status", 1);
-        List<IotPointExternalRef> refs = iotPointExternalRefMapper.selectByExample(example);
-        return refs.isEmpty() ? null : refs.get(0);
-    }
-
-    private IotTelemetryMinute findTelemetry(Long deviceId, String pointCode, Date minuteTime) {
-        Example example = new Example(IotTelemetryMinute.class);
-        example.createCriteria()
-                .andEqualTo("deviceId", deviceId)
-                .andEqualTo("pointCode", pointCode)
-                .andEqualTo("minuteTime", minuteTime);
-        List<IotTelemetryMinute> list = iotTelemetryMinuteMapper.selectByExample(example);
-        return list.isEmpty() ? null : list.get(0);
-    }
-
     private void failOrigin(IotDataReceiveResp resp, IotAccessApp accessApp, IotOriginDataItem item,
                             String reason, String rawPayload, Date dataTime) {
         IotDataReceiveFailItem failItem = new IotDataReceiveFailItem();
@@ -323,9 +350,13 @@ public class IotTelemetryIngestService {
         saveUnmatched(accessApp, INTERFACE_ORIGIN, failItem, dataTime, item == null ? null : item.getValue(), reason, rawPayload);
     }
 
-    private void failCim(IotDataReceiveResp resp, IotAccessApp accessApp, IotCimDataItem item,
+    private void failCim(IotDataReceiveResp resp, IotAccessApp accessApp, IotCimDataReceiveReq req, IotCimDataItem item,
                          String reason, String rawPayload, Date dataTime) {
         IotDataReceiveFailItem failItem = new IotDataReceiveFailItem();
+        if (req != null) {
+            failItem.setProjectId(req.getAliasCode());
+            failItem.setProjectName(req.getDomain());
+        }
         if (item != null) {
             failItem.setDeviceId(item.getDeviceId());
             failItem.setMetric(item.getMetric());
@@ -340,7 +371,6 @@ public class IotTelemetryIngestService {
         IotUnmatchedTelemetryLog log = new IotUnmatchedTelemetryLog();
         log.setSourceCode(accessApp == null ? null : accessApp.getSourceCode());
         log.setInterfaceType(interfaceType);
-        log.setExternalProjectId(failItem.getProjectId());
         log.setExternalDeviceId(failItem.getDeviceId());
         log.setExternalDeviceName(failItem.getDeviceName());
         log.setExternalMetric(failItem.getMetric());
@@ -354,6 +384,28 @@ public class IotTelemetryIngestService {
         log.setCreateTime(now);
         log.setUpdateTime(now);
         iotUnmatchedTelemetryLogMapper.insertSelective(log);
+    }
+
+    private String buildOriginRawPayload(IotOriginDataReceiveReq req, IotOriginDataItem item) {
+        JSONObject payload = new JSONObject();
+        if (req != null) {
+            payload.put("userKey", req.getUserKey());
+            payload.put("entId", req.getEntId());
+        }
+        payload.put("data", item);
+        return payload.toJSONString();
+    }
+
+    private String buildCimRawPayload(IotCimDataReceiveReq req, IotCimDataItem item) {
+        JSONObject payload = new JSONObject();
+        if (req != null) {
+            payload.put("aliasCode", req.getAliasCode());
+            payload.put("domain", req.getDomain());
+            payload.put("userKey", req.getUserKey());
+            payload.put("entId", req.getEntId());
+        }
+        payload.put("data", item);
+        return payload.toJSONString();
     }
 
     private Date parseDataTime(String value) {
@@ -399,10 +451,6 @@ public class IotTelemetryIngestService {
         }
     }
 
-    private Double defaultDouble(Double value, Double defaultValue) {
-        return value == null ? defaultValue : value;
-    }
-
     private void throwAuth(String message) {
         throw new BaseException(401, message);
     }
@@ -411,12 +459,14 @@ public class IotTelemetryIngestService {
         throw new BaseException(StatusCode.C.getCode(), message);
     }
 
-    private static class IngestContext {
-        private String projectId;
+    private static class MatchResult {
         private IotDevice device;
-        private IotDeviceExternalRef deviceRef;
         private IotDevicePoint point;
-        private IotPointExternalRef pointRef;
         private String reason;
+        private String matchStatus;
+
+        private boolean matched() {
+            return reason == null && device != null && point != null;
+        }
     }
 }

@@ -68,6 +68,14 @@ export function listDevices(params) {
   });
 }
 
+export function listProjectsByEnt(entId, aggregatorId) {
+  return service({
+    method: "get",
+    url: "/model/listByEnt",
+    params: { entId, aggregatorId },
+  });
+}
+
 export function getDeviceDetail(id) {
   return service({
     method: "get",
@@ -236,6 +244,14 @@ export function getDeviceGroupPointMetadata(params) {
   });
 }
 
+export function listDeviceGroupPointMetadata(deviceGroupType) {
+  return service({
+    method: "get",
+    url: "/iot/manage/device-group-point-metadata-list",
+    params: { deviceGroupType },
+  });
+}
+
 export function listDeviceGroupPoints(groupId) {
   return service({
     method: "get",
@@ -272,5 +288,41 @@ export function deleteDeviceGroupPointDefinition(id) {
   return service({
     method: "delete",
     url: `/iot/manage/group-point-definitions/${id}`,
+  });
+}
+
+// ==================== 物联时序数据查询 ====================
+
+function normalizeTelemetryParams(params = {}) {
+  const normalized = { ...params };
+  ["deviceIds", "pointCodes"].forEach(key => {
+    if (Array.isArray(normalized[key])) {
+      normalized[key] = normalized[key].join(",");
+    }
+  });
+  return normalized;
+}
+
+export function queryTelemetryData(params) {
+  return service({
+    method: "get",
+    url: "/iot/telemetry/data",
+    params: normalizeTelemetryParams(params),
+  });
+}
+
+export function queryTelemetryRaw(params) {
+  return service({
+    method: "get",
+    url: "/iot/telemetry/raw",
+    params: normalizeTelemetryParams(params),
+  });
+}
+
+export function getDeviceSummary(params) {
+  return service({
+    method: "get",
+    url: "/iot/telemetry/device-summary",
+    params: normalizeTelemetryParams(params),
   });
 }

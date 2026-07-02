@@ -78,7 +78,11 @@
         </div>
       </header>
 
-      <main class="platform-content">
+      <main
+        ref="platformContent"
+        class="platform-content"
+        @wheel.capture="handleContentWheel"
+      >
         <PlatformWorkbench
           v-if="activePage === 'workbench'"
           :user="currentUser"
@@ -523,6 +527,47 @@ export default {
         ? `${name} (${item.aggregatorId})`
         : name;
     },
+    handleContentWheel(event) {
+      if (!event || event.ctrlKey || !event.deltaY) {
+        return;
+      }
+      const root = this.$refs.platformContent;
+      if (!root) {
+        return;
+      }
+      const target = this.findWheelScrollTarget(event.target, root, event.deltaY);
+      if (!target) {
+        return;
+      }
+      const before = target.scrollTop;
+      target.scrollTop += event.deltaY;
+      if (target.scrollTop !== before && event.cancelable) {
+        event.preventDefault();
+      }
+    },
+    findWheelScrollTarget(start, root, deltaY) {
+      let node = start;
+      while (node && node !== root) {
+        if (node.nodeType === 1 && this.canWheelScroll(node, deltaY)) {
+          return node;
+        }
+        node = node.parentElement;
+      }
+      return this.canWheelScroll(root, deltaY) ? root : null;
+    },
+    canWheelScroll(element, deltaY) {
+      if (!element || element.scrollHeight <= element.clientHeight + 1) {
+        return false;
+      }
+      const style = window.getComputedStyle(element);
+      if (!/(auto|scroll)/.test(style.overflowY)) {
+        return false;
+      }
+      if (deltaY > 0) {
+        return element.scrollTop + element.clientHeight < element.scrollHeight - 1;
+      }
+      return element.scrollTop > 0;
+    },
   },
 };
 
@@ -545,8 +590,9 @@ function thisComponentName(page) {
 html,
 body,
 #app {
-  min-height: 100%;
+  height: 100%;
   margin: 0;
+  overflow: hidden;
 }
 
 body {
@@ -576,15 +622,16 @@ button {
 }
 
 .ehub-platform {
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   background: #eef3f7;
+  overflow: hidden;
 }
 
 .platform-sidebar {
   width: 248px;
   min-width: 248px;
-  min-height: 100vh;
+  height: 100vh;
   background: #0e2638;
   color: #fff;
   display: flex;
@@ -724,8 +771,11 @@ button {
 .platform-main {
   flex: 1;
   min-width: 0;
+  min-height: 0;
+  height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .platform-header {
@@ -799,9 +849,12 @@ button {
 }
 
 .platform-content {
-  height: calc(100vh - 76px);
-  overflow: auto;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
   padding: 20px;
+  overscroll-behavior: contain;
 }
 
 .platform-content > div {

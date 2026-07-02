@@ -24,10 +24,6 @@ public class IotDeviceGroup {
     @Column(name = "id")
     private Long id;
 
-    @ApiModelProperty("租户ID")
-    @Column(name = "tenant_id")
-    private Long tenantId;
-
     @ApiModelProperty("聚合商ID")
     @Column(name = "aggregator_id")
     private String aggregatorId;
@@ -59,10 +55,6 @@ public class IotDeviceGroup {
     @ApiModelProperty("网关ID")
     @Column(name = "gateway_id")
     private Long gatewayId;
-
-    @ApiModelProperty("租户编码")
-    @Column(name = "tenant_code")
-    private String tenantCode;
 
     @ApiModelProperty("第三方编码")
     @Column(name = "trd_pty_code")

@@ -1,22 +1,20 @@
-CREATE TABLE IF NOT EXISTS `iot_project` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `aggregator_id` varchar(20) DEFAULT NULL COMMENT '聚合商ID',
-  `ent_id` varchar(20) NOT NULL COMMENT '企业ID',
-  `project_code` varchar(64) NOT NULL COMMENT '项目编码',
-  `project_name` varchar(128) NOT NULL COMMENT '项目名称',
-  `parent_id` bigint DEFAULT NULL COMMENT '父级项目ID',
-  `status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '状态：1启用，0停用',
-  `deleted` int NOT NULL DEFAULT '0' COMMENT '删除标记：0未删除，1已删除',
-  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+CREATE TABLE IF NOT EXISTS `sys_dict` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `dict_type_code` varchar(100) NOT NULL COMMENT '字典类型编码',
+  `dict_type_name` varchar(200) DEFAULT NULL COMMENT '字典类型名称',
+  `dict_code` varchar(100) NOT NULL COMMENT '字典编码',
+  `dict_value` varchar(200) NOT NULL COMMENT '字典值',
+  `sort` int(11) DEFAULT '0' COMMENT '排序',
+  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+  `update_time` datetime DEFAULT NULL COMMENT '更新时间',
+  `deleted` int(11) DEFAULT '0' COMMENT '删除标记：0-未删除，1-已删除',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_iot_project_ent_code` (`ent_id`, `project_code`),
-  KEY `idx_iot_project_ent` (`ent_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='物联项目';
+  KEY `idx_dict_type_code` (`dict_type_code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='字典表';
 
 CREATE TABLE IF NOT EXISTS `iot_gateway` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `tenant_id` bigint DEFAULT NULL COMMENT '租户ID',
   `aggregator_id` varchar(20) DEFAULT NULL COMMENT '聚合商ID',
   `ent_id` varchar(20) DEFAULT NULL COMMENT '企业ID',
   `gateway_code` varchar(64) DEFAULT NULL COMMENT '网关编码',
@@ -39,14 +37,12 @@ CREATE TABLE IF NOT EXISTS `iot_gateway` (
   `deleted` int NOT NULL DEFAULT '0' COMMENT '删除标记：0未删除，1已删除',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_iot_gateway_ent_code` (`ent_id`, `gateway_code`),
-  KEY `idx_iot_gateway_tenant` (`tenant_id`),
   KEY `idx_iot_gateway_ent` (`ent_id`),
   KEY `idx_iot_gateway_type` (`gateway_type_code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='物联网关';
 
 CREATE TABLE IF NOT EXISTS `iot_device_group` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `tenant_id` bigint DEFAULT NULL COMMENT '租户ID',
   `aggregator_id` varchar(20) DEFAULT NULL COMMENT '聚合商ID',
   `ent_id` varchar(20) DEFAULT NULL COMMENT '企业ID',
   `device_group_code` varchar(100) NOT NULL COMMENT '设备组编码',
@@ -54,8 +50,7 @@ CREATE TABLE IF NOT EXISTS `iot_device_group` (
   `device_group_type` varchar(50) DEFAULT NULL COMMENT '设备组类型编码',
   `device_group_type_name` varchar(200) DEFAULT NULL COMMENT '设备组类型名称',
   `energy_type` varchar(64) DEFAULT NULL COMMENT '能源类型',
-  `gateway_id` bigint DEFAULT NULL COMMENT '关联网关ID',
-  `tenant_code` varchar(100) DEFAULT NULL COMMENT '租户编码',
+  `gateway_id` bigint DEFAULT NULL COMMENT '关联网网ID',
   `trd_pty_code` varchar(100) DEFAULT NULL COMMENT '第三方编码',
   `virtual_flag` tinyint(1) NOT NULL DEFAULT '0' COMMENT '虚拟默认组标识：1是，0否',
   `status` int NOT NULL DEFAULT '1' COMMENT '状态：0禁用，1启用',
@@ -65,7 +60,6 @@ CREATE TABLE IF NOT EXISTS `iot_device_group` (
   `deleted` int NOT NULL DEFAULT '0' COMMENT '删除标记：0未删除，1已删除',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_iot_device_group_ent_code` (`ent_id`, `device_group_code`),
-  KEY `idx_iot_device_group_tenant` (`tenant_id`),
   KEY `idx_iot_device_group_ent` (`ent_id`),
   KEY `idx_iot_device_group_type` (`device_group_type`),
   KEY `idx_iot_device_group_gateway` (`gateway_id`)
@@ -73,7 +67,6 @@ CREATE TABLE IF NOT EXISTS `iot_device_group` (
 
 CREATE TABLE IF NOT EXISTS `iot_device_group_param` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `tenant_id` bigint DEFAULT NULL COMMENT '租户ID',
   `device_group_id` bigint NOT NULL COMMENT '设备组ID',
   `attr_code` varchar(100) NOT NULL COMMENT '属性编码',
   `attr_name` varchar(200) NOT NULL COMMENT '属性名称',
@@ -88,13 +81,11 @@ CREATE TABLE IF NOT EXISTS `iot_device_group_param` (
   `deleted` int NOT NULL DEFAULT '0' COMMENT '删除标记：0未删除，1已删除',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_iot_device_group_param` (`device_group_id`, `attr_code`),
-  KEY `idx_iot_device_group_param_tenant` (`tenant_id`),
   KEY `idx_iot_device_group_param_code` (`attr_code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='物联设备组参数';
 
 CREATE TABLE IF NOT EXISTS `iot_device_group_point` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `tenant_id` bigint DEFAULT NULL COMMENT '租户ID',
   `device_group_id` bigint NOT NULL COMMENT '设备组ID',
   `property_code` varchar(100) NOT NULL COMMENT '测点编码',
   `property_name` varchar(200) NOT NULL COMMENT '测点名称',
@@ -115,14 +106,12 @@ CREATE TABLE IF NOT EXISTS `iot_device_group_point` (
   `deleted` int NOT NULL DEFAULT '0' COMMENT '删除标记：0未删除，1已删除',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_iot_device_group_point` (`device_group_id`, `property_code`),
-  KEY `idx_iot_device_group_point_tenant` (`tenant_id`),
   KEY `idx_iot_device_group_point_code` (`property_code`),
   KEY `idx_iot_device_group_point_data_type` (`data_type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='物联设备组测点';
 
 CREATE TABLE IF NOT EXISTS `iot_device` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `tenant_id` bigint DEFAULT NULL COMMENT '租户ID',
   `aggregator_id` varchar(20) DEFAULT NULL COMMENT '聚合商ID',
   `ent_id` varchar(20) DEFAULT NULL COMMENT '企业ID',
   `project_id` varchar(64) DEFAULT NULL COMMENT '项目ID',
@@ -147,17 +136,16 @@ CREATE TABLE IF NOT EXISTS `iot_device` (
   `deleted` int NOT NULL DEFAULT '0' COMMENT '删除标记：0未删除，1已删除',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_iot_device_ent_code` (`ent_id`, `device_code`),
-  KEY `idx_iot_device_tenant` (`tenant_id`),
   KEY `idx_iot_device_ent` (`ent_id`),
   KEY `idx_iot_device_project` (`project_id`),
   KEY `idx_iot_device_group` (`device_group_id`),
   KEY `idx_iot_device_gateway` (`gateway_id`),
-  KEY `idx_iot_device_type` (`device_type_code`)
+  KEY `idx_iot_device_type` (`device_type_code`),
+  UNIQUE KEY `uk_iot_device_third_party` (`ent_id`, `third_party_api`, `third_party_code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='物联设备';
 
 CREATE TABLE IF NOT EXISTS `iot_device_param` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `tenant_id` bigint DEFAULT NULL COMMENT '租户ID',
   `device_id` bigint NOT NULL COMMENT '设备ID',
   `attr_code` varchar(100) NOT NULL COMMENT '属性编码',
   `attr_name` varchar(200) NOT NULL COMMENT '属性名称',
@@ -172,13 +160,11 @@ CREATE TABLE IF NOT EXISTS `iot_device_param` (
   `deleted` int NOT NULL DEFAULT '0' COMMENT '删除标记：0未删除，1已删除',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_iot_device_param` (`device_id`, `attr_code`),
-  KEY `idx_iot_device_param_tenant` (`tenant_id`),
   KEY `idx_iot_device_param_code` (`attr_code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='物联设备参数';
 
 CREATE TABLE IF NOT EXISTS `iot_device_point` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `tenant_id` bigint DEFAULT NULL COMMENT '租户ID',
   `device_id` bigint NOT NULL COMMENT '设备ID',
   `property_code` varchar(100) NOT NULL COMMENT '测点编码',
   `property_name` varchar(200) NOT NULL COMMENT '测点名称',
@@ -206,15 +192,14 @@ CREATE TABLE IF NOT EXISTS `iot_device_point` (
   `deleted` int NOT NULL DEFAULT '0' COMMENT '删除标记：0未删除，1已删除',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_iot_device_point` (`device_id`, `property_code`),
+  UNIQUE KEY `uk_iot_device_point_third_party` (`device_id`, `third_party_code`),
   KEY `idx_iot_device_point_device` (`device_id`),
-  KEY `idx_iot_device_point_tenant` (`tenant_id`),
   KEY `idx_iot_device_point_code` (`property_code`),
   KEY `idx_iot_device_point_data_type` (`data_type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='物联设备测点';
 
 CREATE TABLE IF NOT EXISTS `iot_device_point_definition` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `tenant_id` bigint DEFAULT NULL COMMENT '租户ID',
   `device_point_id` bigint NOT NULL COMMENT '设备测点ID',
   `value` varchar(50) NOT NULL COMMENT '状态值',
   `description` varchar(200) DEFAULT NULL COMMENT '状态值描述',
@@ -225,13 +210,11 @@ CREATE TABLE IF NOT EXISTS `iot_device_point_definition` (
   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `deleted` int NOT NULL DEFAULT '0' COMMENT '删除标记：0未删除，1已删除',
   PRIMARY KEY (`id`),
-  KEY `idx_iot_device_point_definition_point` (`device_point_id`),
-  KEY `idx_iot_device_point_definition_tenant` (`tenant_id`)
+  KEY `idx_iot_device_point_definition_point` (`device_point_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='物联设备测点释义';
 
 CREATE TABLE IF NOT EXISTS `iot_device_group_point_definition` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `tenant_id` bigint DEFAULT NULL COMMENT '租户ID',
   `device_group_point_id` bigint NOT NULL COMMENT '设备组测点ID',
   `value` varchar(50) DEFAULT NULL COMMENT '状态值',
   `description` varchar(200) DEFAULT NULL COMMENT '状态值描述',
@@ -242,13 +225,11 @@ CREATE TABLE IF NOT EXISTS `iot_device_group_point_definition` (
   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `deleted` int NOT NULL DEFAULT '0' COMMENT '删除标记：0未删除，1已删除',
   PRIMARY KEY (`id`),
-  KEY `idx_iot_device_group_point_definition_point` (`device_group_point_id`),
-  KEY `idx_iot_device_group_point_definition_tenant` (`tenant_id`)
+  KEY `idx_iot_device_group_point_definition_point` (`device_group_point_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='物联设备组测点释义';
 
 CREATE TABLE IF NOT EXISTS `iot_device_group_definition` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `tenant_id` bigint DEFAULT NULL COMMENT '租户ID',
   `device_group_id` bigint NOT NULL COMMENT '设备组ID',
   `value` varchar(50) NOT NULL COMMENT '状态值',
   `description` varchar(200) NOT NULL COMMENT '状态值描述',
@@ -259,13 +240,11 @@ CREATE TABLE IF NOT EXISTS `iot_device_group_definition` (
   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `deleted` int NOT NULL DEFAULT '0' COMMENT '删除标记：0未删除，1已删除',
   PRIMARY KEY (`id`),
-  KEY `idx_iot_device_group_definition_group` (`device_group_id`),
-  KEY `idx_iot_device_group_definition_tenant` (`tenant_id`)
+  KEY `idx_iot_device_group_definition_group` (`device_group_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='物联设备组释义';
 
 CREATE TABLE IF NOT EXISTS `iot_device_definition` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `tenant_id` bigint DEFAULT NULL COMMENT '租户ID',
   `device_id` bigint NOT NULL COMMENT '设备ID',
   `value` varchar(50) NOT NULL COMMENT '状态值',
   `description` varchar(200) NOT NULL COMMENT '状态值描述',
@@ -276,8 +255,7 @@ CREATE TABLE IF NOT EXISTS `iot_device_definition` (
   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `deleted` int NOT NULL DEFAULT '0' COMMENT '删除标记：0未删除，1已删除',
   PRIMARY KEY (`id`),
-  KEY `idx_iot_device_definition_device` (`device_id`),
-  KEY `idx_iot_device_definition_tenant` (`tenant_id`)
+  KEY `idx_iot_device_definition_device` (`device_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='物联设备释义';
 
 CREATE TABLE IF NOT EXISTS `iot_device_type_point_metadata` (
@@ -372,7 +350,6 @@ CREATE TABLE IF NOT EXISTS `iot_device_param_metadata` (
 
 CREATE TABLE IF NOT EXISTS `iot_device_group_display_config` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `tenant_id` bigint DEFAULT NULL COMMENT '租户ID',
   `device_group_id` bigint NOT NULL COMMENT '设备组ID',
   `display_order` int NOT NULL DEFAULT '0' COMMENT '展示顺序',
   `is_display` tinyint(1) NOT NULL DEFAULT '1' COMMENT '是否展示：0不展示，1展示',
@@ -380,14 +357,12 @@ CREATE TABLE IF NOT EXISTS `iot_device_group_display_config` (
   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `deleted` int NOT NULL DEFAULT '0' COMMENT '删除标记：0未删除，1已删除',
   PRIMARY KEY (`id`),
-  KEY `idx_iot_device_group_display_tenant` (`tenant_id`),
   KEY `idx_iot_device_group_display_group` (`device_group_id`),
   KEY `idx_iot_device_group_display_order` (`display_order`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='物联设备组展示配置';
 
 CREATE TABLE IF NOT EXISTS `iot_device_type_display_config` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `tenant_id` bigint DEFAULT NULL COMMENT '租户ID',
   `device_group_id` bigint NOT NULL COMMENT '设备组ID',
   `device_type_code` varchar(50) NOT NULL COMMENT '设备类型编码',
   `device_type_name` varchar(200) DEFAULT NULL COMMENT '设备类型名称',
@@ -397,7 +372,6 @@ CREATE TABLE IF NOT EXISTS `iot_device_type_display_config` (
   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `deleted` int NOT NULL DEFAULT '0' COMMENT '删除标记：0未删除，1已删除',
   PRIMARY KEY (`id`),
-  KEY `idx_iot_device_type_display_tenant` (`tenant_id`),
   KEY `idx_iot_device_type_display_group` (`device_group_id`),
   KEY `idx_iot_device_type_display_type` (`device_type_code`),
   KEY `idx_iot_device_type_display_order` (`display_order`)
@@ -405,7 +379,6 @@ CREATE TABLE IF NOT EXISTS `iot_device_type_display_config` (
 
 CREATE TABLE IF NOT EXISTS `iot_device_real_point_config` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `tenant_id` bigint DEFAULT NULL COMMENT '租户ID',
   `device_type_code` varchar(50) DEFAULT NULL COMMENT '设备类型编码',
   `device_id` bigint DEFAULT NULL COMMENT '设备ID',
   `device_point_id` bigint NOT NULL COMMENT '设备测点ID',
@@ -416,7 +389,6 @@ CREATE TABLE IF NOT EXISTS `iot_device_real_point_config` (
   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `deleted` int NOT NULL DEFAULT '0' COMMENT '删除标记：0未删除，1已删除',
   PRIMARY KEY (`id`),
-  KEY `idx_iot_device_real_point_tenant` (`tenant_id`),
   KEY `idx_iot_device_real_point_type` (`device_type_code`),
   KEY `idx_iot_device_real_point_device` (`device_id`),
   KEY `idx_iot_device_real_point_point` (`device_point_id`)
@@ -424,7 +396,6 @@ CREATE TABLE IF NOT EXISTS `iot_device_real_point_config` (
 
 CREATE TABLE IF NOT EXISTS `iot_device_control_point_config` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `tenant_id` bigint DEFAULT NULL COMMENT '租户ID',
   `device_type_code` varchar(50) DEFAULT NULL COMMENT '设备类型编码',
   `device_id` bigint DEFAULT NULL COMMENT '设备ID',
   `device_point_id` bigint NOT NULL COMMENT '设备测点ID',
@@ -435,7 +406,6 @@ CREATE TABLE IF NOT EXISTS `iot_device_control_point_config` (
   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `deleted` int NOT NULL DEFAULT '0' COMMENT '删除标记：0未删除，1已删除',
   PRIMARY KEY (`id`),
-  KEY `idx_iot_device_control_point_tenant` (`tenant_id`),
   KEY `idx_iot_device_control_point_type` (`device_type_code`),
   KEY `idx_iot_device_control_point_device` (`device_id`),
   KEY `idx_iot_device_control_point_point` (`device_point_id`)
@@ -443,7 +413,6 @@ CREATE TABLE IF NOT EXISTS `iot_device_control_point_config` (
 
 CREATE TABLE IF NOT EXISTS `iot_device_group_control_point_config` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `tenant_id` bigint DEFAULT NULL COMMENT '租户ID',
   `device_group_type` varchar(50) DEFAULT NULL COMMENT '设备组类型编码',
   `device_group_id` bigint DEFAULT NULL COMMENT '设备组ID',
   `device_group_point_id` bigint NOT NULL COMMENT '设备组测点ID',
@@ -454,7 +423,6 @@ CREATE TABLE IF NOT EXISTS `iot_device_group_control_point_config` (
   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `deleted` int NOT NULL DEFAULT '0' COMMENT '删除标记：0未删除，1已删除',
   PRIMARY KEY (`id`),
-  KEY `idx_iot_device_group_control_tenant` (`tenant_id`),
   KEY `idx_iot_device_group_control_type` (`device_group_type`),
   KEY `idx_iot_device_group_control_group` (`device_group_id`),
   KEY `idx_iot_device_group_control_point` (`device_group_point_id`)
@@ -462,7 +430,6 @@ CREATE TABLE IF NOT EXISTS `iot_device_group_control_point_config` (
 
 CREATE TABLE IF NOT EXISTS `iot_device_command` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `tenant_id` bigint DEFAULT NULL COMMENT '租户ID',
   `user_id` bigint DEFAULT NULL COMMENT '用户ID',
   `device_type` varchar(20) DEFAULT NULL COMMENT '设备类型：deviceGroup设备组，device设备',
   `device_group_id` bigint DEFAULT NULL COMMENT '设备组ID',
@@ -488,7 +455,6 @@ CREATE TABLE IF NOT EXISTS `iot_device_command` (
   `deleted` int NOT NULL DEFAULT '0' COMMENT '删除标记：0未删除，1已删除',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_iot_device_command_id` (`command_id`),
-  KEY `idx_iot_device_command_tenant` (`tenant_id`),
   KEY `idx_iot_device_command_user` (`user_id`),
   KEY `idx_iot_device_command_device` (`device_id`),
   KEY `idx_iot_device_command_point` (`device_point_id`),
@@ -498,7 +464,6 @@ CREATE TABLE IF NOT EXISTS `iot_device_command` (
 
 CREATE TABLE IF NOT EXISTS `iot_device_group_remote_local_status` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `tenant_id` bigint DEFAULT NULL COMMENT '租户ID',
   `device_group_id` bigint NOT NULL COMMENT '设备组ID',
   `status` int NOT NULL DEFAULT '0' COMMENT '状态：0本地，1远程',
   `remark` varchar(500) DEFAULT NULL COMMENT '备注',
@@ -506,8 +471,7 @@ CREATE TABLE IF NOT EXISTS `iot_device_group_remote_local_status` (
   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `deleted` int NOT NULL DEFAULT '0' COMMENT '删除标记：0未删除，1已删除',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_iot_device_group_remote_status` (`device_group_id`),
-  KEY `idx_iot_device_group_remote_tenant` (`tenant_id`)
+  UNIQUE KEY `uk_iot_device_group_remote_status` (`device_group_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='物联设备组远程本地状态';
 
 CREATE TABLE IF NOT EXISTS `iot_access_app` (
@@ -516,7 +480,7 @@ CREATE TABLE IF NOT EXISTS `iot_access_app` (
   `source_name` varchar(128) DEFAULT NULL COMMENT '来源名称',
   `aggregator_id` varchar(20) DEFAULT NULL COMMENT '聚合商ID',
   `ent_id` varchar(20) NOT NULL COMMENT '企业ID',
-  `project_id` bigint DEFAULT NULL COMMENT '默认项目ID',
+  `project_id` varchar(64) DEFAULT NULL COMMENT '默认项目编码',
   `access_key` varchar(128) NOT NULL COMMENT '接入密钥',
   `user_key` varchar(128) DEFAULT NULL COMMENT '用户密钥',
   `enabled` tinyint(1) NOT NULL DEFAULT '1' COMMENT '启用状态：1启用，0停用',
@@ -530,64 +494,39 @@ CREATE TABLE IF NOT EXISTS `iot_access_app` (
   KEY `idx_iot_access_key_ent` (`access_key`, `ent_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='物联三方接入应用';
 
-CREATE TABLE IF NOT EXISTS `iot_project_external_ref` (
+CREATE TABLE IF NOT EXISTS `iot_telemetry_raw` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `source_code` varchar(64) NOT NULL COMMENT '来源编码',
+  `interface_type` varchar(32) NOT NULL COMMENT '接口类型：originData原始数据，cimData标准数据',
+  `source_code` varchar(64) NOT NULL COMMENT '三方来源编码',
   `ent_id` varchar(20) NOT NULL COMMENT '企业ID',
-  `project_id` bigint DEFAULT NULL COMMENT '我方项目ID',
-  `external_project_id` varchar(128) NOT NULL COMMENT '三方项目ID',
-  `external_project_name` varchar(128) DEFAULT NULL COMMENT '三方项目名称',
-  `status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '状态：1启用，0停用',
+  `project_id` varchar(64) DEFAULT NULL COMMENT '项目编码',
+  `device_id` bigint DEFAULT NULL COMMENT '匹配的本地设备ID',
+  `device_code` varchar(100) DEFAULT NULL COMMENT '标准设备编码',
+  `point_code` varchar(100) DEFAULT NULL COMMENT '标准测点编码',
+  `external_device_id` varchar(128) DEFAULT NULL COMMENT '三方设备标识',
+  `external_metric` varchar(128) DEFAULT NULL COMMENT '三方metric',
+  `data_time` datetime DEFAULT NULL COMMENT '数据时间',
+  `raw_value` varchar(256) DEFAULT NULL COMMENT '原始值',
+  `receive_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '接收时间',
+  `raw_payload` text COMMENT '原始报文',
+  `match_status` varchar(32) NOT NULL DEFAULT 'matched' COMMENT '匹配状态：matched匹配成功，device_not_found设备未找到，point_not_found测点未找到',
+  `match_reason` varchar(64) DEFAULT NULL COMMENT '匹配失败原因',
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_iot_project_ext` (`source_code`, `ent_id`, `external_project_id`),
-  KEY `idx_iot_project_ext_project` (`project_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='物联三方项目映射';
-
-CREATE TABLE IF NOT EXISTS `iot_device_external_ref` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `source_code` varchar(64) NOT NULL COMMENT '来源编码',
-  `ent_id` varchar(20) NOT NULL COMMENT '企业ID',
-  `project_id` bigint DEFAULT NULL COMMENT '项目ID',
-  `device_id` bigint NOT NULL COMMENT '我方物联设备ID',
-  `external_device_id` varchar(128) NOT NULL COMMENT '三方设备ID',
-  `external_device_code` varchar(128) DEFAULT NULL COMMENT '三方设备编码',
-  `external_device_name` varchar(128) DEFAULT NULL COMMENT '三方设备名称',
-  `gateway_code` varchar(128) DEFAULT NULL COMMENT '网关编码',
-  `status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '状态：1启用，0停用',
-  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_iot_device_ext` (`source_code`, `ent_id`, `external_device_id`),
-  KEY `idx_iot_device_ext_device` (`device_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='物联三方设备映射';
-
-CREATE TABLE IF NOT EXISTS `iot_point_external_ref` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `source_code` varchar(64) NOT NULL COMMENT '来源编码',
-  `device_id` bigint NOT NULL COMMENT '物联设备ID',
-  `point_id` bigint NOT NULL COMMENT '物联测点ID',
-  `external_metric` varchar(128) NOT NULL COMMENT '三方指标编码',
-  `external_metric_name` varchar(128) DEFAULT NULL COMMENT '三方指标名称',
-  `ratio` double NOT NULL DEFAULT '1' COMMENT '换算倍率',
-  `offset_value` double NOT NULL DEFAULT '0' COMMENT '偏移量',
-  `status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '状态：1启用，0停用',
-  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_iot_point_ext` (`source_code`, `device_id`, `external_metric`),
-  KEY `idx_iot_point_ext_point` (`point_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='物联三方测点映射';
+  KEY `idx_telemetry_raw_source_ent` (`source_code`, `ent_id`, `interface_type`),
+  KEY `idx_telemetry_raw_project` (`project_id`),
+  KEY `idx_telemetry_raw_device` (`device_id`),
+  KEY `idx_telemetry_raw_data_time` (`data_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='物联遥测原始明细';
 
 CREATE TABLE IF NOT EXISTS `iot_telemetry_minute` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   `aggregator_id` varchar(20) DEFAULT NULL COMMENT '聚合商ID',
   `ent_id` varchar(20) NOT NULL COMMENT '企业ID',
-  `project_id` bigint DEFAULT NULL COMMENT '项目ID',
+  `project_id` varchar(64) DEFAULT NULL COMMENT '项目编码',
   `device_id` bigint NOT NULL COMMENT '物联设备ID',
-  `device_code` varchar(64) NOT NULL COMMENT '标准设备编码',
-  `point_code` varchar(64) NOT NULL COMMENT '标准测点编码',
+  `device_code` varchar(100) NOT NULL COMMENT '标准设备编码',
+  `point_code` varchar(100) NOT NULL COMMENT '标准测点编码',
   `data_time` datetime NOT NULL COMMENT '原始数据时间',
   `minute_time` datetime NOT NULL COMMENT '分钟时间',
   `point_value` double DEFAULT NULL COMMENT '标准值',
@@ -606,7 +545,6 @@ CREATE TABLE IF NOT EXISTS `iot_unmatched_telemetry_log` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   `source_code` varchar(64) DEFAULT NULL COMMENT '来源编码',
   `interface_type` varchar(32) NOT NULL COMMENT '接口类型：originData原始数据，cimData标准数据',
-  `external_project_id` varchar(128) DEFAULT NULL COMMENT '三方项目ID',
   `external_device_id` varchar(128) DEFAULT NULL COMMENT '三方设备ID',
   `external_device_name` varchar(128) DEFAULT NULL COMMENT '三方设备名称',
   `external_metric` varchar(128) DEFAULT NULL COMMENT '三方指标编码',
@@ -622,3 +560,38 @@ CREATE TABLE IF NOT EXISTS `iot_unmatched_telemetry_log` (
   KEY `idx_iot_unmatched_source` (`source_code`, `handled`),
   KEY `idx_iot_unmatched_device` (`external_device_id`, `external_metric`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='物联未匹配遥测日志';
+
+INSERT INTO `sys_dict` (`dict_type_code`, `dict_type_name`, `dict_code`, `dict_value`, `sort`, `remark`, `create_time`, `update_time`, `deleted`)
+SELECT 'device_type', '设备类型', 'ENERGY_STORAGE', '储能设备', 1, '物联设备类型', NOW(), NOW(), 0
+FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM `sys_dict` WHERE `dict_type_code` = 'device_type' AND `dict_code` = 'ENERGY_STORAGE');
+
+INSERT INTO `sys_dict` (`dict_type_code`, `dict_type_name`, `dict_code`, `dict_value`, `sort`, `remark`, `create_time`, `update_time`, `deleted`)
+SELECT 'device_type', '设备类型', 'AIR_CONDITIONER', '空调设备', 2, '物联设备类型', NOW(), NOW(), 0
+FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM `sys_dict` WHERE `dict_type_code` = 'device_type' AND `dict_code` = 'AIR_CONDITIONER');
+
+INSERT INTO `sys_dict` (`dict_type_code`, `dict_type_name`, `dict_code`, `dict_value`, `sort`, `remark`, `create_time`, `update_time`, `deleted`)
+SELECT 'device_type', '设备类型', 'CHILLER', '冷机设备', 3, '物联设备类型', NOW(), NOW(), 0
+FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM `sys_dict` WHERE `dict_type_code` = 'device_type' AND `dict_code` = 'CHILLER');
+
+INSERT INTO `sys_dict` (`dict_type_code`, `dict_type_name`, `dict_code`, `dict_value`, `sort`, `remark`, `create_time`, `update_time`, `deleted`)
+SELECT 'device_type', '设备类型', 'METER', '电表设备', 4, '物联设备类型', NOW(), NOW(), 0
+FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM `sys_dict` WHERE `dict_type_code` = 'device_type' AND `dict_code` = 'METER');
+
+INSERT INTO `sys_dict` (`dict_type_code`, `dict_type_name`, `dict_code`, `dict_value`, `sort`, `remark`, `create_time`, `update_time`, `deleted`)
+SELECT 'device_group_type', '设备组类型', 'ENERGY_STORAGE', '储能设备组', 1, '物联设备组类型', NOW(), NOW(), 0
+FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM `sys_dict` WHERE `dict_type_code` = 'device_group_type' AND `dict_code` = 'ENERGY_STORAGE');
+
+INSERT INTO `sys_dict` (`dict_type_code`, `dict_type_name`, `dict_code`, `dict_value`, `sort`, `remark`, `create_time`, `update_time`, `deleted`)
+SELECT 'device_group_type', '设备组类型', 'AIR_CONDITIONER', '空调设备组', 2, '物联设备组类型', NOW(), NOW(), 0
+FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM `sys_dict` WHERE `dict_type_code` = 'device_group_type' AND `dict_code` = 'AIR_CONDITIONER');
+
+INSERT INTO `sys_dict` (`dict_type_code`, `dict_type_name`, `dict_code`, `dict_value`, `sort`, `remark`, `create_time`, `update_time`, `deleted`)
+SELECT 'device_group_type', '设备组类型', 'CHILLER', '冷机设备组', 3, '物联设备组类型', NOW(), NOW(), 0
+FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM `sys_dict` WHERE `dict_type_code` = 'device_group_type' AND `dict_code` = 'CHILLER');

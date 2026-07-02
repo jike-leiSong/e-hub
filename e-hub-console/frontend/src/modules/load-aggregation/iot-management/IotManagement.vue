@@ -255,7 +255,7 @@
         :ent-id="selectedEntId"
         :device-group-id="selectedGroupId"
         :edit-data="editingDevice"
-        @success="reloadDevices"
+        @success="handleDeviceSaved"
       />
       <DevicePointDialog
         :visible.sync="showPointDialog"
@@ -264,18 +264,16 @@
     </section>
 
     <div v-else class="telemetry-wrapper">
-      <AggregationHistory
-        :key="`${selectedEntId || 'none'}-device-operation`"
-        :active-obj="{}"
-        :active-comp-name="['AggregationHistory']"
-        view-type="device-operation"
+      <IotTelemetry
+        :key="`${selectedEntId || 'none'}-telemetry`"
+        :aggregator-id="aggregatorId"
       />
     </div>
   </div>
 </template>
 
 <script>
-import AggregationHistory from "@/modules/load-aggregation/history/src/AggregationHistory.vue";
+import IotTelemetry from "./IotTelemetry.vue";
 import {
   deleteDevice,
   listDeviceGroups,
@@ -290,7 +288,7 @@ import DevicePointDialog from "./components/DevicePointDialog.vue";
 export default {
   name: "IotManagement",
   components: {
-    AggregationHistory,
+    IotTelemetry,
     DeviceDialog,
     DeviceGroupDialog,
     DevicePointDialog,
@@ -491,7 +489,7 @@ export default {
         if (this.deviceList.length === 1 && this.page.pageNum > 1) {
           this.page.pageNum -= 1;
         }
-        this.reloadDevices();
+        await this.reloadGroups();
       } else {
         this.$message.error(body.msg || "删除失败");
       }
@@ -512,14 +510,19 @@ export default {
         if (this.selectedGroupId === group.id) {
           this.selectedGroupId = null;
         }
-        this.reloadGroups();
+        await this.reloadGroups();
       } else {
         this.$message.error(body.msg || "删除失败");
       }
     },
-    handleGroupSaved() {
+    async handleGroupSaved() {
       this.editingGroup = null;
-      this.reloadGroups();
+      await this.reloadGroups();
+    },
+    async handleDeviceSaved() {
+      this.editingDevice = null;
+      this.page.pageNum = 1;
+      await this.reloadGroups();
     },
     findParam(row, code) {
       const params = Array.isArray(row.paramList) ? row.paramList : [];

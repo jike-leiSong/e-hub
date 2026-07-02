@@ -12,6 +12,14 @@ export function listEnterprises(params) {
   });
 }
 
+export function listEnterpriseOptions(params) {
+  return service({
+    method: "get",
+    url: "/ent/list",
+    params,
+  });
+}
+
 export function createEnterprise(data) {
   return service({
     method: "post",
@@ -103,11 +111,19 @@ export function deleteModel(id) {
   });
 }
 
-export function listProjectsByEnt(entId) {
+export function listProjectsByEnt(entId, aggregatorId) {
   return service({
     method: "get",
     url: "/model/listByEnt",
-    params: { entId },
+    params: { entId, aggregatorId },
+  });
+}
+
+export function listIotDevicesByEnt(params) {
+  return service({
+    method: "get",
+    url: "/ent-device/iot-device-options",
+    params,
   });
 }
 

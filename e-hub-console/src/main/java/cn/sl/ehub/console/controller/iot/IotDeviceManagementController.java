@@ -15,6 +15,7 @@ import cn.sl.ehub.service.vo.IotDeviceGroup;
 import cn.sl.ehub.service.vo.IotDeviceGroupParam;
 import cn.sl.ehub.service.vo.IotDeviceGroupPoint;
 import cn.sl.ehub.service.vo.IotDeviceGroupPointDefinition;
+import cn.sl.ehub.service.vo.IotDeviceGroupPointMetadata;
 import cn.sl.ehub.service.vo.IotDevicePoint;
 import cn.sl.ehub.service.vo.IotDevicePointDefinition;
 import cn.sl.ehub.service.vo.IotDeviceTypeParamMetadata;
@@ -226,6 +227,13 @@ public class IotDeviceManagementController {
             @RequestParam(value = "pageSize", defaultValue = "1000") Integer pageSize) {
         List<IotDeviceTypePointMetadata> list = iotDeviceManagementService.listDeviceGroupPointMetadata(deviceGroupType);
         return ResultVO.success(toPage(list, pageNum, pageSize));
+    }
+
+    @GetMapping("/device-group-point-metadata-list")
+    @ApiOperation("设备组测点元数据（原生列表，用于测点选择）")
+    public ResultVO<List<IotDeviceGroupPointMetadata>> deviceGroupPointMetadataList(
+            @RequestParam(value = "deviceGroupType") String deviceGroupType) {
+        return ResultVO.success(iotDeviceManagementService.listDeviceGroupPointMetadataRaw(deviceGroupType));
     }
 
     @GetMapping("/devices/{deviceId}/points/page")

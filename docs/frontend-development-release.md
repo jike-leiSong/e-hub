@@ -152,14 +152,14 @@ e-hub-console 后端接口处理
 
 登录页只负责身份认证，不提供平台或产品选择。
 
-登录成功后，应由后端返回用户的平台类型、租户、产品开通和权限点。前端根据这些信息生成菜单和默认首页。
+登录成功后，应由后端返回用户的平台类型、企业、产品开通和权限点。前端根据这些信息生成菜单和默认首页。
 
 核心数据模型参考：
 
 ```js
 {
   platformType: "owner" | "customer",
-  tenantId: "customer_a",
+  entId: "customer_a",
   role: "customer_admin",
   products: ["load_aggregation", "tariff"],
   permissions: [

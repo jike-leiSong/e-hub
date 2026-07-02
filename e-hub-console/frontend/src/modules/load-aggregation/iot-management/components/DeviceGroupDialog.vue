@@ -14,7 +14,7 @@
         </el-col>
         <el-col :span="8">
           <el-form-item label="设备组类型" prop="deviceGroupType">
-            <el-select v-model="form.deviceGroupType" filterable>
+            <el-select v-model="form.deviceGroupType" filterable @change="handleDeviceGroupTypeChange">
               <el-option
                 v-for="item in groupTypeOptions"
                 :key="item.value"
@@ -55,21 +55,20 @@
 
     <div class="meta-section">
       <div class="section-head">
-        <span>设备组测点</span>
-        <div class="header-buttons">
-          <el-button type="primary" size="small" @click="handleSelectPoints">
-            {{ isAllPointsSelected ? "取消选择全部测点" : "选择全部测点" }}
-          </el-button>
+        <span>测点选择</span>
+        <div class="header-actions">
+          <span class="section-count">已选 {{ selectedPoints.length }} 个</span>
           <el-button v-if="editMode" type="primary" size="small" @click="openStatusDialog">状态值维护</el-button>
         </div>
       </div>
       <el-table
         ref="pointsTable"
         v-loading="pointsLoading"
-        :data="pagedPoints"
+        :data="allPointsData"
         border
         stripe
         size="small"
+        max-height="320"
         row-key="propertyCode"
         @selection-change="handleSelectionChange"
       >
@@ -79,17 +78,6 @@
         <el-table-column prop="dataTypeName" label="数据类型" min-width="100" />
         <el-table-column prop="unit" label="单位" min-width="80" />
       </el-table>
-      <el-pagination
-        class="pagination"
-        background
-        layout="total, sizes, prev, pager, next"
-        :current-page="pointPage.pageNum"
-        :page-sizes="[10, 20, 30, 50]"
-        :page-size="pointPage.pageSize"
-        :total="allPointsData.length"
-        @current-change="handlePointPageChange"
-        @size-change="handlePointSizeChange"
-      />
     </div>
 
     <DeviceGroupStatusMaintenanceDialog
@@ -109,7 +97,7 @@
 import {
   createDeviceGroup,
   getDeviceGroupDetail,
-  getDeviceGroupPointMetadata,
+  listDeviceGroupPointMetadata,
   listDeviceGroupTypes,
   listDeviceGroupPoints,
   listEnergyTypes,
@@ -156,32 +144,11 @@ export default {
       selectedPoints: [],
       editPointList: [],
       savedPointList: [],
-      pointPage: {
-        pageNum: 1,
-        pageSize: 10,
-      },
       showStatusDialog: false,
       groupTypeOptions: [],
       energyTypeOptions: [],
       gatewayOptions: [],
     };
-  },
-  watch: {
-    "form.deviceGroupType"(newVal, oldVal) {
-      if (newVal && oldVal !== undefined && oldVal !== "" && oldVal !== newVal) {
-        this.selectedPoints = [];
-        this.editPointList = [];
-        this.pointPage.pageNum = 1;
-        this.$nextTick(() => {
-          if (this.$refs.pointsTable) {
-            this.$refs.pointsTable.clearSelection();
-          }
-        });
-      }
-      if (newVal) {
-        this.fetchPointsData();
-      }
-    },
   },
   computed: {
     dialogVisible: {
@@ -194,14 +161,6 @@ export default {
     },
     editMode() {
       return Boolean(this.editData && this.editData.id);
-    },
-    pagedPoints() {
-      const start = (this.pointPage.pageNum - 1) * this.pointPage.pageSize;
-      const end = start + this.pointPage.pageSize;
-      return this.allPointsData.slice(start, end);
-    },
-    isAllPointsSelected() {
-      return this.allPointsData.length > 0 && this.selectedPoints.length === this.allPointsData.length;
     },
     rules() {
       return {
@@ -218,6 +177,9 @@ export default {
         await this.loadDetail();
       } else {
         this.resetForm();
+        if (this.form.deviceGroupType) {
+          await this.fetchPointsData();
+        }
       }
     },
     async loadOptions() {
@@ -237,11 +199,9 @@ export default {
       }
       this.pointsLoading = true;
       try {
-        const res = await getDeviceGroupPointMetadata({ deviceGroupType: this.form.deviceGroupType });
+        const res = await listDeviceGroupPointMetadata(this.form.deviceGroupType);
         const body = res.data || {};
-        const page = body.code === 200 && body.data ? body.data : {};
-        this.allPointsData = Array.isArray(page.list) ? page.list : [];
-        this.pointPage.pageNum = 1;
+        this.allPointsData = body.code === 200 && Array.isArray(body.data) ? body.data : [];
         if (this.editMode && this.editPointList.length > 0) {
           this.handleEditPointsEcho();
         }
@@ -288,35 +248,26 @@ export default {
       this.selectedPoints = [];
       this.editPointList = [];
       this.savedPointList = [];
-      this.pointPage.pageNum = 1;
+      this.clearPointSelection();
+    },
+    async handleDeviceGroupTypeChange(deviceGroupType) {
+      this.allPointsData = [];
+      this.selectedPoints = [];
+      this.editPointList = [];
+      this.clearPointSelection();
+      if (deviceGroupType) {
+        await this.fetchPointsData();
+      }
+    },
+    clearPointSelection() {
       this.$nextTick(() => {
         if (this.$refs.pointsTable) {
           this.$refs.pointsTable.clearSelection();
         }
       });
-      if (this.form.deviceGroupType) {
-        this.fetchPointsData();
-      }
-    },
-    handleSelectPoints() {
-      if (!this.$refs.pointsTable) return;
-      if (this.isAllPointsSelected) {
-        this.$refs.pointsTable.clearSelection();
-      } else {
-        this.allPointsData.forEach(row => {
-          this.$refs.pointsTable.toggleRowSelection(row, true);
-        });
-      }
     },
     handleSelectionChange(selection) {
       this.selectedPoints = selection;
-    },
-    handlePointPageChange(pageNum) {
-      this.pointPage.pageNum = pageNum;
-    },
-    handlePointSizeChange(pageSize) {
-      this.pointPage.pageSize = pageSize;
-      this.pointPage.pageNum = 1;
     },
     async openStatusDialog() {
       if (!this.editData || !this.editData.id) {
@@ -329,13 +280,27 @@ export default {
     },
     async submit() {
       await this.$refs.form.validate();
+      if (!this.editMode && this.allPointsData.length > 0 && !this.selectedPoints.length) {
+        this.$message.warning("请选择测点");
+        return;
+      }
       this.submitting = true;
       try {
+        const pointList = this.selectedPoints.map((item, index) => ({
+          propertyCode: item.propertyCode,
+          propertyName: item.propertyName,
+          dataType: item.dataType,
+          dataTypeName: item.dataTypeName,
+          valueType: item.valueType,
+          unit: item.unit,
+          readWriteRole: item.readWriteRole,
+          sort: item.sort || index + 1,
+        }));
         const payload = {
           aggregatorId: this.aggregatorId,
           entId: this.entId,
           ...this.form,
-          pointList: this.selectedPoints,
+          pointList,
         };
         const res = this.editMode
           ? await updateDeviceGroup(this.editData.id, payload)
@@ -370,13 +335,15 @@ export default {
   color: #18364a;
 }
 
-.header-buttons {
+.header-actions {
   display: flex;
+  align-items: center;
   gap: 8px;
 }
 
-.pagination {
-  margin-top: 12px;
-  text-align: right;
+.section-count {
+  color: #607d8f;
+  font-size: 12px;
+  font-weight: 500;
 }
 </style>

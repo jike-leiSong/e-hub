@@ -233,11 +233,6 @@
               min-width="180"
             />
             <el-table-column
-              prop="energyStationCode"
-              label="项目编码"
-              min-width="160"
-            />
-            <el-table-column
               prop="resourceTypeId"
               label="资源类型"
               min-width="120"
@@ -443,7 +438,7 @@
             @change="handleModelEntChange"
           >
             <el-option
-              v-for="item in deviceFormEnterpriseOptions"
+              v-for="item in filteredEnterpriseOptions"
               :key="item.entId"
               :label="enterpriseOptionLabel(item)"
               :value="item.entId"
@@ -452,13 +447,6 @@
         </el-form-item>
         <el-form-item label="项目名称" required>
           <el-input v-model.trim="modelForm.energyStation" />
-        </el-form-item>
-        <el-form-item label="项目编码">
-          <el-input
-            v-model.trim="modelForm.energyStationCode"
-            disabled
-            placeholder="自动生成"
-          />
         </el-form-item>
         <el-form-item label="资源类型" required>
           <el-select
@@ -609,23 +597,37 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="项目">
+        <el-form-item label="项目" required>
           <el-select
             v-model="deviceForm.energyStationCode"
             filterable
             clearable
             placeholder="请选择项目"
+            @change="handleDeviceProjectChange"
           >
             <el-option
               v-for="item in deviceProjectOptions"
               :key="item.energyStationCode"
-              :label="item.energyStation"
+              :label="formatProjectLabel(item)"
               :value="item.energyStationCode"
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="设备名称" required>
-          <el-input v-model.trim="deviceForm.deviceName" />
+        <el-form-item label="物联设备" required>
+          <el-select
+            v-model="deviceForm.iotDeviceBaseId"
+            filterable
+            clearable
+            placeholder="请选择物联设备"
+            @change="handleDeviceIotChange"
+          >
+            <el-option
+              v-for="item in deviceIotOptions"
+              :key="item.id"
+              :label="formatIotDeviceLabel(item)"
+              :value="String(item.id)"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="资源类型">
           <el-select
@@ -679,8 +681,10 @@ import {
   deleteModel,
   disableEnterprise,
   deleteDevice,
+  listEnterpriseOptions,
   listEnterprises,
   listDevices,
+  listIotDevicesByEnt,
   listModels,
   listProjectsByEnt,
   listResourceTypes,
@@ -725,6 +729,7 @@ export default {
         status: undefined,
       },
       enterprises: [],
+      enterpriseOptions: [],
       enterpriseLoading: false,
       enterprisePage: {
         pageIndex: 1,
@@ -760,6 +765,7 @@ export default {
       },
       enterpriseServiceRange: [],
       deviceProjectOptions: [],
+      deviceIotOptions: [],
       deviceDialog: {
         visible: false,
         loading: false,
@@ -823,10 +829,13 @@ export default {
       return this.enterprises.filter(item => item && item.entId);
     },
     filteredEnterpriseOptions() {
-      return this.validEnterprises;
+      return this.enterpriseOptions.filter(item => item && item.entId);
     },
     deviceFormEnterpriseOptions() {
-      return this.validEnterprises;
+      return this.filteredEnterpriseOptions;
+    },
+    modelDialogResourceTypeOptions() {
+      return this.modelResourceTypeOptions.filter(item => item && item.id);
     },
     currentAggregatorLabel() {
       const aggregatorId = this.scopeAggregatorId;
@@ -846,6 +855,7 @@ export default {
     this.syncMenuFromActivePage();
 
     this.reloadEnterprises();
+    this.loadEnterpriseOptions();
     if (this.activeResourceTab === "model") {
       this.loadModelResourceTypes();
       this.reloadModels();
@@ -869,11 +879,15 @@ export default {
       this.devicePage.pageIndex = 1;
       if (this.activeResourceTab === "enterprise") {
         this.reloadEnterprises();
+        this.loadEnterpriseOptions();
       } else if (this.activeResourceTab === "device") {
         this.reloadEnterprises();
+        this.loadEnterpriseOptions();
+        this.loadModelResourceTypes();
         this.reloadDevices();
       } else if (this.activeResourceTab === "model") {
         this.reloadEnterprises();
+        this.loadEnterpriseOptions();
         this.loadModelResourceTypes();
         this.reloadModels();
       }
@@ -889,12 +903,16 @@ export default {
       this.activeResourceTab = tabKey;
       if (tabKey === "enterprise") {
         this.reloadEnterprises();
+        this.loadEnterpriseOptions();
       } else if (tabKey === "model") {
         this.reloadEnterprises();
+        this.loadEnterpriseOptions();
         this.loadModelResourceTypes();
         this.reloadModels();
       } else if (tabKey === "device") {
         this.reloadEnterprises();
+        this.loadEnterpriseOptions();
+        this.loadModelResourceTypes();
         this.reloadDevices();
       }
     },
@@ -915,9 +933,13 @@ export default {
     defaultDeviceForm() {
       return {
         id: null,
+        aggregatorId: this.scopeAggregatorId,
         entId: "",
         energyStationCode: "",
+        iotDeviceBaseId: "",
         deviceName: "",
+        deviceId: "",
+        deviceBaseId: "",
         resourceTypeId: "",
         status: 1,
         modelFlag: 1,
@@ -943,8 +965,37 @@ export default {
       if (!item) return "";
       return item.entName ? `${item.entName} (${item.entId})` : item.entId;
     },
+    formatProjectLabel(item) {
+      if (!item) return "";
+      return item.energyStation || item.energyStationCode || "";
+    },
+    formatIotDeviceLabel(item) {
+      if (!item) return "";
+      const name = item.deviceName || item.deviceCode || "";
+      return item.deviceCode && name !== item.deviceCode
+        ? `${name} (${item.deviceCode})`
+        : name;
+    },
     defaultAggregatorId(selectedAggregatorId) {
       return selectedAggregatorId || this.scopeAggregatorId;
+    },
+    loadEnterpriseOptions() {
+      const aggregatorId = this.scopeAggregatorId;
+      if (!aggregatorId) {
+        this.enterpriseOptions = [];
+        return Promise.resolve();
+      }
+      return listEnterpriseOptions({ aggregatorId })
+        .then((res) => {
+          const list = this.unwrapData(res, []);
+          this.enterpriseOptions = Array.isArray(list)
+            ? list.filter(item => item && item.entId)
+            : [];
+        })
+        .catch((error) => {
+          console.error("加载企业选项失败:", error);
+          this.enterpriseOptions = [];
+        });
     },
     reloadEnterprises() {
       this.enterpriseLoading = true;
@@ -1039,15 +1090,16 @@ export default {
           this.modelLoading = false;
         });
     },
-    loadModelResourceTypes(entId) {
-      const aggregatorId = this.scopeAggregatorId;
-      if (!aggregatorId) {
+    loadModelResourceTypes(entId, aggregatorId, useModelFilterEnt = true) {
+      const targetAggregatorId = aggregatorId || this.scopeAggregatorId;
+      if (!targetAggregatorId) {
         this.modelResourceTypeOptions = [];
         return Promise.resolve();
       }
+      const targetEntId = entId || (useModelFilterEnt ? this.modelFilters.entId : "");
       return listResourceTypes({
-        aggregatorId,
-        entId: entId || this.modelFilters.entId || "",
+        aggregatorId: targetAggregatorId,
+        entId: targetEntId || "",
       })
         .then((res) => {
           const list = this.unwrapData(res, []);
@@ -1059,6 +1111,9 @@ export default {
         });
     },
     openModelDialog(mode, row) {
+      if (!this.filteredEnterpriseOptions.length) {
+        this.loadEnterpriseOptions();
+      }
       this.modelDialog.mode = mode;
       this.modelDialog.title = mode === "create" ? "新增模型" : "编辑模型";
       this.modelForm = this.defaultModelForm();
@@ -1075,7 +1130,7 @@ export default {
       this.modelDialog.visible = true;
     },
     handleModelEntChange(entId) {
-      const ent = this.enterprises.find((item) => item && item.entId === entId);
+      const ent = this.filteredEnterpriseOptions.find((item) => item && item.entId === entId);
       if (ent) {
         this.modelForm.aggregatorId = ent.aggregatorId;
       } else if (!this.isOwner) {
@@ -1165,6 +1220,7 @@ export default {
           this.$message.success("保存成功");
           this.enterpriseDialog.visible = false;
           this.reloadEnterprises();
+          this.loadEnterpriseOptions();
         })
         .finally(() => {
           this.enterpriseDialog.loading = false;
@@ -1178,28 +1234,64 @@ export default {
           this.ensureSuccess(res);
           this.$message.success("已停用");
           this.reloadEnterprises();
+          this.loadEnterpriseOptions();
         });
       });
     },
     handleDeviceEntChange(entId) {
+      const ent = this.filteredEnterpriseOptions.find((item) => item && item.entId === entId);
+      this.deviceForm.aggregatorId = ent && ent.aggregatorId ? ent.aggregatorId : this.scopeAggregatorId;
       this.deviceForm.energyStationCode = "";
+      this.deviceForm.iotDeviceBaseId = "";
+      this.deviceForm.deviceName = "";
+      this.deviceForm.deviceId = "";
+      this.deviceForm.deviceBaseId = "";
+      this.deviceForm.resourceTypeId = "";
       this.deviceProjectOptions = [];
+      this.deviceIotOptions = [];
       if (entId) {
         this.loadDeviceProjects(entId);
+        this.loadDeviceIotOptions(entId);
+        this.loadModelResourceTypes("", this.deviceForm.aggregatorId, false);
       }
     },
     loadDeviceProjects(entId) {
-      listProjectsByEnt(entId)
+      return listProjectsByEnt(entId, this.deviceForm.aggregatorId || this.scopeAggregatorId)
         .then((res) => {
-          this.deviceProjectOptions = this.unwrapData(res, []);
+          const list = this.unwrapData(res, []);
+          this.deviceProjectOptions = Array.isArray(list) ? list : [];
         })
         .catch(() => {
           this.deviceProjectOptions = [];
         });
     },
+    loadDeviceIotOptions(entId) {
+      return listIotDevicesByEnt({
+        aggregatorId: this.deviceForm.aggregatorId || this.scopeAggregatorId,
+        entId,
+      })
+        .then((res) => {
+          const list = this.unwrapData(res, []);
+          this.deviceIotOptions = Array.isArray(list) ? list : [];
+        })
+        .catch(() => {
+          this.deviceIotOptions = [];
+        });
+    },
+    handleDeviceProjectChange(code) {
+      const project = this.deviceProjectOptions.find(item => item.energyStationCode === code);
+      this.deviceForm.resourceTypeId = project && project.resourceTypeId ? project.resourceTypeId : "";
+    },
+    handleDeviceIotChange(id) {
+      const device = this.deviceIotOptions.find(item => String(item.id) === String(id));
+      this.deviceForm.deviceName = device ? device.deviceName : "";
+      this.deviceForm.deviceId = device ? device.deviceCode : "";
+      this.deviceForm.deviceBaseId = device ? device.deviceCode : "";
+    },
     reloadDevices() {
       this.deviceLoading = true;
       const params = {
+        aggregatorId: this.scopeAggregatorId,
         ...this.deviceFilters,
         pageIndex: this.devicePage.pageIndex,
         pageSize: this.devicePage.pageSize,
@@ -1220,25 +1312,41 @@ export default {
         });
     },
     openDeviceDialog(mode, row) {
+      if (!this.filteredEnterpriseOptions.length) {
+        this.loadEnterpriseOptions();
+      }
       this.deviceDialog.mode = mode;
       this.deviceDialog.title = mode === "create" ? "新增设备" : "编辑设备";
       this.deviceForm = this.defaultDeviceForm();
       this.deviceProjectOptions = [];
-      this.loadModelResourceTypes();
+      this.deviceIotOptions = [];
       if (mode === "create") {
         this.deviceForm.entId = this.deviceFilters.entId;
+        this.deviceForm.aggregatorId = this.scopeAggregatorId;
         if (this.deviceForm.entId) {
+          const ent = this.filteredEnterpriseOptions.find((item) => item && item.entId === this.deviceForm.entId);
+          if (ent && ent.aggregatorId) {
+            this.deviceForm.aggregatorId = ent.aggregatorId;
+          }
           this.loadDeviceProjects(this.deviceForm.entId);
+          this.loadDeviceIotOptions(this.deviceForm.entId);
         }
       } else if (row) {
         this.deviceForm = {
           ...this.defaultDeviceForm(),
           ...row,
+          iotDeviceBaseId: row.iotDeviceBaseId ? String(row.iotDeviceBaseId) : "",
         };
         if (row.entId) {
+          const ent = this.filteredEnterpriseOptions.find((item) => item && item.entId === row.entId);
+          if (ent && ent.aggregatorId) {
+            this.deviceForm.aggregatorId = ent.aggregatorId;
+          }
           this.loadDeviceProjects(row.entId);
+          this.loadDeviceIotOptions(row.entId);
         }
       }
+      this.loadModelResourceTypes("", this.deviceForm.aggregatorId || this.scopeAggregatorId, false);
       this.deviceDialog.visible = true;
     },
     submitDevice() {
@@ -1246,15 +1354,26 @@ export default {
         this.$message.warning("企业不能为空");
         return;
       }
-      if (!this.deviceForm.deviceName) {
-        this.$message.warning("设备名称不能为空");
+      if (!this.deviceForm.energyStationCode) {
+        this.$message.warning("项目不能为空");
+        return;
+      }
+      if (!this.deviceForm.iotDeviceBaseId) {
+        this.$message.warning("物联设备不能为空");
+        return;
+      }
+      if (!this.deviceForm.resourceTypeId) {
+        this.$message.warning("资源类型不能为空");
         return;
       }
       this.deviceDialog.loading = true;
+      const payload = { ...this.deviceForm };
+      delete payload.username;
+      delete payload.resourceTypeName;
       const request =
         this.deviceDialog.mode === "create"
-          ? createDevice(this.deviceForm)
-          : updateDevice(this.deviceForm.id, this.deviceForm);
+          ? createDevice(payload)
+          : updateDevice(this.deviceForm.id, payload);
       request
         .then((res) => {
           this.ensureSuccess(res);

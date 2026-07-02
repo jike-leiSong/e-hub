@@ -141,29 +141,13 @@ HEAT001  热泵 1
 
 ### 项目/企业映射
 
-企业和项目信息可复用现有客户、企业、能源站数据。如果设备管理需要独立展示项目树，可增加轻量项目表。
+企业和业务项目关系复用现有客户、企业、能源站和负荷聚合业务关系表，不在 IoT 域新增 `iot_project`。
 
-```text
-iot_project
-- id
-- aggregator_id        聚合商 ID
-- ent_id               企业 ID
-- project_code         我方项目编码，企业内唯一
-- project_name         项目/能源站名称
-- parent_id            上级节点，可为空
-- status               1 启用，0 停用
-- deleted              0 未删除，1 删除
-- create_time
-- update_time
-```
+本期口径：
 
-唯一约束：
-
-```text
-ent_id + project_code
-```
-
-如果现有企业/能源站表已经能满足树形展示，`iot_project` 可以不单独落表，只保留三方项目映射表。
+- 业务项目范围由 `aggregator_single_model_data`、`aggregator_ent_device` 等业务关系表维护
+- IoT 域只维护设备、测点、采集和时序数据
+- 如果页面需要站点树，也优先复用现有能源站/业务项目数据，不单独建设 IoT 项目表
 
 ### 设备主表
 
@@ -276,30 +260,17 @@ access_key + user_key
 access_key + ent_id
 ```
 
-### 三方项目映射表（可选）
+### 三方项目字段处理
 
 企业识别不依赖 `projectId`，而是由 `iot_access_app.ent_id` 或受控的 `entId` 参数确定。
 
-如果同一企业下需要继续区分项目/能源站，可使用项目映射表；如果当前业务只到企业级，项目映射表可以不使用。
+不保留 `external_project_id`，项目归属完全由内部模型关系解析。
 
-```text
-iot_project_external_ref
-- id
-- source_code
-- ent_id
-- project_id           我方项目 ID，可为空
-- external_project_id  协议 originData.projectId
-- external_project_name
-- status
-- create_time
-- update_time
-```
+项目归属口径：
 
-唯一约束建议：
-
-```text
-source_code + ent_id + external_project_id
-```
+- 匹配成功时，优先取设备自身归属项目
+- 设备未显式配置项目时，使用接入应用默认项目兜底
+- 业务项目范围查询统一通过业务关系表解析到设备集合
 
 ### 三方设备映射表
 
@@ -402,7 +373,6 @@ iot_unmatched_telemetry_log
 - id
 - source_code
 - interface_type       originData/cimData
-- external_project_id
 - external_device_id
 - external_device_name
 - external_metric
@@ -822,12 +792,10 @@ la_single_meas_minute
 新增 IoT 设备域表：
 
 ```text
-iot_project
 iot_device
 iot_device_param
 iot_device_point
 iot_access_app
-iot_project_external_ref
 iot_device_external_ref
 iot_point_external_ref
 iot_telemetry_minute

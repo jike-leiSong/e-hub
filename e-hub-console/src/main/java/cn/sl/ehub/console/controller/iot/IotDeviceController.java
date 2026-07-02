@@ -7,11 +7,9 @@ import cn.sl.ehub.console.auth.LoadAggregationScopeService;
 import cn.sl.ehub.console.model.vo.PageResultVO;
 import cn.sl.ehub.console.service.IAggregatorEntService;
 import cn.sl.ehub.console.service.IAggregatorResourceTypeService;
-import cn.sl.ehub.service.dto.iot.IotDeviceExternalRefSaveReq;
 import cn.sl.ehub.service.dto.iot.IotDevicePointSaveReq;
 import cn.sl.ehub.service.dto.iot.IotDeviceQuery;
 import cn.sl.ehub.service.dto.iot.IotDeviceSaveReq;
-import cn.sl.ehub.service.dto.iot.IotPointExternalRefSaveReq;
 import cn.sl.ehub.service.dto.iot.IotTelemetryMinuteQuery;
 import cn.sl.ehub.service.service.AggregatorSingleModelDataService;
 import cn.sl.ehub.service.service.IotDeviceService;
@@ -19,9 +17,7 @@ import cn.sl.ehub.service.vo.AggregatorEnt;
 import cn.sl.ehub.service.vo.AggregatorResourceType;
 import cn.sl.ehub.service.vo.AggregatorSingleModelData;
 import cn.sl.ehub.service.vo.IotDevice;
-import cn.sl.ehub.service.vo.IotDeviceExternalRef;
 import cn.sl.ehub.service.vo.IotDevicePoint;
-import cn.sl.ehub.service.vo.IotPointExternalRef;
 import cn.sl.ehub.service.vo.IotTelemetryMinute;
 import cn.sl.ehub.service.vo.IotUnmatchedTelemetryLog;
 import com.github.pagehelper.PageHelper;
@@ -180,79 +176,6 @@ public class IotDeviceController {
         return ResultVO.success(true);
     }
 
-    @GetMapping("/devices/{deviceId}/external-refs")
-    @ApiOperation("设备三方绑定列表")
-    public ResultVO<List<IotDeviceExternalRef>> listDeviceExternalRefs(@PathVariable("deviceId") Long deviceId) {
-        validateDeviceScope(deviceId);
-        return ResultVO.success(iotDeviceService.listDeviceExternalRefs(deviceId));
-    }
-
-    @PostMapping("/devices/{deviceId}/external-refs")
-    @ApiOperation("新增设备三方绑定")
-    public ResultVO<IotDeviceExternalRef> createDeviceExternalRef(@PathVariable("deviceId") Long deviceId,
-                                                                  @RequestBody IotDeviceExternalRefSaveReq req) {
-        IotDevice device = validateDeviceScope(deviceId);
-        if (req != null) {
-            req.setEntId(device.getEntId());
-        }
-        return ResultVO.success(iotDeviceService.createDeviceExternalRef(deviceId, req));
-    }
-
-    @PutMapping("/device-external-refs/{id}")
-    @ApiOperation("更新设备三方绑定")
-    public ResultVO<IotDeviceExternalRef> updateDeviceExternalRef(@PathVariable("id") Long id,
-                                                                  @RequestBody IotDeviceExternalRefSaveReq req) {
-        IotDeviceExternalRef ref = validateDeviceExternalRefScope(id);
-        if (req != null) {
-            req.setEntId(ref.getEntId());
-            req.setDeviceId(ref.getDeviceId());
-        }
-        return ResultVO.success(iotDeviceService.updateDeviceExternalRef(id, req));
-    }
-
-    @DeleteMapping("/device-external-refs/{id}")
-    @ApiOperation("停用设备三方绑定")
-    public ResultVO<Boolean> disableDeviceExternalRef(@PathVariable("id") Long id) {
-        validateDeviceExternalRefScope(id);
-        iotDeviceService.disableDeviceExternalRef(id);
-        return ResultVO.success(true);
-    }
-
-    @GetMapping("/points/{pointId}/external-refs")
-    @ApiOperation("测点三方绑定列表")
-    public ResultVO<List<IotPointExternalRef>> listPointExternalRefs(@PathVariable("pointId") Long pointId) {
-        validatePointScope(pointId);
-        return ResultVO.success(iotDeviceService.listPointExternalRefs(pointId));
-    }
-
-    @PostMapping("/points/{pointId}/external-refs")
-    @ApiOperation("新增测点三方绑定")
-    public ResultVO<IotPointExternalRef> createPointExternalRef(@PathVariable("pointId") Long pointId,
-                                                                @RequestBody IotPointExternalRefSaveReq req) {
-        validatePointScope(pointId);
-        return ResultVO.success(iotDeviceService.createPointExternalRef(pointId, req));
-    }
-
-    @PutMapping("/point-external-refs/{id}")
-    @ApiOperation("更新测点三方绑定")
-    public ResultVO<IotPointExternalRef> updatePointExternalRef(@PathVariable("id") Long id,
-                                                                @RequestBody IotPointExternalRefSaveReq req) {
-        IotPointExternalRef ref = validatePointExternalRefScope(id);
-        if (req != null) {
-            req.setDeviceId(ref.getDeviceId());
-            req.setPointId(ref.getPointId());
-        }
-        return ResultVO.success(iotDeviceService.updatePointExternalRef(id, req));
-    }
-
-    @DeleteMapping("/point-external-refs/{id}")
-    @ApiOperation("停用测点三方绑定")
-    public ResultVO<Boolean> disablePointExternalRef(@PathVariable("id") Long id) {
-        validatePointExternalRefScope(id);
-        iotDeviceService.disablePointExternalRef(id);
-        return ResultVO.success(true);
-    }
-
     @GetMapping("/telemetry/minute")
     @ApiOperation("分钟测点数据")
     public ResultVO<PageResultVO<IotTelemetryMinute>> listTelemetryMinute(@RequestParam(value = "aggregatorId", required = false) String aggregatorId,
@@ -350,24 +273,6 @@ public class IotDeviceController {
         }
         validateDeviceScope(point.getDeviceId());
         return point;
-    }
-
-    private IotDeviceExternalRef validateDeviceExternalRefScope(Long id) {
-        IotDeviceExternalRef ref = iotDeviceService.getDeviceExternalRef(id);
-        if (ref == null) {
-            throw new BaseException(StatusCode.C.getCode(), "三方设备绑定不存在");
-        }
-        loadScopeService.validateScope(null, ref.getEntId());
-        return ref;
-    }
-
-    private IotPointExternalRef validatePointExternalRefScope(Long id) {
-        IotPointExternalRef ref = iotDeviceService.getPointExternalRef(id);
-        if (ref == null) {
-            throw new BaseException(StatusCode.C.getCode(), "三方测点绑定不存在");
-        }
-        validateDeviceScope(ref.getDeviceId());
-        return ref;
     }
 
     private void bindDeviceExtraInfo(List<IotDevice> list) {

@@ -21,10 +21,6 @@ public class IotDevicePointDefinition {
     @Column(name = "id")
     private Long id;
 
-    @ApiModelProperty("租户ID")
-    @Column(name = "tenant_id")
-    private Long tenantId;
-
     @Column(name = "device_point_id")
     private Long devicePointId;
 

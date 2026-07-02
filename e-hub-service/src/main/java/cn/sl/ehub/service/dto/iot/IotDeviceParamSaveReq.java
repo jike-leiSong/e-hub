@@ -5,8 +5,6 @@ import lombok.Data;
 @Data
 public class IotDeviceParamSaveReq {
 
-    private Long tenantId;
-
     private String attrCode;
 
     private String attrName;

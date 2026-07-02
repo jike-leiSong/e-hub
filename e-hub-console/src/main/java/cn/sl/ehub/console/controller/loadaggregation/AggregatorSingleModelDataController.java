@@ -5,11 +5,9 @@ import cn.sl.ehub.common.exception.BaseException;
 import cn.sl.ehub.common.vo.ResultVO;
 import cn.sl.ehub.console.auth.LoadAggregationScopeService;
 import cn.sl.ehub.console.model.vo.PageResultVO;
-import cn.sl.ehub.console.service.IAggregatorEntDeviceService;
 import cn.sl.ehub.console.service.IAggregatorEntService;
 import cn.sl.ehub.service.service.AggregatorSingleModelDataService;
 import cn.sl.ehub.service.vo.AggregatorEnt;
-import cn.sl.ehub.service.vo.AggregatorEntDevice;
 import cn.sl.ehub.service.vo.AggregatorSingleModelData;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
@@ -29,7 +27,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -41,22 +38,23 @@ import java.util.stream.Collectors;
 public class AggregatorSingleModelDataController {
 
     private final AggregatorSingleModelDataService aggregatorSingleModelDataService;
-    private final IAggregatorEntDeviceService aggregatorEntDeviceService;
     private final IAggregatorEntService aggregatorEntService;
     private final LoadAggregationScopeService loadScopeService;
 
     @GetMapping("/listByEnt")
     @ApiOperation("查询企业下的项目列表")
-    public ResultVO<List<AggregatorSingleModelData>> listByEnt(@RequestParam("entId") String entId) {
+    public ResultVO<List<AggregatorSingleModelData>> listByEnt(@RequestParam("entId") String entId,
+                                                               @RequestParam(value = "aggregatorId", required = false) String aggregatorId) {
         if (StringUtils.isBlank(entId)) {
             return ResultVO.success(Collections.emptyList());
         }
-        List<String> stationCodes = aggregatorEntDeviceService.getEnergyStationCodesByEntId(entId);
-        if (CollectionUtils.isEmpty(stationCodes)) {
-            return ResultVO.success(Collections.emptyList());
+        AggregatorEnt ent = requireEnt(entId);
+        if (StringUtils.isNotBlank(aggregatorId) && !StringUtils.equals(ent.getAggregatorId(), aggregatorId)) {
+            throw new BaseException(StatusCode.C.getCode(), "企业不属于当前聚合商");
         }
-        List<AggregatorSingleModelData> models = aggregatorSingleModelDataService.list(
-                null, null, null, null, stationCodes);
+        loadScopeService.validateScope(ent.getAggregatorId(), ent.getEntId());
+        List<AggregatorSingleModelData> models = aggregatorSingleModelDataService.listByEnt(ent.getAggregatorId(), ent.getEntId());
+        bindEnterpriseInfo(models);
         return ResultVO.success(models);
     }
 
@@ -70,13 +68,9 @@ public class AggregatorSingleModelDataController {
                                                                   @RequestParam(value = "pageIndex", defaultValue = "1") Integer pageIndex,
                                                                   @RequestParam(value = "pageSize", defaultValue = "20") Integer pageSize) {
         LoadAggregationScopeService.Scope scope = loadScopeService.resolveQueryScope(aggregatorId, entId);
-        List<String> stationCodes = resolveStationCodes(scope, entId);
-        if (stationCodes != null && stationCodes.isEmpty()) {
-            return ResultVO.success(emptyPage(pageIndex, pageSize));
-        }
         PageHelper.startPage(pageIndex, pageSize);
         List<AggregatorSingleModelData> list = aggregatorSingleModelDataService.list(
-                scope.getAggregatorId(), resourceTypeId, energyStationCode, energyStation, stationCodes);
+                scope.getAggregatorId(), scope.getEntId(), resourceTypeId, energyStationCode, energyStation, null);
         bindEnterpriseInfo(list);
         return ResultVO.success(toPage(list, pageIndex, pageSize));
     }
@@ -97,6 +91,7 @@ public class AggregatorSingleModelDataController {
         AggregatorEnt ent = requireEnt(data.getEntId());
         loadScopeService.validateScope(ent.getAggregatorId(), ent.getEntId());
         data.setAggregatorId(ent.getAggregatorId());
+        data.setEntId(ent.getEntId());
         data.setOwner(ent.getEntName());
         AggregatorSingleModelData saved = aggregatorSingleModelDataService.create(data);
         bindEnterpriseInfo(Collections.singletonList(saved));
@@ -117,6 +112,7 @@ public class AggregatorSingleModelDataController {
             throw new BaseException(StatusCode.C.getCode(), "项目编码已存在");
         }
         data.setAggregatorId(ent.getAggregatorId());
+        data.setEntId(ent.getEntId());
         data.setOwner(ent.getEntName());
         AggregatorSingleModelData saved = aggregatorSingleModelDataService.update(id, data);
         bindEnterpriseInfo(Collections.singletonList(saved));
@@ -168,81 +164,25 @@ public class AggregatorSingleModelDataController {
     }
 
     private void validateModelScope(AggregatorSingleModelData data) {
-        String entId = null;
-        AggregatorEntDevice binding = findBinding(data.getEnergyStationCode());
-        if (binding != null) {
-            entId = binding.getEntId();
-        }
-        loadScopeService.validateScope(data.getAggregatorId(), entId);
-    }
-
-    private AggregatorEntDevice requireBinding(String energyStationCode) {
-        AggregatorEntDevice binding = findBinding(energyStationCode);
-        if (binding == null) {
-            throw new BaseException(StatusCode.C.getCode(), "项目编码未绑定企业设备");
-        }
-        return binding;
-    }
-
-    private AggregatorEntDevice findBinding(String energyStationCode) {
-        if (StringUtils.isBlank(energyStationCode)) {
-            return null;
-        }
-        List<AggregatorEntDevice> bindings = aggregatorEntDeviceService.getDevicesByEnergyStationCodes(
-                Collections.singletonList(energyStationCode));
-        if (CollectionUtils.isEmpty(bindings)) {
-            return null;
-        }
-        return bindings.stream().filter(item -> StringUtils.isNotBlank(item.getEntId())).findFirst().orElse(bindings.get(0));
-    }
-
-    private List<String> resolveStationCodes(LoadAggregationScopeService.Scope scope, String entId) {
-        if (StringUtils.isNotBlank(scope.getEntId())) {
-            return aggregatorEntDeviceService.getEnergyStationCodesByEntId(scope.getEntId());
-        }
-        if (StringUtils.isNotBlank(entId)) {
-            return aggregatorEntDeviceService.getEnergyStationCodesByEntId(entId);
-        }
-        return null;
+        loadScopeService.validateScope(data.getAggregatorId(), data.getEntId());
     }
 
     private void bindEnterpriseInfo(List<AggregatorSingleModelData> list) {
         if (CollectionUtils.isEmpty(list)) {
             return;
         }
-        List<String> codes = list.stream()
-                .map(AggregatorSingleModelData::getEnergyStationCode)
+        List<String> entIds = list.stream()
+                .map(AggregatorSingleModelData::getEntId)
                 .filter(StringUtils::isNotBlank)
                 .distinct()
                 .collect(Collectors.toList());
-        if (CollectionUtils.isEmpty(codes)) {
+        if (CollectionUtils.isEmpty(entIds)) {
             return;
         }
-        List<AggregatorEntDevice> bindings = aggregatorEntDeviceService.getDevicesByEnergyStationCodes(codes);
-        if (CollectionUtils.isEmpty(bindings)) {
-            return;
-        }
-        Map<String, AggregatorEntDevice> deviceMap = new LinkedHashMap<>();
-        for (AggregatorEntDevice item : bindings) {
-            if (item == null || StringUtils.isBlank(item.getEnergyStationCode())) {
-                continue;
-            }
-            deviceMap.putIfAbsent(item.getEnergyStationCode(), item);
-        }
-        List<String> entIds = deviceMap.values().stream()
-                .map(AggregatorEntDevice::getEntId)
-                .filter(StringUtils::isNotBlank)
-                .distinct()
-                .collect(Collectors.toList());
         Map<String, AggregatorEnt> entMap = aggregatorEntService.getAggregatorEntList(entIds).stream()
                 .collect(Collectors.toMap(AggregatorEnt::getEntId, item -> item, (a, b) -> a));
         for (AggregatorSingleModelData item : list) {
-            AggregatorEntDevice binding = deviceMap.get(item.getEnergyStationCode());
-            if (binding == null) {
-                continue;
-            }
-            item.setEntId(binding.getEntId());
-            AggregatorEnt ent = entMap.get(binding.getEntId());
+            AggregatorEnt ent = entMap.get(item.getEntId());
             item.setEntName(ent != null ? ent.getEntName() : null);
         }
     }
@@ -252,15 +192,6 @@ public class AggregatorSingleModelDataController {
         PageResultVO<T> page = new PageResultVO<>();
         page.setList(list);
         page.setTotal((int) pageInfo.getTotal());
-        page.setPageIndex(pageIndex);
-        page.setPageSize(pageSize);
-        return page;
-    }
-
-    private <T> PageResultVO<T> emptyPage(Integer pageIndex, Integer pageSize) {
-        PageResultVO<T> page = new PageResultVO<>();
-        page.setList(Collections.emptyList());
-        page.setTotal(0);
         page.setPageIndex(pageIndex);
         page.setPageSize(pageSize);
         return page;

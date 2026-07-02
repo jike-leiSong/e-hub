@@ -9,7 +9,6 @@ import cn.sl.ehub.service.dto.iot.IotDeviceParamSaveReq;
 import cn.sl.ehub.service.dto.iot.IotDevicePointSaveReq;
 import cn.sl.ehub.service.dto.iot.IotDeviceSaveReq;
 import cn.sl.ehub.service.dto.iot.IotPointDefinitionSaveReq;
-import cn.sl.ehub.service.mapper.IotDeviceExternalRefMapper;
 import cn.sl.ehub.service.mapper.IotDeviceGroupMapper;
 import cn.sl.ehub.service.mapper.IotDeviceGroupParamMapper;
 import cn.sl.ehub.service.mapper.IotDeviceGroupParamMetadataMapper;
@@ -23,8 +22,8 @@ import cn.sl.ehub.service.mapper.IotDevicePointMapper;
 import cn.sl.ehub.service.mapper.IotDeviceTypeParamMetadataMapper;
 import cn.sl.ehub.service.mapper.IotDeviceTypePointMetadataMapper;
 import cn.sl.ehub.service.mapper.IotGatewayMapper;
+import cn.sl.ehub.service.mapper.SysDictMapper;
 import cn.sl.ehub.service.vo.IotDevice;
-import cn.sl.ehub.service.vo.IotDeviceExternalRef;
 import cn.sl.ehub.service.vo.IotDeviceGroup;
 import cn.sl.ehub.service.vo.IotDeviceGroupParam;
 import cn.sl.ehub.service.vo.IotDeviceGroupParamMetadata;
@@ -38,6 +37,7 @@ import cn.sl.ehub.service.vo.IotDeviceTypeParamMetadata;
 import cn.sl.ehub.service.vo.IotDeviceTypePointMetadata;
 import cn.sl.ehub.service.vo.IotGateway;
 import cn.sl.ehub.service.vo.IotOptionVO;
+import cn.sl.ehub.service.vo.SysDict;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
@@ -59,30 +59,18 @@ import java.util.stream.Collectors;
 public class IotDeviceManagementService {
 
     public static final String DEFAULT_DEVICE_GROUP_TYPE = "DEFAULT_GROUP";
-    public static final String DEFAULT_DEVICE_GROUP_TYPE_NAME = "默认设备组";
     public static final String DEFAULT_DEVICE_GROUP_NAME = "默认设备组";
     public static final String DEFAULT_GATEWAY_CODE_PREFIX = "GW";
     public static final String DEFAULT_GATEWAY_NAME = "默认网关";
     public static final String DEFAULT_DEVICE_SOURCE_CODE = "DEFAULT_API";
     public static final String READ_ONLY = "readOnly";
-
-    private static final List<IotOptionVO> DEVICE_TYPES = Collections.unmodifiableList(Arrays.asList(
-            new IotOptionVO("ENERGY_STORAGE", "储能设备"),
-            new IotOptionVO("AIR_CONDITIONER", "空调设备"),
-            new IotOptionVO("CHILLER", "冷机设备"),
-            new IotOptionVO("METER", "电表设备")
-    ));
+    private static final String DICT_DEVICE_TYPE = "device_type";
+    private static final String DICT_DEVICE_GROUP_TYPE = "device_group_type";
 
     private static final List<IotOptionVO> COMMUNICATION_METHODS = Collections.unmodifiableList(Arrays.asList(
             new IotOptionVO("third_party", "第三方接入"),
             new IotOptionVO("4g_gateway", "4G网关"),
             new IotOptionVO("4g_direct", "4G直连")
-    ));
-
-    private static final List<IotOptionVO> DEVICE_GROUP_TYPES = Collections.unmodifiableList(Arrays.asList(
-            new IotOptionVO("ENERGY_STORAGE", "储能设备组"),
-            new IotOptionVO("AIR_CONDITIONER", "空调设备组"),
-            new IotOptionVO("CHILLER", "冷机设备组")
     ));
 
     private static final List<IotOptionVO> ENERGY_TYPES = Collections.unmodifiableList(Arrays.asList(
@@ -114,7 +102,7 @@ public class IotDeviceManagementService {
     private final IotDevicePointDefinitionMapper iotDevicePointDefinitionMapper;
     private final IotDeviceTypeParamMetadataMapper iotDeviceTypeParamMetadataMapper;
     private final IotDeviceTypePointMetadataMapper iotDeviceTypePointMetadataMapper;
-    private final IotDeviceExternalRefMapper iotDeviceExternalRefMapper;
+    private final SysDictMapper sysDictMapper;
 
     public IotDeviceManagementService(IotDeviceGroupMapper iotDeviceGroupMapper,
                                       IotDeviceGroupParamMapper iotDeviceGroupParamMapper,
@@ -129,7 +117,7 @@ public class IotDeviceManagementService {
                                       IotDevicePointDefinitionMapper iotDevicePointDefinitionMapper,
                                       IotDeviceTypeParamMetadataMapper iotDeviceTypeParamMetadataMapper,
                                       IotDeviceTypePointMetadataMapper iotDeviceTypePointMetadataMapper,
-                                      IotDeviceExternalRefMapper iotDeviceExternalRefMapper) {
+                                      SysDictMapper sysDictMapper) {
         this.iotDeviceGroupMapper = iotDeviceGroupMapper;
         this.iotDeviceGroupParamMapper = iotDeviceGroupParamMapper;
         this.iotDeviceGroupParamMetadataMapper = iotDeviceGroupParamMetadataMapper;
@@ -143,11 +131,11 @@ public class IotDeviceManagementService {
         this.iotDevicePointDefinitionMapper = iotDevicePointDefinitionMapper;
         this.iotDeviceTypeParamMetadataMapper = iotDeviceTypeParamMetadataMapper;
         this.iotDeviceTypePointMetadataMapper = iotDeviceTypePointMetadataMapper;
-        this.iotDeviceExternalRefMapper = iotDeviceExternalRefMapper;
+        this.sysDictMapper = sysDictMapper;
     }
 
     public List<IotOptionVO> listDeviceTypes() {
-        return DEVICE_TYPES;
+        return listDictOptions(DICT_DEVICE_TYPE);
     }
 
     public List<IotOptionVO> listCommunicationMethods() {
@@ -155,7 +143,7 @@ public class IotDeviceManagementService {
     }
 
     public List<IotOptionVO> listDeviceGroupTypes() {
-        return DEVICE_GROUP_TYPES;
+        return listDictOptions(DICT_DEVICE_GROUP_TYPE);
     }
 
     public List<IotOptionVO> listEnergyTypes() {
@@ -168,6 +156,46 @@ public class IotDeviceManagementService {
 
     public List<IotOptionVO> listThirdPartyApis() {
         return THIRD_PARTY_APIS;
+    }
+
+    private List<IotOptionVO> listDictOptions(String dictTypeCode) {
+        if (StringUtils.isBlank(dictTypeCode)) {
+            return Collections.emptyList();
+        }
+        Example example = new Example(SysDict.class);
+        example.createCriteria()
+                .andEqualTo("dictTypeCode", StringUtils.trim(dictTypeCode))
+                .andEqualTo("deleted", 0);
+        example.orderBy("sort").asc();
+        example.orderBy("id").asc();
+        Map<String, IotOptionVO> optionMap = new LinkedHashMap<>();
+        for (SysDict item : sysDictMapper.selectByExample(example)) {
+            String dictCode = StringUtils.trimToNull(item.getDictCode());
+            if (dictCode == null || optionMap.containsKey(dictCode)) {
+                continue;
+            }
+            optionMap.put(dictCode, new IotOptionVO(dictCode,
+                    StringUtils.defaultIfBlank(StringUtils.trimToNull(item.getDictValue()), dictCode)));
+        }
+        return new ArrayList<>(optionMap.values());
+    }
+
+    private String resolveDictValue(String dictTypeCode, String dictCode) {
+        if (StringUtils.isBlank(dictTypeCode) || StringUtils.isBlank(dictCode)) {
+            return null;
+        }
+        Example example = new Example(SysDict.class);
+        example.createCriteria()
+                .andEqualTo("dictTypeCode", StringUtils.trim(dictTypeCode))
+                .andEqualTo("dictCode", StringUtils.trim(dictCode))
+                .andEqualTo("deleted", 0);
+        example.orderBy("sort").asc();
+        example.orderBy("id").asc();
+        List<SysDict> list = sysDictMapper.selectByExample(example);
+        if (list.isEmpty()) {
+            return null;
+        }
+        return StringUtils.trimToNull(list.get(0).getDictValue());
     }
 
     public List<IotGateway> listGateways(String aggregatorId, String entId) {
@@ -223,13 +251,12 @@ public class IotDeviceManagementService {
         validateDeviceGroupReq(req);
         IotGateway gateway = ensureGatewayRequired(req.getAggregatorId(), req.getEntId(), req.getGatewayId());
         IotDeviceGroup group = new IotDeviceGroup();
-        group.setTenantId(parseTenantId(req.getEntId()));
         group.setAggregatorId(StringUtils.trimToNull(req.getAggregatorId()));
         group.setEntId(StringUtils.trim(req.getEntId()));
         group.setDeviceGroupCode(generateDeviceGroupCode(group.getEntId(), req.getDeviceGroupType()));
         group.setDeviceGroupName(StringUtils.trim(req.getDeviceGroupName()));
         group.setDeviceGroupType(StringUtils.trimToNull(req.getDeviceGroupType()));
-        group.setDeviceGroupTypeName(resolveDeviceGroupTypeName(req.getDeviceGroupType(), req.getDeviceGroupTypeName()));
+        group.setDeviceGroupTypeName(resolveDeviceGroupTypeName(req.getDeviceGroupType()));
         group.setEnergyType(StringUtils.trimToNull(req.getEnergyType()));
         group.setGatewayId(gateway.getId());
         group.setVirtualFlag(0);
@@ -240,8 +267,8 @@ public class IotDeviceManagementService {
         group.setCreateTime(now);
         group.setUpdateTime(now);
         iotDeviceGroupMapper.insertSelective(group);
-        saveDeviceGroupParams(group.getId(), group.getTenantId(), req.getParamList());
-        saveDeviceGroupPoints(group.getId(), group.getTenantId(), req.getPointList());
+        saveDeviceGroupParams(group.getId(), req.getParamList());
+        saveDeviceGroupPoints(group.getId(), req.getPointList());
         return getDeviceGroup(group.getId());
     }
 
@@ -255,14 +282,14 @@ public class IotDeviceManagementService {
                 req.getGatewayId());
         group.setDeviceGroupName(StringUtils.trim(req.getDeviceGroupName()));
         group.setDeviceGroupType(StringUtils.defaultIfBlank(req.getDeviceGroupType(), group.getDeviceGroupType()));
-        group.setDeviceGroupTypeName(resolveDeviceGroupTypeName(group.getDeviceGroupType(), req.getDeviceGroupTypeName()));
+        group.setDeviceGroupTypeName(resolveDeviceGroupTypeName(group.getDeviceGroupType()));
         group.setEnergyType(req.getEnergyType() == null ? group.getEnergyType() : StringUtils.trimToNull(req.getEnergyType()));
         group.setGatewayId(gateway.getId());
         group.setRemark(req.getRemark() == null ? group.getRemark() : StringUtils.trimToNull(req.getRemark()));
         group.setUpdateTime(new Date());
         iotDeviceGroupMapper.updateByPrimaryKeySelective(group);
-        replaceDeviceGroupParams(group.getId(), group.getTenantId(), req.getParamList());
-        replaceDeviceGroupPoints(group.getId(), group.getTenantId(), req.getPointList());
+        replaceDeviceGroupParams(group.getId(), req.getParamList());
+        replaceDeviceGroupPoints(group.getId(), req.getPointList());
         return getDeviceGroup(group.getId());
     }
 
@@ -306,6 +333,77 @@ public class IotDeviceManagementService {
         return list;
     }
 
+    public List<IotDevice> listDeviceOptions(String aggregatorId, String entId) {
+        if (StringUtils.isBlank(entId)) {
+            return Collections.emptyList();
+        }
+        Example example = new Example(IotDevice.class);
+        Example.Criteria criteria = example.createCriteria();
+        criteria.andEqualTo("entId", StringUtils.trim(entId));
+        criteria.andEqualTo("deleted", 0);
+        criteria.andEqualTo("status", 1);
+        if (StringUtils.isNotBlank(aggregatorId)) {
+            criteria.andEqualTo("aggregatorId", StringUtils.trim(aggregatorId));
+        }
+        example.orderBy("id").desc();
+        List<IotDevice> list = iotDeviceMapper.selectByExample(example);
+        fillDevices(list);
+        return list;
+    }
+
+    public IotDevice getDeviceByIdOrCode(String aggregatorId, String entId, String idOrCode) {
+        if (StringUtils.isBlank(idOrCode)) {
+            return null;
+        }
+        IotDevice device = null;
+        String value = StringUtils.trim(idOrCode);
+        if (StringUtils.isNumeric(value)) {
+            try {
+                device = iotDeviceMapper.selectByPrimaryKey(Long.valueOf(value));
+                if (!isDeviceInScope(device, aggregatorId, entId)) {
+                    device = null;
+                }
+            } catch (NumberFormatException ignored) {
+                device = null;
+            }
+        }
+        if (device == null) {
+            Example example = new Example(IotDevice.class);
+            Example.Criteria criteria = example.createCriteria();
+            criteria.andEqualTo("deviceCode", value);
+            criteria.andEqualTo("deleted", 0);
+            if (StringUtils.isNotBlank(entId)) {
+                criteria.andEqualTo("entId", StringUtils.trim(entId));
+            }
+            if (StringUtils.isNotBlank(aggregatorId)) {
+                criteria.andEqualTo("aggregatorId", StringUtils.trim(aggregatorId));
+            }
+            List<IotDevice> list = iotDeviceMapper.selectByExample(example);
+            device = list.isEmpty() ? null : list.get(0);
+        }
+        if (device == null || Integer.valueOf(1).equals(device.getDeleted())) {
+            return null;
+        }
+        if (!isDeviceInScope(device, aggregatorId, entId)) {
+            return null;
+        }
+        fillDevice(device);
+        return device;
+    }
+
+    private boolean isDeviceInScope(IotDevice device, String aggregatorId, String entId) {
+        if (device == null || Integer.valueOf(1).equals(device.getDeleted())) {
+            return false;
+        }
+        if (Integer.valueOf(0).equals(device.getStatus())) {
+            return false;
+        }
+        if (StringUtils.isNotBlank(entId) && !StringUtils.equals(StringUtils.trim(entId), device.getEntId())) {
+            return false;
+        }
+        return StringUtils.isBlank(aggregatorId) || StringUtils.equals(StringUtils.trim(aggregatorId), device.getAggregatorId());
+    }
+
     public IotDevice getManagedDevice(Long id) {
         IotDevice device = iotDeviceMapper.selectByPrimaryKey(id);
         if (device == null || Integer.valueOf(1).equals(device.getDeleted())) {
@@ -345,7 +443,6 @@ public class IotDeviceManagementService {
         IotDeviceGroup group = ensureDeviceGroupRequired(req.getAggregatorId(), req.getEntId(), req.getDeviceGroupId());
         IotGateway gateway = resolveGatewayForDevice(req, group);
         IotDevice device = new IotDevice();
-        device.setTenantId(parseTenantId(req.getEntId()));
         device.setAggregatorId(StringUtils.trimToNull(req.getAggregatorId()));
         device.setEntId(StringUtils.trim(req.getEntId()));
         device.setProjectId(StringUtils.trimToNull(req.getProjectId()));
@@ -354,12 +451,13 @@ public class IotDeviceManagementService {
         device.setDeviceCode(resolveDeviceCode(req.getEntId(), req.getDeviceTypeCode(), req.getDeviceCode(), null));
         device.setDeviceName(StringUtils.trim(req.getDeviceName()));
         device.setDeviceTypeCode(StringUtils.trimToNull(req.getDeviceTypeCode()));
-        device.setDeviceTypeName(resolveDeviceTypeName(req.getDeviceTypeCode(), req.getDeviceTypeName()));
+        device.setDeviceTypeName(resolveDeviceTypeName(req.getDeviceTypeCode()));
         device.setCommunicationMethod(StringUtils.trimToNull(req.getCommunicationMethod()));
         device.setManufacturer(StringUtils.trimToNull(req.getManufacturer()));
         device.setModel(StringUtils.trimToNull(req.getModel()));
         device.setThirdPartyApi(StringUtils.trimToNull(req.getThirdPartyApi()));
         device.setThirdPartyCode(StringUtils.trimToNull(req.getThirdPartyCode()));
+        validateThirdPartyDeviceUnique(device.getEntId(), device.getThirdPartyApi(), device.getThirdPartyCode(), null);
         device.setStatus(1);
         device.setAssetStatus(req.getAssetStatus() == null ? 1 : req.getAssetStatus());
         device.setOnlineStatus(req.getOnlineStatus() == null ? 0 : req.getOnlineStatus());
@@ -369,13 +467,12 @@ public class IotDeviceManagementService {
         device.setCreateTime(now);
         device.setUpdateTime(now);
         iotDeviceMapper.insertSelective(device);
-        replaceDeviceParams(device.getId(), device.getTenantId(), req.getParamList());
+        replaceDeviceParams(device.getId(), req.getParamList());
         if (req.getPointList() != null) {
-            replaceDevicePoints(device.getId(), device.getTenantId(), req.getPointList(), group.getId());
+            replaceDevicePoints(device.getId(), req.getPointList(), group.getId());
         } else {
-            copyDevicePointsFromGroup(device.getId(), device.getTenantId(), group.getId());
+            copyDevicePointsFromGroup(device.getId(), group.getId());
         }
-        bindGatewayAndThirdParty(device.getId(), gateway, req);
         return getManagedDevice(device.getId());
     }
 
@@ -396,21 +493,23 @@ public class IotDeviceManagementService {
                 StringUtils.defaultIfBlank(req.getDeviceCode(), device.getDeviceCode()), id));
         device.setDeviceName(StringUtils.defaultIfBlank(req.getDeviceName(), device.getDeviceName()));
         device.setDeviceTypeCode(StringUtils.defaultIfBlank(req.getDeviceTypeCode(), device.getDeviceTypeCode()));
-        device.setDeviceTypeName(resolveDeviceTypeName(device.getDeviceTypeCode(), req.getDeviceTypeName()));
+        device.setDeviceTypeName(resolveDeviceTypeName(device.getDeviceTypeCode()));
         device.setCommunicationMethod(req.getCommunicationMethod() == null ? device.getCommunicationMethod() : StringUtils.trimToNull(req.getCommunicationMethod()));
         device.setManufacturer(req.getManufacturer() == null ? device.getManufacturer() : StringUtils.trimToNull(req.getManufacturer()));
         device.setModel(req.getModel() == null ? device.getModel() : StringUtils.trimToNull(req.getModel()));
-        device.setThirdPartyApi(req.getThirdPartyApi() == null ? device.getThirdPartyApi() : StringUtils.trimToNull(req.getThirdPartyApi()));
-        device.setThirdPartyCode(req.getThirdPartyCode() == null ? device.getThirdPartyCode() : StringUtils.trimToNull(req.getThirdPartyCode()));
+        String thirdPartyApi = req.getThirdPartyApi() == null ? device.getThirdPartyApi() : StringUtils.trimToNull(req.getThirdPartyApi());
+        String thirdPartyCode = req.getThirdPartyCode() == null ? device.getThirdPartyCode() : StringUtils.trimToNull(req.getThirdPartyCode());
+        validateThirdPartyDeviceUnique(device.getEntId(), thirdPartyApi, thirdPartyCode, id);
+        device.setThirdPartyApi(thirdPartyApi);
+        device.setThirdPartyCode(thirdPartyCode);
         device.setAssetStatus(req.getAssetStatus() == null ? device.getAssetStatus() : req.getAssetStatus());
         device.setOnlineStatus(req.getOnlineStatus() == null ? device.getOnlineStatus() : req.getOnlineStatus());
         device.setRemark(req.getRemark() == null ? device.getRemark() : StringUtils.trimToNull(req.getRemark()));
         device.setUpdateTime(new Date());
         iotDeviceMapper.updateByPrimaryKeySelective(device);
         if (req.getParamList() != null) {
-            replaceDeviceParams(device.getId(), device.getTenantId(), req.getParamList());
+            replaceDeviceParams(device.getId(), req.getParamList());
         }
-        bindGatewayAndThirdParty(device.getId(), gateway, req);
         return getManagedDevice(device.getId());
     }
 
@@ -476,13 +575,13 @@ public class IotDeviceManagementService {
             if (existsPointCode(deviceId, req.getPropertyCode(), null)) {
                 continue;
             }
-            IotDevicePoint point = buildPoint(deviceId, device.getTenantId(), req);
+            validateThirdPartyPointUnique(deviceId, req.getThirdPartyCode(), null);
+            IotDevicePoint point = buildPoint(deviceId, req);
             Date now = new Date();
             point.setCreateTime(now);
             point.setUpdateTime(now);
             iotDevicePointMapper.insertSelective(point);
         }
-        syncThirdPartyCodesFromDevice(device);
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -509,7 +608,6 @@ public class IotDeviceManagementService {
         IotDevicePoint point = requireDevicePoint(devicePointId);
         validatePointDefinitionReq(req);
         IotDevicePointDefinition definition = new IotDevicePointDefinition();
-        definition.setTenantId(point.getTenantId());
         definition.setDevicePointId(devicePointId);
         definition.setValue(StringUtils.trim(req.getValue()));
         definition.setDescription(StringUtils.trimToNull(req.getDescription()));
@@ -573,7 +671,6 @@ public class IotDeviceManagementService {
         IotDeviceGroupPoint point = requireDeviceGroupPoint(deviceGroupPointId);
         validatePointDefinitionReq(req);
         IotDeviceGroupPointDefinition definition = new IotDeviceGroupPointDefinition();
-        definition.setTenantId(point.getTenantId());
         definition.setDeviceGroupPointId(deviceGroupPointId);
         definition.setValue(StringUtils.trim(req.getValue()));
         definition.setDescription(StringUtils.trimToNull(req.getDescription()));
@@ -626,15 +723,16 @@ public class IotDeviceManagementService {
             return Collections.emptyList();
         }
         Example example = new Example(IotDeviceTypePointMetadata.class);
-        example.createCriteria().andEqualTo("deviceTypeCode", StringUtils.trim(deviceTypeCode));
+        example.createCriteria()
+                .andEqualTo("deviceTypeCode", StringUtils.trim(deviceTypeCode))
+                .andEqualTo("deleted", 0);
         example.orderBy("sort").asc();
-        List<IotDeviceTypePointMetadata> list = iotDeviceTypePointMetadataMapper.selectByExample(example);
-        return list.isEmpty() ? defaultDevicePointMetadata(deviceTypeCode) : list;
+        return iotDeviceTypePointMetadataMapper.selectByExample(example);
     }
 
     public List<IotDeviceTypePointMetadata> listDeviceGroupPointMetadata(String deviceGroupType) {
         if (StringUtils.isBlank(deviceGroupType)) {
-            return defaultDevicePointMetadata();
+            return Collections.emptyList();
         }
         Example example = new Example(IotDeviceGroupPointMetadata.class);
         example.createCriteria()
@@ -642,12 +740,21 @@ public class IotDeviceManagementService {
                 .andEqualTo("deleted", 0);
         example.orderBy("sort").asc();
         List<IotDeviceGroupPointMetadata> list = iotDeviceGroupPointMetadataMapper.selectByExample(example);
-        if (list.isEmpty()) {
-            return defaultDevicePointMetadata(deviceGroupType);
-        }
         return list.stream()
                 .map(this::toDeviceTypePointMetadata)
                 .collect(Collectors.toList());
+    }
+
+    public List<IotDeviceGroupPointMetadata> listDeviceGroupPointMetadataRaw(String deviceGroupType) {
+        if (StringUtils.isBlank(deviceGroupType)) {
+            return Collections.emptyList();
+        }
+        Example example = new Example(IotDeviceGroupPointMetadata.class);
+        example.createCriteria()
+                .andEqualTo("deviceGroupType", StringUtils.trim(deviceGroupType))
+                .andEqualTo("deleted", 0);
+        example.orderBy("sort").asc();
+        return iotDeviceGroupPointMetadataMapper.selectByExample(example);
     }
 
     public List<IotDeviceGroupParam> listDeviceGroupParamMetadata() {
@@ -676,6 +783,7 @@ public class IotDeviceManagementService {
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList()));
         for (IotDeviceGroup group : groups) {
+            group.setDeviceGroupTypeName(resolveDeviceGroupTypeName(group.getDeviceGroupType()));
             group.setGatewayName(gatewayMap.get(group.getGatewayId()));
             group.setDeviceCount(deviceCountMap.getOrDefault(group.getId(), 0));
         }
@@ -701,6 +809,7 @@ public class IotDeviceManagementService {
         Map<Long, List<IotDeviceParam>> paramMap = listDeviceParams(deviceIds);
         Map<Long, String> gatewayNameMap = resolveGatewayNameByDeviceIds(deviceIds);
         for (IotDevice device : devices) {
+            device.setDeviceTypeName(resolveDeviceTypeName(device.getDeviceTypeCode()));
             device.setDeviceGroupName(groupNameMap.get(device.getDeviceGroupId()));
             device.setParamList(paramMap.getOrDefault(device.getId(), Collections.emptyList()));
             device.setGatewayName(gatewayNameMap.get(device.getId()));
@@ -813,30 +922,6 @@ public class IotDeviceManagementService {
         if (missingDeviceIds.isEmpty()) {
             return result;
         }
-        Example example = new Example(IotDeviceExternalRef.class);
-        example.createCriteria().andIn("deviceId", missingDeviceIds);
-        List<IotDeviceExternalRef> refs = iotDeviceExternalRefMapper.selectByExample(example);
-        if (refs.isEmpty()) {
-            return result;
-        }
-        List<String> gatewayCodes = refs.stream()
-                .map(IotDeviceExternalRef::getGatewayCode)
-                .filter(StringUtils::isNotBlank)
-                .distinct()
-                .collect(Collectors.toList());
-        if (gatewayCodes.isEmpty()) {
-            return result;
-        }
-        Example gatewayExample = new Example(IotGateway.class);
-        gatewayExample.createCriteria().andIn("gatewayCode", gatewayCodes);
-        Map<String, Long> codeIdMap = iotGatewayMapper.selectByExample(gatewayExample).stream()
-                .collect(Collectors.toMap(IotGateway::getGatewayCode, IotGateway::getId, (a, b) -> a));
-        for (IotDeviceExternalRef ref : refs) {
-            Long gatewayId = codeIdMap.get(ref.getGatewayCode());
-            if (gatewayId != null) {
-                result.putIfAbsent(ref.getDeviceId(), gatewayId);
-            }
-        }
         return result;
     }
 
@@ -852,13 +937,12 @@ public class IotDeviceManagementService {
         }
         IotGateway gateway = ensureDefaultGateway(aggregatorId, entId);
         IotDeviceGroup group = new IotDeviceGroup();
-        group.setTenantId(parseTenantId(entId));
         group.setAggregatorId(StringUtils.trimToNull(aggregatorId));
         group.setEntId(StringUtils.trim(entId));
         group.setDeviceGroupCode(generateDeviceGroupCode(entId, DEFAULT_DEVICE_GROUP_TYPE));
         group.setDeviceGroupName(DEFAULT_DEVICE_GROUP_NAME);
         group.setDeviceGroupType(DEFAULT_DEVICE_GROUP_TYPE);
-        group.setDeviceGroupTypeName(DEFAULT_DEVICE_GROUP_TYPE_NAME);
+        group.setDeviceGroupTypeName(resolveDeviceGroupTypeName(DEFAULT_DEVICE_GROUP_TYPE));
         group.setGatewayId(gateway.getId());
         group.setVirtualFlag(1);
         group.setStatus(1);
@@ -867,8 +951,8 @@ public class IotDeviceManagementService {
         group.setCreateTime(now);
         group.setUpdateTime(now);
         iotDeviceGroupMapper.insertSelective(group);
-        saveDeviceGroupParams(group.getId(), group.getTenantId(), defaultDeviceGroupParamReqs());
-        saveDeviceGroupPoints(group.getId(), group.getTenantId(), defaultDeviceGroupPointReqs());
+        saveDeviceGroupParams(group.getId(), defaultDeviceGroupParamReqs());
+        saveDeviceGroupPoints(group.getId(), defaultDeviceGroupPointReqs());
         return group;
     }
 
@@ -883,7 +967,6 @@ public class IotDeviceManagementService {
             return gateways.get(0);
         }
         IotGateway gateway = new IotGateway();
-        gateway.setTenantId(parseTenantId(entId));
         gateway.setAggregatorId(StringUtils.trimToNull(aggregatorId));
         gateway.setEntId(StringUtils.trim(entId));
         gateway.setGatewayCode(generateGatewayCode(entId));
@@ -979,14 +1062,14 @@ public class IotDeviceManagementService {
         return definition;
     }
 
-    private void replaceDeviceGroupParams(Long groupId, Long tenantId, List<IotDeviceGroupParamSaveReq> reqList) {
+    private void replaceDeviceGroupParams(Long groupId, List<IotDeviceGroupParamSaveReq> reqList) {
         Example example = new Example(IotDeviceGroupParam.class);
         example.createCriteria().andEqualTo("deviceGroupId", groupId);
         iotDeviceGroupParamMapper.deleteByExample(example);
-        saveDeviceGroupParams(groupId, tenantId, reqList);
+        saveDeviceGroupParams(groupId, reqList);
     }
 
-    private void saveDeviceGroupParams(Long groupId, Long tenantId, List<IotDeviceGroupParamSaveReq> reqList) {
+    private void saveDeviceGroupParams(Long groupId, List<IotDeviceGroupParamSaveReq> reqList) {
         if (CollectionUtils.isEmpty(reqList)) {
             return;
         }
@@ -996,7 +1079,6 @@ public class IotDeviceManagementService {
                 continue;
             }
             IotDeviceGroupParam param = new IotDeviceGroupParam();
-            param.setTenantId(tenantId);
             param.setDeviceGroupId(groupId);
             param.setAttrCode(StringUtils.trim(req.getAttrCode()));
             param.setAttrName(StringUtils.trim(req.getAttrName()));
@@ -1013,7 +1095,7 @@ public class IotDeviceManagementService {
         }
     }
 
-    private void replaceDeviceGroupPoints(Long groupId, Long tenantId, List<IotDeviceGroupPointSaveReq> reqList) {
+    private void replaceDeviceGroupPoints(Long groupId, List<IotDeviceGroupPointSaveReq> reqList) {
         Example example = new Example(IotDeviceGroupPoint.class);
         example.createCriteria().andEqualTo("deviceGroupId", groupId);
         List<IotDeviceGroupPoint> oldPoints = iotDeviceGroupPointMapper.selectByExample(example);
@@ -1026,10 +1108,10 @@ public class IotDeviceManagementService {
             }
         }
         iotDeviceGroupPointMapper.deleteByExample(example);
-        saveDeviceGroupPoints(groupId, tenantId, reqList);
+        saveDeviceGroupPoints(groupId, reqList);
     }
 
-    private void saveDeviceGroupPoints(Long groupId, Long tenantId, List<IotDeviceGroupPointSaveReq> reqList) {
+    private void saveDeviceGroupPoints(Long groupId, List<IotDeviceGroupPointSaveReq> reqList) {
         if (CollectionUtils.isEmpty(reqList)) {
             return;
         }
@@ -1040,7 +1122,6 @@ public class IotDeviceManagementService {
                 continue;
             }
             IotDeviceGroupPoint point = new IotDeviceGroupPoint();
-            point.setTenantId(tenantId);
             point.setDeviceGroupId(groupId);
             point.setPropertyCode(StringUtils.trim(req.getPropertyCode()));
             point.setPropertyName(StringUtils.trim(req.getPropertyName()));
@@ -1063,7 +1144,7 @@ public class IotDeviceManagementService {
         }
     }
 
-    private void replaceDeviceParams(Long deviceId, Long tenantId, List<IotDeviceParamSaveReq> reqList) {
+    private void replaceDeviceParams(Long deviceId, List<IotDeviceParamSaveReq> reqList) {
         Example example = new Example(IotDeviceParam.class);
         example.createCriteria().andEqualTo("deviceId", deviceId);
         iotDeviceParamMapper.deleteByExample(example);
@@ -1076,7 +1157,6 @@ public class IotDeviceManagementService {
                 continue;
             }
             IotDeviceParam param = new IotDeviceParam();
-            param.setTenantId(req.getTenantId() == null ? tenantId : req.getTenantId());
             param.setDeviceId(deviceId);
             param.setAttrCode(StringUtils.trim(req.getAttrCode()));
             param.setAttrName(StringUtils.defaultIfBlank(StringUtils.trimToNull(req.getAttrName()), param.getAttrCode()));
@@ -1093,7 +1173,7 @@ public class IotDeviceManagementService {
         }
     }
 
-    private void replaceDevicePoints(Long deviceId, Long tenantId, List<IotDevicePointSaveReq> reqList, Long groupId) {
+    private void replaceDevicePoints(Long deviceId, List<IotDevicePointSaveReq> reqList, Long groupId) {
         Example example = new Example(IotDevicePoint.class);
         example.createCriteria().andEqualTo("deviceId", deviceId);
         List<IotDevicePoint> oldPoints = iotDevicePointMapper.selectByExample(example);
@@ -1110,18 +1190,26 @@ public class IotDeviceManagementService {
             return;
         }
         Date now = new Date();
+        List<String> thirdPartyCodes = new ArrayList<>();
         for (IotDevicePointSaveReq req : reqList) {
             if (req == null || StringUtils.isBlank(req.getPropertyCode()) || StringUtils.isBlank(req.getPropertyName())) {
                 continue;
             }
-            IotDevicePoint point = buildPoint(deviceId, tenantId, req);
+            String thirdPartyCode = StringUtils.trimToNull(req.getThirdPartyCode());
+            if (StringUtils.isNotBlank(thirdPartyCode)) {
+                if (thirdPartyCodes.contains(thirdPartyCode)) {
+                    throwParam("测点第三方标识在当前设备下已存在");
+                }
+                thirdPartyCodes.add(thirdPartyCode);
+            }
+            IotDevicePoint point = buildPoint(deviceId, req);
             point.setCreateTime(now);
             point.setUpdateTime(now);
             iotDevicePointMapper.insertSelective(point);
         }
     }
 
-    private void copyDevicePointsFromGroup(Long deviceId, Long tenantId, Long groupId) {
+    private void copyDevicePointsFromGroup(Long deviceId, Long groupId) {
         if (groupId == null) {
             return;
         }
@@ -1135,7 +1223,6 @@ public class IotDeviceManagementService {
                 continue;
             }
             IotDevicePoint point = new IotDevicePoint();
-            point.setTenantId(tenantId);
             point.setDeviceId(deviceId);
             point.setPropertyCode(groupPoint.getPropertyCode());
             point.setPropertyName(groupPoint.getPropertyName());
@@ -1160,9 +1247,8 @@ public class IotDeviceManagementService {
         }
     }
 
-    private IotDevicePoint buildPoint(Long deviceId, Long tenantId, IotDevicePointSaveReq req) {
+    private IotDevicePoint buildPoint(Long deviceId, IotDevicePointSaveReq req) {
         IotDevicePoint point = new IotDevicePoint();
-        point.setTenantId(req.getTenantId() == null ? tenantId : req.getTenantId());
         point.setDeviceId(deviceId);
         point.setPropertyCode(StringUtils.trim(req.getPropertyCode()));
         point.setPropertyName(StringUtils.trim(req.getPropertyName()));
@@ -1187,55 +1273,6 @@ public class IotDeviceManagementService {
         point.setSort(req.getSort() == null ? 0 : req.getSort());
         point.setRemark(StringUtils.trimToNull(req.getRemark()));
         return point;
-    }
-
-    private void bindGatewayAndThirdParty(Long deviceId, IotGateway gateway, IotDeviceSaveReq req) {
-        Example example = new Example(IotDeviceExternalRef.class);
-        example.createCriteria().andEqualTo("deviceId", deviceId);
-        List<IotDeviceExternalRef> refs = iotDeviceExternalRefMapper.selectByExample(example);
-        IotDeviceExternalRef ref = refs.isEmpty() ? new IotDeviceExternalRef() : refs.get(0);
-        if (refs.isEmpty()) {
-            ref.setDeviceId(deviceId);
-            ref.setSourceCode(StringUtils.defaultIfBlank(req.getThirdPartyApi(), DEFAULT_DEVICE_SOURCE_CODE));
-            ref.setEntId(StringUtils.trim(req.getEntId()));
-            ref.setProjectId(StringUtils.trimToNull(req.getProjectId()));
-            ref.setExternalDeviceId(StringUtils.defaultIfBlank(StringUtils.trimToNull(req.getThirdPartyCode()), "DEVICE_" + deviceId));
-            ref.setExternalDeviceCode(StringUtils.trimToNull(req.getThirdPartyCode()));
-            ref.setExternalDeviceName(StringUtils.trimToNull(req.getDeviceName()));
-            ref.setStatus(1);
-            ref.setCreateTime(new Date());
-        } else {
-            ref.setSourceCode(StringUtils.defaultIfBlank(StringUtils.trimToNull(req.getThirdPartyApi()), ref.getSourceCode()));
-            ref.setExternalDeviceId(StringUtils.defaultIfBlank(StringUtils.trimToNull(req.getThirdPartyCode()), ref.getExternalDeviceId()));
-            ref.setExternalDeviceCode(req.getThirdPartyCode() == null ? ref.getExternalDeviceCode() : StringUtils.trimToNull(req.getThirdPartyCode()));
-            ref.setExternalDeviceName(StringUtils.defaultIfBlank(StringUtils.trimToNull(req.getDeviceName()), ref.getExternalDeviceName()));
-            ref.setProjectId(req.getProjectId() == null ? ref.getProjectId() : StringUtils.trimToNull(req.getProjectId()));
-        }
-        ref.setGatewayCode(gateway.getGatewayCode());
-        ref.setUpdateTime(new Date());
-        if (refs.isEmpty()) {
-            iotDeviceExternalRefMapper.insertSelective(ref);
-        } else {
-            iotDeviceExternalRefMapper.updateByPrimaryKeySelective(ref);
-        }
-    }
-
-    private void syncThirdPartyCodesFromDevice(IotDevice device) {
-        if (device == null || device.getId() == null) {
-            return;
-        }
-        Example example = new Example(IotDeviceExternalRef.class);
-        example.createCriteria().andEqualTo("deviceId", device.getId());
-        List<IotDeviceExternalRef> refs = iotDeviceExternalRefMapper.selectByExample(example);
-        if (refs.isEmpty()) {
-            return;
-        }
-        IotDeviceExternalRef ref = refs.get(0);
-        if (StringUtils.isBlank(ref.getExternalDeviceName())) {
-            ref.setExternalDeviceName(device.getDeviceName());
-            ref.setUpdateTime(new Date());
-            iotDeviceExternalRefMapper.updateByPrimaryKeySelective(ref);
-        }
     }
 
     private String resolveDeviceCode(String entId, String deviceTypeCode, String inputCode, Long excludeId) {
@@ -1264,6 +1301,24 @@ public class IotDeviceManagementService {
         return false;
     }
 
+    private void validateThirdPartyDeviceUnique(String entId, String thirdPartyApi, String thirdPartyCode, Long excludeId) {
+        if (StringUtils.isBlank(thirdPartyApi) || StringUtils.isBlank(thirdPartyCode)) {
+            return;
+        }
+        Example example = new Example(IotDevice.class);
+        example.createCriteria()
+                .andEqualTo("entId", entId)
+                .andEqualTo("thirdPartyApi", thirdPartyApi)
+                .andEqualTo("thirdPartyCode", thirdPartyCode)
+                .andEqualTo("deleted", 0);
+        List<IotDevice> list = iotDeviceMapper.selectByExample(example);
+        for (IotDevice item : list) {
+            if (excludeId == null || !excludeId.equals(item.getId())) {
+                throwParam("设备第三方标识在当前企业和第三方API下已存在");
+            }
+        }
+    }
+
     private boolean existsPointCode(Long deviceId, String pointCode, Long excludeId) {
         Example example = new Example(IotDevicePoint.class);
         example.createCriteria()
@@ -1277,6 +1332,23 @@ public class IotDeviceManagementService {
             }
         }
         return false;
+    }
+
+    private void validateThirdPartyPointUnique(Long deviceId, String thirdPartyCode, Long excludeId) {
+        if (StringUtils.isBlank(thirdPartyCode)) {
+            return;
+        }
+        Example example = new Example(IotDevicePoint.class);
+        example.createCriteria()
+                .andEqualTo("deviceId", deviceId)
+                .andEqualTo("thirdPartyCode", StringUtils.trim(thirdPartyCode))
+                .andEqualTo("deleted", 0);
+        List<IotDevicePoint> list = iotDevicePointMapper.selectByExample(example);
+        for (IotDevicePoint item : list) {
+            if (excludeId == null || !excludeId.equals(item.getId())) {
+                throwParam("测点第三方标识在当前设备下已存在");
+            }
+        }
     }
 
     private String generateDeviceGroupCode(String entId, String deviceGroupType) {
@@ -1336,26 +1408,12 @@ public class IotDeviceManagementService {
         return prefix;
     }
 
-    private String resolveDeviceTypeName(String deviceTypeCode, String currentName) {
-        if (StringUtils.isNotBlank(currentName)) {
-            return StringUtils.trim(currentName);
-        }
-        return DEVICE_TYPES.stream()
-                .filter(item -> StringUtils.equals(item.getValue(), deviceTypeCode))
-                .map(IotOptionVO::getLabel)
-                .findFirst()
-                .orElse(StringUtils.trimToNull(deviceTypeCode));
+    private String resolveDeviceTypeName(String deviceTypeCode) {
+        return StringUtils.defaultString(resolveDictValue(DICT_DEVICE_TYPE, deviceTypeCode));
     }
 
-    private String resolveDeviceGroupTypeName(String typeCode, String currentName) {
-        if (StringUtils.isNotBlank(currentName)) {
-            return StringUtils.trim(currentName);
-        }
-        return DEVICE_GROUP_TYPES.stream()
-                .filter(item -> StringUtils.equals(item.getValue(), typeCode))
-                .map(IotOptionVO::getLabel)
-                .findFirst()
-                .orElse(DEFAULT_DEVICE_GROUP_TYPE.equals(typeCode) ? DEFAULT_DEVICE_GROUP_TYPE_NAME : StringUtils.trimToNull(typeCode));
+    private String resolveDeviceGroupTypeName(String typeCode) {
+        return StringUtils.defaultString(resolveDictValue(DICT_DEVICE_GROUP_TYPE, typeCode));
     }
 
     private void validateDeviceGroupReq(IotDeviceGroupSaveReq req) {
@@ -1420,38 +1478,6 @@ public class IotDeviceManagementService {
         meta.setRequiredFlag(required);
         meta.setSort(sort);
         meta.setSampleValue(sample);
-        return meta;
-    }
-
-    private List<IotDeviceTypePointMetadata> defaultDevicePointMetadata() {
-        List<IotDeviceTypePointMetadata> list = new ArrayList<>();
-        list.add(pointMeta("active_power", "有功功率", "double", "数值", "double", "kW", 1));
-        list.add(pointMeta("reactive_power", "无功功率", "double", "数值", "double", "kVar", 2));
-        list.add(pointMeta("soc", "荷电状态", "double", "数值", "double", "%", 3));
-        list.add(pointMeta("status", "运行状态", "enum", "枚举", "string", null, 4));
-        return list;
-    }
-
-    private List<IotDeviceTypePointMetadata> defaultDevicePointMetadata(String deviceTypeCode) {
-        List<IotDeviceTypePointMetadata> list = defaultDevicePointMetadata();
-        String trimmedDeviceTypeCode = StringUtils.trimToNull(deviceTypeCode);
-        for (IotDeviceTypePointMetadata meta : list) {
-            meta.setDeviceTypeCode(trimmedDeviceTypeCode);
-        }
-        return list;
-    }
-
-    private IotDeviceTypePointMetadata pointMeta(String code, String name, String dataType,
-                                                 String dataTypeName, String valueType, String unit, int sort) {
-        IotDeviceTypePointMetadata meta = new IotDeviceTypePointMetadata();
-        meta.setPropertyCode(code);
-        meta.setPropertyName(name);
-        meta.setDataType(dataType);
-        meta.setDataTypeName(dataTypeName);
-        meta.setValueType(valueType);
-        meta.setUnit(unit);
-        meta.setReadWriteRole(READ_ONLY);
-        meta.setSort(sort);
         return meta;
     }
 

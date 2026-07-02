@@ -1,0 +1,339 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.sl.ehub.service.mapper.IotTelemetryQueryMapper">
+
+  <sql id="minuteDataWhere">
+    <where>
+      <if test="req.emptyScope != null and req.emptyScope">
+        AND 1 = 0
+      </if>
+      <if test="req.entId != null and req.entId != ''">
+        AND m.ent_id = #{req.entId}
+      </if>
+      <if test="req.aggregatorId != null and req.aggregatorId != ''">
+        AND m.aggregator_id = #{req.aggregatorId}
+      </if>
+      <if test="req.startTime != null and req.startTime != ''">
+        AND m.minute_time &gt;= #{req.startTime}
+      </if>
+      <if test="req.endTime != null and req.endTime != ''">
+        AND m.minute_time &lt;= #{req.endTime}
+      </if>
+      <if test="req.deviceIds != null and req.deviceIds.size() > 0">
+        AND m.device_id IN
+        <foreach collection="req.deviceIds" item="id" open="(" separator="," close=")">
+          #{id}
+        </foreach>
+      </if>
+      <if test="req.pointCodes != null and req.pointCodes.size() > 0">
+        AND m.point_code IN
+        <foreach collection="req.pointCodes" item="code" open="(" separator="," close=")">
+          #{code}
+        </foreach>
+      </if>
+    </where>
+  </sql>
+
+  <!-- 分钟粒度时序数据查询 -->
+  <select id="selectMinuteData" resultType="cn.sl.ehub.service.dto.iot.IotTelemetryDataResp">
+    SELECT
+      m.device_id AS deviceId,
+      m.device_code AS deviceCode,
+      d.device_name AS deviceName,
+      m.point_code AS pointCode,
+      p.property_name AS pointName,
+      m.unit AS unit,
+      m.data_time AS dataTime,
+      m.point_value AS value,
+      m.quality AS quality
+    FROM iot_telemetry_minute m
+    LEFT JOIN iot_device d ON m.device_id = d.id AND d.deleted = 0
+    LEFT JOIN iot_device_point p ON m.device_id = p.device_id
+      AND m.point_code = p.property_code AND p.deleted = 0
+    <include refid="minuteDataWhere"/>
+    ORDER BY m.device_id, m.point_code, m.minute_time
+    <if test="req.limit != null">
+      LIMIT #{req.limit}
+    </if>
+    <if test="req.offset != null">
+      OFFSET #{req.offset}
+    </if>
+  </select>
+
+  <!-- 分钟数据count（不带分页） -->
+  <select id="countMinuteData" resultType="java.lang.Long">
+    SELECT COUNT(1)
+    FROM iot_telemetry_minute m
+    <include refid="minuteDataWhere"/>
+  </select>
+
+  <!-- 小时/日聚合查询（实时计算） -->
+  <select id="selectMinuteAgg" resultType="cn.sl.ehub.service.dto.iot.IotTelemetryAggResp">
+    SELECT
+      x.device_id AS deviceId,
+      x.device_code AS deviceCode,
+      d.device_name AS deviceName,
+      x.point_code AS pointCode,
+      p.property_name AS pointName,
+      x.unit AS unit,
+      x.quality AS quality,
+      MIN(x.point_value) AS minValue,
+      MAX(x.point_value) AS maxValue,
+      AVG(x.point_value) AS avgValue,
+      SUM(x.point_value) AS sumValue,
+      COUNT(1) AS count,
+      x.bucket_start AS startTime,
+      <choose>
+        <when test="req.aggType == 'day'">
+          DATE_SUB(DATE_ADD(x.bucket_start, INTERVAL 1 DAY), INTERVAL 1 SECOND) AS endTime
+        </when>
+        <otherwise>
+          DATE_SUB(DATE_ADD(x.bucket_start, INTERVAL 1 HOUR), INTERVAL 1 SECOND) AS endTime
+        </otherwise>
+      </choose>
+    FROM (
+      SELECT
+        m.*,
+        <choose>
+          <when test="req.aggType == 'day'">
+            STR_TO_DATE(DATE_FORMAT(m.minute_time, '%Y-%m-%d 00:00:00'), '%Y-%m-%d %H:%i:%s')
+          </when>
+          <otherwise>
+            STR_TO_DATE(DATE_FORMAT(m.minute_time, '%Y-%m-%d %H:00:00'), '%Y-%m-%d %H:%i:%s')
+          </otherwise>
+        </choose>
+        AS bucket_start
+      FROM iot_telemetry_minute m
+      <include refid="minuteDataWhere"/>
+    ) x
+    LEFT JOIN iot_device d ON x.device_id = d.id AND d.deleted = 0
+    LEFT JOIN iot_device_point p ON x.device_id = p.device_id
+      AND x.point_code = p.property_code AND p.deleted = 0
+    GROUP BY x.device_id, x.device_code, d.device_name,
+             x.point_code, p.property_name, x.unit, x.quality, x.bucket_start
+    ORDER BY x.device_id, x.point_code, x.bucket_start
+    <if test="req.limit != null">
+      LIMIT #{req.limit}
+    </if>
+    <if test="req.offset != null">
+      OFFSET #{req.offset}
+    </if>
+  </select>
+
+  <!-- 小时/日聚合count（按设备、测点、质量、时间桶统计） -->
+  <select id="countMinuteAgg" resultType="java.lang.Long">
+    SELECT COUNT(1)
+    FROM (
+      SELECT
+        m.device_id,
+        m.device_code,
+        m.point_code,
+        m.unit,
+        m.quality,
+        <choose>
+          <when test="req.aggType == 'day'">
+            STR_TO_DATE(DATE_FORMAT(m.minute_time, '%Y-%m-%d 00:00:00'), '%Y-%m-%d %H:%i:%s')
+          </when>
+          <otherwise>
+            STR_TO_DATE(DATE_FORMAT(m.minute_time, '%Y-%m-%d %H:00:00'), '%Y-%m-%d %H:%i:%s')
+          </otherwise>
+        </choose>
+        AS bucket_start
+      FROM iot_telemetry_minute m
+      <include refid="minuteDataWhere"/>
+      GROUP BY m.device_id, m.device_code, m.point_code, m.unit, m.quality, bucket_start
+    ) c
+  </select>
+
+  <!-- 原始明细查询 -->
+  <select id="selectRawData" resultType="cn.sl.ehub.service.dto.iot.IotTelemetryRawResp">
+    SELECT
+      r.source_code AS sourceCode,
+      r.device_id AS deviceId,
+      r.external_device_id AS externalDeviceId,
+      r.external_metric AS externalMetric,
+      r.data_time AS dataTime,
+      r.raw_value AS rawValue,
+      r.receive_time AS receiveTime,
+      r.raw_payload AS rawPayload,
+      r.match_status AS matchStatus,
+      r.create_time AS createTime
+    FROM iot_telemetry_raw r
+    <where>
+      <if test="req.emptyScope != null and req.emptyScope">
+        AND 1 = 0
+      </if>
+      <if test="req.entId != null and req.entId != ''">
+        AND r.ent_id = #{req.entId}
+      </if>
+      <if test="req.entId == null or req.entId == ''">
+        <if test="req.aggregatorId != null and req.aggregatorId != ''">
+          AND r.ent_id IN (
+            SELECT e.ent_id
+            FROM aggregator_ent e
+            WHERE e.aggregator_id = #{req.aggregatorId}
+          )
+        </if>
+      </if>
+      <if test="req.deviceId != null">
+        AND r.device_id = #{req.deviceId}
+      </if>
+      <if test="req.deviceIds != null and req.deviceIds.size() > 0">
+        AND r.device_id IN
+        <foreach collection="req.deviceIds" item="id" open="(" separator="," close=")">
+          #{id}
+        </foreach>
+      </if>
+      <if test="req.externalDeviceId != null and req.externalDeviceId != ''">
+        AND r.external_device_id LIKE CONCAT('%', #{req.externalDeviceId}, '%')
+      </if>
+      <if test="req.externalMetric != null and req.externalMetric != ''">
+        AND r.external_metric LIKE CONCAT('%', #{req.externalMetric}, '%')
+      </if>
+      <if test="req.matchStatus != null and req.matchStatus != ''">
+        AND r.match_status = #{req.matchStatus}
+      </if>
+      <if test="req.startTime != null and req.startTime != ''">
+        AND r.data_time &gt;= #{req.startTime}
+      </if>
+      <if test="req.endTime != null and req.endTime != ''">
+        AND r.data_time &lt;= #{req.endTime}
+      </if>
+    </where>
+    ORDER BY r.data_time DESC
+    <if test="req.limit != null">
+      LIMIT #{req.limit}
+    </if>
+    <if test="req.offset != null">
+      OFFSET #{req.offset}
+    </if>
+  </select>
+
+  <!-- 原始明细count -->
+  <select id="countRawData" resultType="java.lang.Long">
+    SELECT COUNT(1)
+    FROM iot_telemetry_raw r
+    <where>
+      <if test="req.emptyScope != null and req.emptyScope">
+        AND 1 = 0
+      </if>
+      <if test="req.entId != null and req.entId != ''">
+        AND r.ent_id = #{req.entId}
+      </if>
+      <if test="req.entId == null or req.entId == ''">
+        <if test="req.aggregatorId != null and req.aggregatorId != ''">
+          AND r.ent_id IN (
+            SELECT e.ent_id
+            FROM aggregator_ent e
+            WHERE e.aggregator_id = #{req.aggregatorId}
+          )
+        </if>
+      </if>
+      <if test="req.deviceId != null">
+        AND r.device_id = #{req.deviceId}
+      </if>
+      <if test="req.deviceIds != null and req.deviceIds.size() > 0">
+        AND r.device_id IN
+        <foreach collection="req.deviceIds" item="id" open="(" separator="," close=")">
+          #{id}
+        </foreach>
+      </if>
+      <if test="req.externalDeviceId != null and req.externalDeviceId != ''">
+        AND r.external_device_id LIKE CONCAT('%', #{req.externalDeviceId}, '%')
+      </if>
+      <if test="req.externalMetric != null and req.externalMetric != ''">
+        AND r.external_metric LIKE CONCAT('%', #{req.externalMetric}, '%')
+      </if>
+      <if test="req.matchStatus != null and req.matchStatus != ''">
+        AND r.match_status = #{req.matchStatus}
+      </if>
+      <if test="req.startTime != null and req.startTime != ''">
+        AND r.data_time &gt;= #{req.startTime}
+      </if>
+      <if test="req.endTime != null and req.endTime != ''">
+        AND r.data_time &lt;= #{req.endTime}
+      </if>
+    </where>
+  </select>
+  <!-- 设备概览：每个设备测点的最新值 + 前一值 + 趋势 -->
+  <select id="selectDeviceSummary" resultType="cn.sl.ehub.service.dto.iot.IotDeviceSummaryPointResp">
+    SELECT
+      t.device_id AS deviceId,
+      t.device_code AS deviceCode,
+      d.device_name AS deviceName,
+      t.ent_id AS entId,
+      t.point_code AS pointCode,
+      p.property_name AS pointName,
+      t.unit AS unit,
+      t.point_value AS currentValue,
+      t.minute_time AS currentTime,
+      t.quality AS quality,
+      t2.point_value AS prevValue,
+      t2.minute_time AS prevTime,
+      (t.point_value - t2.point_value) AS delta,
+      CASE
+        WHEN t.point_value > t2.point_value THEN 'up'
+        WHEN t.point_value &lt; t2.point_value THEN 'down'
+        ELSE 'stable'
+      END AS trend
+    FROM iot_telemetry_minute t
+    LEFT JOIN iot_device d ON t.device_id = d.id AND d.deleted = 0
+    LEFT JOIN iot_device_point p
+      ON t.device_id = p.device_id
+      AND t.point_code = p.property_code AND p.deleted = 0
+    LEFT JOIN iot_telemetry_minute t2
+      ON t2.device_id = t.device_id
+      AND t2.point_code = t.point_code
+      AND t2.minute_time = (
+        SELECT MAX(t3.minute_time)
+        FROM iot_telemetry_minute t3
+        WHERE t3.device_id = t.device_id
+          AND t3.point_code = t.point_code
+          AND t3.minute_time &lt; t.minute_time
+          <if test="req.aggregatorId != null and req.aggregatorId != ''">
+            AND t3.aggregator_id = #{req.aggregatorId}
+          </if>
+          <if test="req.entId != null and req.entId != ''">
+            AND t3.ent_id = #{req.entId}
+          </if>
+      )
+    WHERE t.minute_time = (
+      SELECT MAX(t4.minute_time)
+      FROM iot_telemetry_minute t4
+      WHERE t4.device_id = t.device_id
+        AND t4.point_code = t.point_code
+        <if test="req.aggregatorId != null and req.aggregatorId != ''">
+          AND t4.aggregator_id = #{req.aggregatorId}
+        </if>
+        <if test="req.entId != null and req.entId != ''">
+          AND t4.ent_id = #{req.entId}
+        </if>
+    )
+    <if test="req.emptyScope != null and req.emptyScope">
+      AND 1 = 0
+    </if>
+    <if test="req.aggregatorId != null and req.aggregatorId != ''">
+      AND t.aggregator_id = #{req.aggregatorId}
+    </if>
+    <if test="req.entId != null and req.entId != ''">
+      AND t.ent_id = #{req.entId}
+    </if>
+    <if test="req.deviceIds != null and req.deviceIds.size() > 0">
+      AND t.device_id IN
+      <foreach collection="req.deviceIds" item="id" open="(" separator="," close=")">
+        #{id}
+      </foreach>
+    </if>
+    <if test="req.pointCodes != null and req.pointCodes.size() > 0">
+      AND t.point_code IN
+      <foreach collection="req.pointCodes" item="code" open="(" separator="," close=")">
+        #{code}
+      </foreach>
+    </if>
+    ORDER BY t.device_id, t.point_code
+    <if test="req.limit != null">
+      LIMIT #{req.limit}
+    </if>
+  </select>
+
+</mapper>

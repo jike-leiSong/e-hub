@@ -72,7 +72,7 @@
 
     <div v-if="!editMode" class="meta-section">
       <div class="section-head">
-        <span>初始化测点</span>
+        <span>测点选择</span>
         <span class="section-count">已选 {{ selectedPoints.length }} 个</span>
       </div>
       <el-table
@@ -250,8 +250,8 @@ export default {
     },
     async submit() {
       await this.$refs.form.validate();
-      if (!this.editMode && !this.selectedPoints.length) {
-        this.$message.warning("请选择初始化测点");
+      if (!this.editMode && this.pointRows.length > 0 && !this.selectedPoints.length) {
+        this.$message.warning("请选择测点");
         return;
       }
       this.submitting = true;

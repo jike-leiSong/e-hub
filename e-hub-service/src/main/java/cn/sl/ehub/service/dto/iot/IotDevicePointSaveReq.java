@@ -7,8 +7,6 @@ public class IotDevicePointSaveReq {
 
     private Long deviceId;
 
-    private Long tenantId;
-
     private String propertyCode;
 
     private String propertyName;

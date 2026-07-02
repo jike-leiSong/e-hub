@@ -29,10 +29,6 @@ public class IotUnmatchedTelemetryLog {
     @Column(name = "interface_type")
     private String interfaceType;
 
-    @ApiModelProperty("三方项目ID")
-    @Column(name = "external_project_id")
-    private String externalProjectId;
-
     @ApiModelProperty("三方设备ID")
     @Column(name = "external_device_id")
     private String externalDeviceId;

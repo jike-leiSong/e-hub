@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.sl.ehub.service.mapper.IotTelemetryMinuteMapper">
+
+  <insert id="upsertMinute" parameterType="cn.sl.ehub.service.vo.IotTelemetryMinute">
+    INSERT INTO iot_telemetry_minute (
+      aggregator_id, ent_id, project_id, device_id, device_code, point_code,
+      data_time, minute_time, point_value, unit, quality,
+      source_code, receive_time, raw_value
+    ) VALUES (
+      #{aggregatorId}, #{entId}, #{projectId}, #{deviceId}, #{deviceCode}, #{pointCode},
+      #{dataTime}, #{minuteTime}, #{pointValue}, #{unit}, #{quality},
+      #{sourceCode}, #{receiveTime}, #{rawValue}
+    )
+    ON DUPLICATE KEY UPDATE
+      aggregator_id = VALUES(aggregator_id),
+      ent_id = VALUES(ent_id),
+      project_id = VALUES(project_id),
+      device_code = VALUES(device_code),
+      data_time = VALUES(data_time),
+      point_value = VALUES(point_value),
+      unit = VALUES(unit),
+      quality = VALUES(quality),
+      source_code = VALUES(source_code),
+      receive_time = VALUES(receive_time),
+      raw_value = VALUES(raw_value)
+  </insert>
+
+</mapper>
