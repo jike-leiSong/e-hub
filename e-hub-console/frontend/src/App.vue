@@ -113,6 +113,7 @@
           :key="loadPageKey"
           :aggregator-id="selectedAggregatorId"
         />
+        <AgentPrice v-else-if="activePage === 'tariff-query'" />
         <ProductProvisioning v-else-if="activePage === 'product-provisioning'" />
         <ComingSoon v-else v-bind="comingSoonConfig" />
       </main>
@@ -129,6 +130,7 @@ import Aggregation from "@/modules/load-aggregation/overview/Aggregation.vue";
 import AggregationHistory from "@/modules/load-aggregation/history/src/AggregationHistory.vue";
 import IotManagement from "@/modules/load-aggregation/iot-management/IotManagement.vue";
 import LoadResources from "@/modules/load-aggregation/resources/LoadResources.vue";
+import AgentPrice from "@/modules/tariff/agent-price/AgentPrice.vue";
 import service from "@/services/http";
 import {
   buildMenu,
@@ -172,7 +174,7 @@ const pageMeta = {
     eyebrow: "LOAD AGGREGATION",
   },
   "tariff-query": {
-    title: "电价服务 / 全国电价查询",
+    title: "电价服务 / 电网代理价格",
     eyebrow: "POWER TARIFF",
   },
   "tariff-api": {
@@ -217,9 +219,9 @@ const comingSoonMap = {
     items: ["企业档案", "设备资产"],
   },
   "tariff-query": {
-    title: "全国电价查询",
-    description: "提供全国分省电价查询、峰谷平时段展示、现货价格和历史价格趋势。",
-    items: ["分省查询", "峰谷平时段", "现货价格", "历史趋势"],
+    title: "电网代理价格",
+    description: "按省市区域、用电类别和电压等级查询电网代理分时段价格。",
+    items: ["月份查询", "日期查询", "分时电价", "峰谷时段"],
   },
   "tariff-api": {
     title: "接口能力",
@@ -306,6 +308,7 @@ export default {
     AggregationHistory,
     IotManagement,
     LoadResources,
+    AgentPrice,
   },
   data() {
     const currentUser = readUserSession() || {};

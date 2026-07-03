@@ -1539,11 +1539,7 @@ public class IotDeviceManagementService {
     }
 
     private List<IotDeviceGroupPointSaveReq> defaultDeviceGroupPointReqs() {
-        List<IotDeviceGroupPointSaveReq> list = new ArrayList<>();
-        list.add(groupPointReq("active_power", "有功功率", "double", "数值", "double", "kW", 1));
-        list.add(groupPointReq("reactive_power", "无功功率", "double", "数值", "double", "kVar", 2));
-        list.add(groupPointReq("status", "运行状态", "enum", "枚举", "string", null, 3));
-        return list;
+        return Collections.emptyList();
     }
 
     private List<IotDeviceGroupPoint> defaultDeviceGroupPoints() {

@@ -245,7 +245,7 @@ public class ConsolePermissionService {
         }
         if (products.contains(ConsoleProductService.PRODUCT_TARIFF)) {
             items.add(item("tariff", "电价服务", "08", Arrays.asList(
-                    item("tariff-query", "全国电价查询", null),
+                    item("tariff-query", "电网代理价格", null),
                     item("tariff-api", "接口能力", null),
                     item("tariff-logs", "调用记录", null)
             )));

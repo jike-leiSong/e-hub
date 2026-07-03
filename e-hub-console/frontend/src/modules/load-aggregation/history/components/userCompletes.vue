@@ -1,13 +1,27 @@
 <template>
   <div class="user-completed-adjustment-status">
     <div class="summary-part">
-      <div>
+      <div class="summary-head">
         <p>汇总功率曲线</p>
-        <div>
+        <div class="summary-operate">
           <tabbar @tabClick="resourceTypeChange($event)"></tabbar>
-          <el-date-picker v-model="topDateData" @change="topDateChange" type="daterange" value-format="yyyy-MM-dd" :clearable="false" size="small" :picker-options="topDatePickerOptions" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" />
-          <el-button @click="topExport" type="primary" size="small">导出</el-button>
-          <el-button :loading="buzhaoLoading" @click="buzhaoExport" type="primary" size="small">上送数据导出</el-button>
+          <el-date-picker
+            v-model="topDateData"
+            @change="topDateChange"
+            class="range-picker"
+            type="daterange"
+            value-format="yyyy-MM-dd"
+            :clearable="false"
+            size="small"
+            :picker-options="topDatePickerOptions"
+            range-separator="至"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+          />
+          <div class="operate-buttons">
+            <el-button @click="topExport" type="primary" size="small">导出</el-button>
+            <el-button :loading="buzhaoLoading" @click="buzhaoExport" type="primary" size="small">上送数据导出</el-button>
+          </div>
         </div>
       </div>
       <div v-loading="echartsLoading1">
@@ -16,7 +30,7 @@
     </div>
     <div class="condition-part">
       <div class="condition-item">
-        <div>
+        <div class="field-item field-item-select">
           <p>企业名称</p>
           <p>
             <el-select v-model="form.enterpriseName" @change="queryData('entName')" filterable placeholder="请选择" size="small">
@@ -32,10 +46,20 @@
             </el-select>
           </p>
         </div> -->
-        <div>
+        <div class="field-item">
           <p>时间</p>
           <p>
-            <el-date-picker v-model="form.bottomDateData" @change="queryData" value-format="yyyy-MM-dd" type="daterange" size="small" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" />
+            <el-date-picker
+              v-model="form.bottomDateData"
+              @change="queryData"
+              class="range-picker"
+              value-format="yyyy-MM-dd"
+              type="daterange"
+              size="small"
+              range-separator="至"
+              start-placeholder="开始日期"
+              end-placeholder="结束日期"
+            />
           </p>
         </div>
       </div>
@@ -382,37 +406,43 @@ export default {
 </script>
 <style lang="less" scoped>
 .user-completed-adjustment-status {
-  width: calc(100vw - 240px);
-  height: calc(100vh - 40px);
+  width: 100%;
+  min-width: 0;
+  min-height: 100%;
   overflow-y: auto;
+  .summary-part,
+  .condition-part,
+  .content-part {
+    background: #FFFFFF;
+    border: 1px solid #dde6ed;
+    border-radius: 8px;
+  }
   .summary-part {
     margin-top: 20px;
     padding: 20px;
-    background: #FFFFFF;
-    border-radius: 12px;
     >div {
       &:nth-child(1) {
-        height: 40px;
+        min-height: 40px;
         display: flex;
         justify-content: space-between;
-        align-items: center;
+        align-items: flex-start;
+        gap: 16px 24px;
+        flex-wrap: wrap;
         >p {
+          margin: 0;
+          flex: 0 0 auto;
           font-size: 18px;
           font-weight: bolder;
+          color: #0e2638;
         }
-        >div {
+        >div.summary-operate {
+          flex: 1 1 640px;
+          min-width: 0;
           display: flex;
           align-items: center;
-          ::v-deep .el-date-editor {
-            width: auto;
-            margin: 0 20px;
-            .el-range-input {
-              width: 100px;
-            }
-            .el-input__icon {
-              display: none;
-            }
-          }
+          justify-content: flex-end;
+          flex-wrap: wrap;
+          gap: 12px;
         }
       }
       &:nth-child(2) {
@@ -425,62 +455,56 @@ export default {
   .condition-part {
     margin: 20px 0;
     padding: 20px;
-    background: #FFFFFF;
-    border-radius: 12px;
     display: flex;
     justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px 24px;
+    flex-wrap: wrap;
     .condition-item {
       display: flex;
       align-items: center;
-      >div {
-        margin-left: 20px;
+      flex: 1 1 560px;
+      min-width: 0;
+      flex-wrap: wrap;
+      gap: 14px 24px;
+      >div.field-item {
         display: flex;
         align-items: center;
-        &:nth-child(1) {
-          margin-left: 0;
-        }
-        &:nth-child(2) {
-          >p {
-            &:nth-child(2) {
-              ::v-deep .el-select {
-                width: 120px;
-              }
-            }
-          }
-        }
         >p {
+          margin: 0;
           &:nth-child(1) {
             margin-right: 10px;
+            color: #334e5c;
+            font-weight: 600;
+            white-space: nowrap;
           }
           &:nth-child(2) {
-            ::v-deep .el-date-editor {
-              width: auto;
-              .el-range-input {
-                width: 100px;
-              }
-              .el-input__icon {
-                display: none;
-              }
-            }
+            min-width: 0;
           }
+        }
+      }
+      .field-item-select {
+        ::v-deep .el-select {
+          width: 244px;
+          max-width: 100%;
         }
       }
     }
     .buttons-part {
-      margin-left: 40px;
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      gap: 12px;
       ::v-deep .el-button {
-        margin-left: 20px;
-        &:nth-child(1) {
-          margin-left: 0;
-        }
+        margin-left: 0;
       }
     }
   }
   .content-part {
     margin-bottom: 20px;
     padding: 20px;
-    background: #FFFFFF;
-    border-radius: 12px;
     .income-part {
       display: inline-block;
       margin-bottom: 20px;
@@ -508,6 +532,74 @@ export default {
     .echarts-part {
       width: 100%;
       height: 350px;
+    }
+  }
+  .operate-buttons {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  ::v-deep .range-picker.el-date-editor {
+    width: 330px;
+    max-width: 100%;
+    .el-range-input {
+      width: 39%;
+    }
+    .el-input__icon {
+      display: none;
+    }
+  }
+  @media screen and (max-width: 1440px) {
+    .summary-part {
+      >div:nth-child(1) {
+        >div.summary-operate {
+          justify-content: flex-start;
+        }
+      }
+    }
+  }
+  @media screen and (max-width: 1200px) {
+    .condition-part {
+      .condition-item,
+      .buttons-part {
+        flex: 1 1 100%;
+      }
+      .buttons-part {
+        justify-content: flex-start;
+        margin-left: 0;
+      }
+    }
+  }
+  @media screen and (max-width: 768px) {
+    .summary-part,
+    .condition-part,
+    .content-part {
+      padding: 16px;
+    }
+    .summary-part {
+      >div:nth-child(1) {
+        >p {
+          font-size: 16px;
+        }
+      }
+    }
+    .condition-part {
+      .condition-item {
+        >div.field-item {
+          width: 100%;
+          align-items: flex-start;
+          flex-direction: column;
+          gap: 8px;
+          >p:nth-child(1) {
+            margin-right: 0;
+          }
+        }
+      }
+    }
+    ::v-deep .range-picker.el-date-editor,
+    .condition-item .field-item-select ::v-deep .el-select {
+      width: 100%;
     }
   }
   /*&::-webkit-scrollbar {

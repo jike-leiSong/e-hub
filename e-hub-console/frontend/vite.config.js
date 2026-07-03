@@ -23,6 +23,7 @@ export default defineConfig(({ mode }) => {
     "/synchronize",
     "/issue",
     "/iot",
+    "/tariff",
     "/statusQuery",
   ];
 

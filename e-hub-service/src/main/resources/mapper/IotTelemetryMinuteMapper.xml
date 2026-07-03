@@ -26,4 +26,46 @@
       raw_value = VALUES(raw_value)
   </insert>
 
+  <select id="sumPointValueByMinute" resultType="cn.sl.ehub.common.vo.DataResp">
+    SELECT
+      DATE_FORMAT(minute_time, '%Y-%m-%d %H:%i') AS time,
+      ROUND(SUM(IFNULL(point_value, 0)), 2) AS value
+    FROM iot_telemetry_minute
+    WHERE aggregator_id = #{aggregatorId}
+      AND point_code = #{pointCode}
+      AND minute_time <![CDATA[ >= ]]> #{startTime}
+      AND minute_time <![CDATA[ <= ]]> #{endTime}
+      <choose>
+        <when test="deviceIds != null and deviceIds.size() > 0 and deviceCodes != null and deviceCodes.size() > 0">
+          AND (
+            device_id IN
+            <foreach collection="deviceIds" item="deviceId" open="(" separator="," close=")">
+              #{deviceId}
+            </foreach>
+            OR device_code IN
+            <foreach collection="deviceCodes" item="deviceCode" open="(" separator="," close=")">
+              #{deviceCode}
+            </foreach>
+          )
+        </when>
+        <when test="deviceIds != null and deviceIds.size() > 0">
+          AND device_id IN
+          <foreach collection="deviceIds" item="deviceId" open="(" separator="," close=")">
+            #{deviceId}
+          </foreach>
+        </when>
+        <when test="deviceCodes != null and deviceCodes.size() > 0">
+          AND device_code IN
+          <foreach collection="deviceCodes" item="deviceCode" open="(" separator="," close=")">
+            #{deviceCode}
+          </foreach>
+        </when>
+        <otherwise>
+          AND 1 = 0
+        </otherwise>
+      </choose>
+    GROUP BY minute_time
+    ORDER BY minute_time
+  </select>
+
 </mapper>

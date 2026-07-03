@@ -125,7 +125,7 @@ function fallbackProfile(platformType, products) {
               label: "电价服务",
               icon: "08",
               children: [
-                { key: "tariff-query", label: "全国电价查询" },
+                { key: "tariff-query", label: "电网代理价格" },
                 { key: "tariff-api", label: "接口能力" },
                 { key: "tariff-logs", label: "调用记录" },
               ],
@@ -174,7 +174,7 @@ function fallbackProfile(platformType, products) {
       label: "电价服务",
       icon: "04",
       children: [
-        { key: "tariff-query", label: "全国电价查询" },
+        { key: "tariff-query", label: "电网代理价格" },
         { key: "tariff-api", label: "接口能力" },
         { key: "tariff-logs", label: "调用记录" },
       ],

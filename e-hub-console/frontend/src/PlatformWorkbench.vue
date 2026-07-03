@@ -73,7 +73,7 @@ export default {
         actions.push({ key: "load-overview", label: "进入负荷聚合" });
       }
       if (this.user.products.includes("tariff")) {
-        actions.push({ key: "tariff-query", label: "查看全国电价" });
+        actions.push({ key: "tariff-query", label: "查看代理价格" });
       }
       return actions;
     },
@@ -95,7 +95,7 @@ export default {
         {
           label: "电价服务",
           value: this.user.products.includes("tariff") ? "已开通" : "未开通",
-          desc: "全国电价、接口能力、调用记录",
+          desc: "电网代理价格、接口能力、调用记录",
         },
         { label: "平台类型", value: "客户", desc: "菜单由产品开通状态控制" },
         { label: "权限点", value: String(this.user.permissions.length), desc: "页面、接口、数据范围权限" },
@@ -123,7 +123,7 @@ export default {
         domains.push({
           key: "tariff-query",
           title: "电价服务",
-          desc: "全国电价查询展示、接口能力和调用记录",
+          desc: "电网代理价格查询展示、接口能力和调用记录",
         });
       }
       return domains;

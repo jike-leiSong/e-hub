@@ -280,10 +280,6 @@ export default {
     },
     async submit() {
       await this.$refs.form.validate();
-      if (!this.editMode && this.allPointsData.length > 0 && !this.selectedPoints.length) {
-        this.$message.warning("请选择测点");
-        return;
-      }
       this.submitting = true;
       try {
         const pointList = this.selectedPoints.map((item, index) => ({

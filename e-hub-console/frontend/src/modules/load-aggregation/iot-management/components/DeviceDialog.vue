@@ -250,10 +250,6 @@ export default {
     },
     async submit() {
       await this.$refs.form.validate();
-      if (!this.editMode && this.pointRows.length > 0 && !this.selectedPoints.length) {
-        this.$message.warning("请选择测点");
-        return;
-      }
       this.submitting = true;
       try {
         const selectedType = this.deviceTypeOptions.find(item => item.value === this.form.deviceTypeCode);

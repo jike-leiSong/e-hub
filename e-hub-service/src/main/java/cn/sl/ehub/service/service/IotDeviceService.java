@@ -27,10 +27,7 @@ import java.util.List;
 @Service
 public class IotDeviceService {
 
-    private static final String DEFAULT_POINT_CODE = "active_power";
-    private static final String DEFAULT_POINT_NAME = "有功功率";
     private static final String DEFAULT_VALUE_TYPE = "double";
-    private static final String DEFAULT_UNIT = "kW";
     private static final String READ_ONLY = "readOnly";
 
     private final IotDeviceMapper iotDeviceMapper;
@@ -124,12 +121,6 @@ public class IotDeviceService {
         device.setCreateTime(now);
         device.setUpdateTime(now);
         iotDeviceMapper.insertSelective(device);
-        if (device.getId() == null) {
-            device = getDeviceByEntAndCode(device.getEntId(), device.getDeviceCode());
-        }
-        if (device != null && !Boolean.FALSE.equals(req.getCreateDefaultPowerPoint())) {
-            createDefaultPowerPoint(device.getId());
-        }
         return device;
     }
 
@@ -311,28 +302,6 @@ public class IotDeviceService {
         }
         example.orderBy("createTime").desc();
         return iotUnmatchedTelemetryLogMapper.selectByExample(example);
-    }
-
-    private void createDefaultPowerPoint(Long deviceId) {
-        if (existsPointCode(deviceId, DEFAULT_POINT_CODE, null)) {
-            return;
-        }
-        IotDevicePointSaveReq req = new IotDevicePointSaveReq();
-        req.setDeviceId(deviceId);
-        req.setPropertyCode(DEFAULT_POINT_CODE);
-        req.setPropertyName(DEFAULT_POINT_NAME);
-        req.setValueType(DEFAULT_VALUE_TYPE);
-        req.setUnit(DEFAULT_UNIT);
-        req.setDataFrequency(60);
-        req.setRequiredFlag(1);
-        req.setReadWriteRole(READ_ONLY);
-        req.setStatus(1);
-        req.setSort(1);
-        IotDevicePoint point = buildPoint(req);
-        Date now = new Date();
-        point.setCreateTime(now);
-        point.setUpdateTime(now);
-        iotDevicePointMapper.insertSelective(point);
     }
 
     private IotDevicePoint buildPoint(IotDevicePointSaveReq req) {

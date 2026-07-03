@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.sl.ehub.service.mapper.TariffAgentPriceMapper">
+
+  <select id="selectVersions" resultType="java.lang.String">
+    SELECT DISTINCT p.version
+    FROM e_agent_price p
+    WHERE p.del_flag = '0'
+      AND p.version IS NOT NULL
+      AND p.version != ''
+    ORDER BY p.version DESC
+  </select>
+
+  <sql id="agentPriceWhere">
+    <if test="req.provinceCode != null and req.provinceCode != ''">
+      AND p.province_code = #{req.provinceCode}
+    </if>
+    <if test="req.secondType != null and req.secondType != ''">
+      AND p.second_type = #{req.secondType}
+    </if>
+    <if test="req.thirdType != null and req.thirdType != ''">
+      AND p.third_type = #{req.thirdType}
+    </if>
+    <if test="req.dyLevel != null and req.dyLevel != ''">
+      AND p.dy_level = #{req.dyLevel}
+    </if>
+    <if test="req.yearMonth != null and req.yearMonth != ''">
+      AND p.version = #{req.yearMonth}
+    </if>
+    <if test="req.userType != null and req.userType != ''">
+      AND p.user_type = #{req.userType}
+    </if>
+    <if test="req.sfType != null and req.sfType != ''">
+      AND p.other_type = #{req.sfType}
+    </if>
+  </sql>
+
+  <sql id="agentPriceAreaWhere">
+    <if test="req.provinceCode != null and req.provinceCode != ''">
+      AND p.province_code = #{req.provinceCode}
+    </if>
+    <if test="req.secondType != null and req.secondType != ''">
+      AND p.second_type = #{req.secondType}
+    </if>
+    <if test="req.thirdType != null and req.thirdType != ''">
+      AND p.third_type = #{req.thirdType}
+    </if>
+    <if test="req.yearMonth != null and req.yearMonth != ''">
+      AND p.version = #{req.yearMonth}
+    </if>
+  </sql>
+
+  <select id="selectFpgjData" resultType="cn.sl.ehub.service.dto.tariff.FpgjPointResp">
+    SELECT
+      d.fpgj_type AS fgvalue,
+      d.biz_time AS bizTime
+    FROM e_fpgj_type t
+    INNER JOIN e_fpgj_type_data d ON t.id = d.en_fpgj_type_id
+    WHERE t.del_flag = '0'
+      AND d.del_flag = '0'
+    <if test="req.provinceCode != null and req.provinceCode != ''">
+      AND t.province_code = #{req.provinceCode}
+    </if>
+    <if test="req.secondType != null and req.secondType != ''">
+      AND t.second_type = #{req.secondType}
+    </if>
+    <if test="req.yearMonth != null and req.yearMonth != ''">
+      AND t.version = #{req.yearMonth}
+    </if>
+    ORDER BY d.biz_time
+  </select>
+
+  <select id="selectAgentPriceData" resultType="java.math.BigDecimal">
+    SELECT d.price
+    FROM e_agent_price p
+    INNER JOIN e_agent_price_data d ON p.id = d.en_agent_price_id
+    WHERE p.del_flag = '0'
+      AND d.del_flag = '0'
+    <include refid="agentPriceWhere"/>
+    <if test="req.priceType != null and req.priceType != ''">
+      AND p.price_type LIKE CONCAT('%', #{req.priceType}, '%')
+    </if>
+    ORDER BY d.biz_time
+  </select>
+
+  <select id="selectAreaOptions" resultType="cn.sl.ehub.service.dto.tariff.AgentPriceAreaOption">
+    SELECT
+      p.province_code AS provinceCode,
+      MAX(p.province_name) AS provinceName,
+      p.second_type AS secondType,
+      p.third_type AS thirdType
+    FROM e_agent_price p
+    WHERE p.del_flag = '0'
+    <if test="version != null and version != ''">
+      AND p.version = #{version}
+    </if>
+    GROUP BY p.province_code, p.second_type, p.third_type
+    ORDER BY p.province_code, p.second_type, p.third_type
+  </select>
+
+  <select id="selectUserTypes" resultType="java.lang.String">
+    SELECT DISTINCT p.user_type
+    FROM e_agent_price p
+    WHERE p.del_flag = '0'
+      AND p.user_type IS NOT NULL
+      AND p.user_type != ''
+    <include refid="agentPriceAreaWhere"/>
+    ORDER BY p.user_type
+  </select>
+
+  <select id="selectSfTypes" resultType="java.lang.String">
+    SELECT DISTINCT p.other_type
+    FROM e_agent_price p
+    WHERE p.del_flag = '0'
+      AND p.other_type IS NOT NULL
+      AND p.other_type != ''
+    <include refid="agentPriceAreaWhere"/>
+    <if test="req.userType != null and req.userType != ''">
+      AND p.user_type = #{req.userType}
+    </if>
+    ORDER BY p.other_type
+  </select>
+
+  <select id="selectDyLevels" resultType="java.lang.String">
+    SELECT DISTINCT p.dy_level
+    FROM e_agent_price p
+    WHERE p.del_flag = '0'
+      AND p.dy_level IS NOT NULL
+      AND p.dy_level != ''
+    <include refid="agentPriceAreaWhere"/>
+    <if test="req.userType != null and req.userType != ''">
+      AND p.user_type = #{req.userType}
+    </if>
+    <if test="req.sfType != null and req.sfType != ''">
+      AND p.other_type = #{req.sfType}
+    </if>
+    ORDER BY p.dy_level
+  </select>
+
+</mapper>
