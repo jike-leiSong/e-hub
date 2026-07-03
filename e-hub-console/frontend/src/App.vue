@@ -114,7 +114,9 @@
           :aggregator-id="selectedAggregatorId"
         />
         <AgentPrice v-else-if="activePage === 'tariff-query'" />
-        <ProductProvisioning v-else-if="activePage === 'product-provisioning'" />
+        <TenantCenter v-else-if="activePage === 'tenant-center'" />
+        <IdentityAccessCenter v-else-if="activePage === 'identity-access'" />
+        <PlatformSettingsCenter v-else-if="activePage === 'platform-settings'" />
         <ComingSoon v-else v-bind="comingSoonConfig" />
       </main>
     </section>
@@ -125,7 +127,9 @@
 import Login from "./Login.vue";
 import PlatformWorkbench from "./PlatformWorkbench.vue";
 import ComingSoon from "./ComingSoon.vue";
-import ProductProvisioning from "./ProductProvisioning.vue";
+import TenantCenter from "./ProductProvisioning.vue";
+import IdentityAccessCenter from "./IdentityAccessCenter.vue";
+import PlatformSettingsCenter from "./PlatformSettingsCenter.vue";
 import Aggregation from "@/modules/load-aggregation/overview/Aggregation.vue";
 import AggregationHistory from "@/modules/load-aggregation/history/src/AggregationHistory.vue";
 import IotManagement from "@/modules/load-aggregation/iot-management/IotManagement.vue";
@@ -185,25 +189,17 @@ const pageMeta = {
     title: "电价服务 / 调用记录",
     eyebrow: "POWER TARIFF",
   },
-  "customer-management": {
-    title: "客户管理",
+  "tenant-center": {
+    title: "租户中心",
     eyebrow: "OWNER OPERATIONS",
   },
-  "user-management": {
-    title: "用户管理",
+  "identity-access": {
+    title: "身份与权限中心",
     eyebrow: "OWNER OPERATIONS",
   },
-  "product-provisioning": {
-    title: "产品开通",
+  "platform-settings": {
+    title: "平台设置中心",
     eyebrow: "OWNER OPERATIONS",
-  },
-  "permission-management": {
-    title: "权限管理",
-    eyebrow: "OWNER OPERATIONS",
-  },
-  settings: {
-    title: "系统设置",
-    eyebrow: "SYSTEM SETTINGS",
   },
 };
 
@@ -233,44 +229,27 @@ const comingSoonMap = {
     description: "展示电价接口调用明细、成功率、耗时和异常记录。",
     items: ["调用明细", "成功率", "响应耗时", "异常记录"],
   },
-  "customer-management": {
-    title: "客户管理",
-    description: "面向内部运营，维护客户档案、租户状态和合作信息。",
-    items: ["客户档案", "租户状态", "合作信息", "数据范围"],
-  },
-  "user-management": {
-    title: "用户管理",
-    description: "面向内部运营，维护用户账号、角色和组织归属。",
-    items: ["用户账号", "角色分配", "组织归属", "登录状态"],
-  },
-  "product-provisioning": {
-    title: "产品开通",
-    description: "为客户开通负荷聚合、电价服务等产品，并控制产品有效期。",
-    items: ["负荷聚合", "电价服务", "有效期", "开通记录"],
-  },
-  "permission-management": {
-    title: "权限管理",
-    description: "按租户、角色、产品和权限点管理页面、按钮、接口与数据范围。",
-    items: ["租户权限", "角色权限", "产品权限", "接口权限"],
-  },
-  settings: {
-    title: "系统设置",
-    description: "规划账号权限、平台参数、接口配置和操作审计。",
-    items: ["账号权限", "平台参数", "接口配置", "操作审计"],
-  },
 };
 
 function resolveInitialPage() {
   const params = new URLSearchParams(window.location.search);
   const page = params.get("page");
+  const legacyPageMap = {
+    "customer-management": "tenant-center",
+    "product-provisioning": "tenant-center",
+    "user-management": "identity-access",
+    "permission-management": "identity-access",
+    settings: "platform-settings",
+  };
   if (page === "history") {
     return "load-adjustment";
   }
   if (page === "overview") {
     return "load-overview";
   }
-  if (page && pageMeta[page]) {
-    return page;
+  const normalizedPage = legacyPageMap[page] || page;
+  if (normalizedPage && pageMeta[normalizedPage]) {
+    return normalizedPage;
   }
   return "workbench";
 }
@@ -303,7 +282,9 @@ export default {
     Login,
     PlatformWorkbench,
     ComingSoon,
-    ProductProvisioning,
+    TenantCenter,
+    IdentityAccessCenter,
+    PlatformSettingsCenter,
     Aggregation,
     AggregationHistory,
     IotManagement,
@@ -344,7 +325,7 @@ export default {
       return buildMenu(this.currentUser);
     },
     comingSoonConfig() {
-      return comingSoonMap[this.activePage] || comingSoonMap.settings;
+      return comingSoonMap[this.activePage] || comingSoonMap["no-product"];
     },
     operatorName() {
       return this.currentUser.displayName || this.currentUser.account || "运营用户";

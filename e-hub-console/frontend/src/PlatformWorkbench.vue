@@ -58,14 +58,16 @@ export default {
     },
     heroCopy() {
       return this.isOwner
-        ? "当前进入我的运营平台，可管理客户、用户、产品开通和系统权限。"
+        ? "当前进入平台治理工作台，统一管理租户、账号权限、平台配置，并把负荷聚合和电价服务作为产品能力运营。"
         : "当前进入客户运营平台，仅展示该客户已开通的产品能力。";
     },
     primaryActions() {
       if (this.isOwner) {
         return [
-          { key: "customer-management", label: "客户管理" },
-          { key: "product-provisioning", label: "产品开通" },
+          { key: "tenant-center", label: "进入租户中心" },
+          { key: "identity-access", label: "进入身份与权限中心" },
+          { key: "load-overview", label: "进入负荷聚合" },
+          { key: "tariff-query", label: "进入电价服务" },
         ];
       }
       const actions = [];
@@ -80,10 +82,10 @@ export default {
     metrics() {
       if (this.isOwner) {
         return [
-          { label: "客户管理", value: "可用", desc: "客户档案、租户状态、合作信息" },
-          { label: "用户管理", value: "可用", desc: "账号、角色、组织归属" },
-          { label: "产品开通", value: "可用", desc: "负荷聚合、电价服务、有效期" },
-          { label: "权限管理", value: "可用", desc: "租户、角色、产品和接口权限" },
+          { label: "租户中心", value: "已整合", desc: "租户主体、产品订阅、数据范围入口统一收敛" },
+          { label: "身份与权限", value: "已收口", desc: "账号、角色、菜单和接口权限归口治理" },
+          { label: "平台设置", value: "待扩展", desc: "平台参数、字典、集成配置和审计" },
+          { label: "产品能力", value: "2类", desc: "负荷聚合、电价服务双产品并行运营" },
         ];
       }
       return [
@@ -104,10 +106,11 @@ export default {
     domains() {
       if (this.isOwner) {
         return [
-          { key: "customer-management", title: "客户管理", desc: "维护客户档案、租户状态和合作信息" },
-          { key: "user-management", title: "用户管理", desc: "维护内部和客户账号、角色及组织归属" },
-          { key: "product-provisioning", title: "产品开通", desc: "给客户开通负荷聚合、电价服务和有效期" },
-          { key: "permission-management", title: "权限管理", desc: "管理租户、角色、产品、接口和数据范围权限" },
+          { key: "tenant-center", title: "租户中心", desc: "管理租户主体、产品订阅、合作状态和后续数据范围能力" },
+          { key: "identity-access", title: "身份与权限中心", desc: "统一承接账号、角色、菜单、接口和数据权限治理" },
+          { key: "platform-settings", title: "平台设置中心", desc: "集中治理平台参数、字典、集成配置和审计日志" },
+          { key: "load-overview", title: "负荷聚合", desc: "进入负荷聚合业务产品，处理运营、资源、收益和物联管理" },
+          { key: "tariff-query", title: "电价服务", desc: "进入电价服务产品，处理代理价格、接口能力和调用记录" },
         ];
       }
 
@@ -184,6 +187,7 @@ export default {
 
 .hero-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
 }
 
@@ -208,7 +212,7 @@ export default {
 .metric-grid,
 .domain-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 16px;
 }
 

@@ -4,6 +4,13 @@ const AUTH_USER_KEY = "ehub-auth-user";
 const PRODUCT_LOAD = "load_aggregation";
 const PRODUCT_TARIFF = "tariff";
 const ALL_PRODUCTS = [PRODUCT_LOAD, PRODUCT_TARIFF];
+const LEGACY_PAGE_MAP = {
+  "customer-management": "tenant-center",
+  "product-provisioning": "tenant-center",
+  "user-management": "identity-access",
+  "permission-management": "identity-access",
+  settings: "platform-settings",
+};
 
 export function normalizeAuthUser(authUser = {}) {
   const userType = normalizeUserType(authUser.userType, authUser.platformType);
@@ -15,10 +22,15 @@ export function normalizeAuthUser(authUser = {}) {
       : [];
   const fallback = fallbackProfile(platformType, products);
   const permissions = Array.isArray(authUser.permissions) ? authUser.permissions : fallback.permissions;
-  const allowedPages = nonEmptyArray(authUser.allowedPages) ? authUser.allowedPages : fallback.allowedPages;
-  const menuGroups = nonEmptyArray(authUser.menuGroups) ? authUser.menuGroups : fallback.menuGroups;
-  const defaultPage = allowedPages.includes(authUser.defaultPage)
-    ? authUser.defaultPage
+  const allowedPages = nonEmptyArray(authUser.allowedPages)
+    ? normalizeAllowedPages(authUser.allowedPages)
+    : fallback.allowedPages;
+  const menuGroups = nonEmptyArray(authUser.menuGroups)
+    ? normalizeMenuGroups(authUser.menuGroups)
+    : fallback.menuGroups;
+  const requestedDefaultPage = normalizePageKey(authUser.defaultPage);
+  const defaultPage = allowedPages.includes(requestedDefaultPage)
+    ? requestedDefaultPage
     : allowedPages.includes(fallback.defaultPage)
       ? fallback.defaultPage
       : allowedPages[0] || (platformType === "owner" ? "workbench" : "no-product");
@@ -57,15 +69,61 @@ function normalizeProducts(products) {
   return ALL_PRODUCTS.filter(product => selected.includes(product));
 }
 
+function normalizePageKey(page) {
+  const key = String(page || "").trim();
+  return LEGACY_PAGE_MAP[key] || key;
+}
+
+function normalizeAllowedPages(pages) {
+  const result = [];
+  pages.forEach(page => {
+    const normalized = normalizePageKey(page);
+    if (normalized && !result.includes(normalized)) {
+      result.push(normalized);
+    }
+  });
+  return result;
+}
+
+function normalizeMenuItems(items) {
+  if (!Array.isArray(items)) {
+    return [];
+  }
+  const result = [];
+  items.forEach(item => {
+    if (!item) {
+      return;
+    }
+    const normalizedKey = normalizePageKey(item.key);
+    const normalizedItem = {
+      ...item,
+      key: normalizedKey || item.key,
+      children: normalizeMenuItems(item.children),
+    };
+    if (!result.some(existing => existing.key === normalizedItem.key)) {
+      result.push(normalizedItem);
+    }
+  });
+  return result;
+}
+
+function normalizeMenuGroups(menuGroups) {
+  if (!Array.isArray(menuGroups)) {
+    return [];
+  }
+  return menuGroups.map(group => ({
+    ...group,
+    items: normalizeMenuItems(group.items),
+  }));
+}
+
 function fallbackProfile(platformType, products) {
   if (platformType === "owner") {
     return {
       products: ALL_PRODUCTS,
       permissions: [
-        "owner:customer:manage",
-        "owner:user:manage",
-        "owner:product:provision",
-        "owner:permission:manage",
+        "owner:tenant:manage",
+        "owner:access:manage",
         "owner:settings:manage",
         "load:overview:view",
         "load:adjustment:view",
@@ -78,10 +136,9 @@ function fallbackProfile(platformType, products) {
       ],
       allowedPages: [
         "workbench",
-        "customer-management",
-        "user-management",
-        "product-provisioning",
-        "permission-management",
+        "tenant-center",
+        "identity-access",
+        "platform-settings",
         "load-overview",
         "load-adjustment",
         "load-settlement",
@@ -90,19 +147,16 @@ function fallbackProfile(platformType, products) {
         "tariff-query",
         "tariff-api",
         "tariff-logs",
-        "settings",
       ],
       defaultPage: "workbench",
       menuGroups: [
         {
-          title: "我的运营平台",
+          title: "平台治理",
           items: [
             { key: "workbench", label: "工作台", icon: "01" },
-            { key: "customer-management", label: "客户管理", icon: "02" },
-            { key: "user-management", label: "用户管理", icon: "03" },
-            { key: "product-provisioning", label: "产品开通", icon: "04" },
-            { key: "permission-management", label: "权限管理", icon: "05" },
-            { key: "settings", label: "系统设置", icon: "06" },
+            { key: "tenant-center", label: "租户中心", icon: "02" },
+            { key: "identity-access", label: "身份与权限中心", icon: "03" },
+            { key: "platform-settings", label: "平台设置中心", icon: "04" },
           ],
         },
         {

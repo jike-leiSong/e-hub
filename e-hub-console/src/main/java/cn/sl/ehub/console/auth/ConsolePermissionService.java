@@ -21,6 +21,12 @@ public class ConsolePermissionService {
     private static final String PLATFORM_OWNER = "owner";
     private static final String PLATFORM_CUSTOMER = "customer";
 
+    private static final String PAGE_WORKBENCH = "workbench";
+    private static final String PAGE_TENANT_CENTER = "tenant-center";
+    private static final String PAGE_IDENTITY_ACCESS = "identity-access";
+    private static final String PAGE_PLATFORM_SETTINGS = "platform-settings";
+    private static final String PAGE_NO_PRODUCT = "no-product";
+
     private static final String PERM_LOAD_OVERVIEW = "load:overview:view";
     private static final String PERM_LOAD_ADJUSTMENT = "load:adjustment:view";
     private static final String PERM_LOAD_SETTLEMENT = "load:settlement:view";
@@ -29,6 +35,9 @@ public class ConsolePermissionService {
     private static final String PERM_TARIFF_QUERY = "tariff:query:view";
     private static final String PERM_TARIFF_API = "tariff:api:view";
     private static final String PERM_TARIFF_LOGS = "tariff:logs:view";
+    private static final String PERM_OWNER_TENANT = "owner:tenant:manage";
+    private static final String PERM_OWNER_ACCESS = "owner:access:manage";
+    private static final String PERM_OWNER_SETTINGS = "owner:settings:manage";
 
     private static final List<String> LOAD_API_PREFIXES = Arrays.asList(
             "/profit/",
@@ -143,11 +152,9 @@ public class ConsolePermissionService {
     private List<String> permissions(AuthUser user) {
         List<String> permissions = new ArrayList<>();
         if (isAdmin(user)) {
-            permissions.add("owner:customer:manage");
-            permissions.add("owner:user:manage");
-            permissions.add("owner:product:provision");
-            permissions.add("owner:permission:manage");
-            permissions.add("owner:settings:manage");
+            permissions.add(PERM_OWNER_TENANT);
+            permissions.add(PERM_OWNER_ACCESS);
+            permissions.add(PERM_OWNER_SETTINGS);
         }
         List<String> products = products(user);
         if (products.contains(ConsoleProductService.PRODUCT_LOAD)) {
@@ -168,11 +175,10 @@ public class ConsolePermissionService {
     private List<String> allowedPages(AuthUser user) {
         List<String> pages = new ArrayList<>();
         if (isAdmin(user)) {
-            pages.add("workbench");
-            pages.add("customer-management");
-            pages.add("user-management");
-            pages.add("product-provisioning");
-            pages.add("permission-management");
+            pages.add(PAGE_WORKBENCH);
+            pages.add(PAGE_TENANT_CENTER);
+            pages.add(PAGE_IDENTITY_ACCESS);
+            pages.add(PAGE_PLATFORM_SETTINGS);
         }
         List<String> products = products(user);
         if (products.contains(ConsoleProductService.PRODUCT_LOAD)) {
@@ -187,18 +193,15 @@ public class ConsolePermissionService {
             pages.add("tariff-api");
             pages.add("tariff-logs");
         }
-        if (isAdmin(user)) {
-            pages.add("settings");
-        }
         if (!isAdmin(user) && pages.isEmpty()) {
-            pages.add("no-product");
+            pages.add(PAGE_NO_PRODUCT);
         }
         return pages;
     }
 
     private String defaultPage(AuthUser user) {
         if (isAdmin(user)) {
-            return "workbench";
+            return PAGE_WORKBENCH;
         }
         List<String> products = products(user);
         if (products.contains(ConsoleProductService.PRODUCT_LOAD)) {
@@ -207,20 +210,18 @@ public class ConsolePermissionService {
         if (products.contains(ConsoleProductService.PRODUCT_TARIFF)) {
             return "tariff-query";
         }
-        return "no-product";
+        return PAGE_NO_PRODUCT;
     }
 
     private List<AuthMenuGroupResp> menuGroups(AuthUser user) {
         List<String> products = products(user);
         if (isAdmin(user)) {
             List<AuthMenuGroupResp> groups = new ArrayList<>();
-            groups.add(group("我的运营平台", Arrays.asList(
-                    item("workbench", "工作台", "01"),
-                    item("customer-management", "客户管理", "02"),
-                    item("user-management", "用户管理", "03"),
-                    item("product-provisioning", "产品开通", "04"),
-                    item("permission-management", "权限管理", "05"),
-                    item("settings", "系统设置", "06")
+            groups.add(group("平台治理", Arrays.asList(
+                    item(PAGE_WORKBENCH, "工作台", "01"),
+                    item(PAGE_TENANT_CENTER, "租户中心", "02"),
+                    item(PAGE_IDENTITY_ACCESS, "身份与权限中心", "03"),
+                    item(PAGE_PLATFORM_SETTINGS, "平台设置中心", "04")
             )));
             groups.add(group("产品能力", productMenuItems(products)));
             return groups;

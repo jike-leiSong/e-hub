@@ -9,8 +9,6 @@ public class IotCimDataItem {
 
     private String deviceId;
 
-    private String deviceType;
-
     private String metric;
 
     private String value;

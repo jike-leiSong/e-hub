@@ -33,21 +33,9 @@ public class IotAccessApp {
     @Column(name = "aggregator_id")
     private String aggregatorId;
 
-    @ApiModelProperty("企业ID")
-    @Column(name = "ent_id")
-    private String entId;
-
-    @ApiModelProperty("默认项目编码")
-    @Column(name = "project_id")
-    private String projectId;
-
     @ApiModelProperty("X-GW-AccessKey")
     @Column(name = "access_key")
     private String accessKey;
-
-    @ApiModelProperty("userKey")
-    @Column(name = "user_key")
-    private String userKey;
 
     @ApiModelProperty("是否启用")
     @Column(name = "enabled")
