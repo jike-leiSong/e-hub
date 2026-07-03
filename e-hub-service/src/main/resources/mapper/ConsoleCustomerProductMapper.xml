@@ -96,4 +96,25 @@
         DELETE FROM console_customer_product
         WHERE user_id = #{userId}
     </delete>
+
+    <delete id="deleteByCustomerId">
+        DELETE FROM console_customer_product
+        WHERE customer_id = #{customerId}
+          AND (user_id IS NULL OR user_id = '')
+    </delete>
+
+    <select id="listByCustomerId" resultMap="BaseResultMap">
+        SELECT id,
+               user_id,
+               customer_id,
+               product_code,
+               enabled,
+               valid_from,
+               valid_to,
+               create_time,
+               update_time
+        FROM console_customer_product
+        WHERE customer_id = #{customerId}
+        ORDER BY product_code
+    </select>
 </mapper>

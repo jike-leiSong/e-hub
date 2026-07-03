@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.sl.ehub.service.mapper.ConsoleTenantProductMapper">
+
+    <resultMap id="BaseResultMap" type="cn.sl.ehub.service.vo.ConsoleTenantProduct">
+        <id column="id" jdbcType="BIGINT" property="id"/>
+        <result column="tenant_id" jdbcType="VARCHAR" property="tenantId"/>
+        <result column="product_code" jdbcType="VARCHAR" property="productCode"/>
+        <result column="enabled" jdbcType="INTEGER" property="enabled"/>
+        <result column="valid_from" jdbcType="VARCHAR" property="validFrom"/>
+        <result column="valid_to" jdbcType="VARCHAR" property="validTo"/>
+        <result column="config_json" jdbcType="LONGVARCHAR" property="configJson"/>
+        <result column="create_time" jdbcType="VARCHAR" property="createTime"/>
+        <result column="update_time" jdbcType="VARCHAR" property="updateTime"/>
+    </resultMap>
+
+    <select id="listByTenantId" resultMap="BaseResultMap">
+        SELECT id,
+               tenant_id,
+               product_code,
+               enabled,
+               valid_from,
+               valid_to,
+               config_json,
+               create_time,
+               update_time
+        FROM console_tenant_product
+        WHERE tenant_id = #{tenantId}
+        ORDER BY product_code
+    </select>
+
+    <select id="listByTenantIds" resultMap="BaseResultMap">
+        SELECT id,
+               tenant_id,
+               product_code,
+               enabled,
+               valid_from,
+               valid_to,
+               config_json,
+               create_time,
+               update_time
+        FROM console_tenant_product
+        WHERE tenant_id IN
+        <foreach collection="tenantIds" item="tenantId" open="(" separator="," close=")">
+            #{tenantId}
+        </foreach>
+        ORDER BY tenant_id, product_code
+    </select>
+
+    <select id="countEnabledTenants" resultType="java.lang.Integer">
+        SELECT COUNT(DISTINCT tenant_id)
+        FROM console_tenant_product
+        WHERE enabled = 1
+    </select>
+
+    <delete id="deleteByTenantId">
+        DELETE FROM console_tenant_product
+        WHERE tenant_id = #{tenantId}
+    </delete>
+</mapper>

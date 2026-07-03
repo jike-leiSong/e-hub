@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.sl.ehub.service.mapper.ConsoleOperationLogMapper">
+
+    <resultMap id="BaseResultMap" type="cn.sl.ehub.service.vo.ConsoleOperationLog">
+        <id column="id" jdbcType="BIGINT" property="id"/>
+        <result column="biz_type" jdbcType="VARCHAR" property="bizType"/>
+        <result column="biz_id" jdbcType="VARCHAR" property="bizId"/>
+        <result column="action" jdbcType="VARCHAR" property="action"/>
+        <result column="operator_user_id" jdbcType="VARCHAR" property="operatorUserId"/>
+        <result column="operator_name" jdbcType="VARCHAR" property="operatorName"/>
+        <result column="request_path" jdbcType="VARCHAR" property="requestPath"/>
+        <result column="before_json" jdbcType="LONGVARCHAR" property="beforeJson"/>
+        <result column="after_json" jdbcType="LONGVARCHAR" property="afterJson"/>
+        <result column="result" jdbcType="VARCHAR" property="result"/>
+        <result column="error_msg" jdbcType="VARCHAR" property="errorMsg"/>
+        <result column="create_time" jdbcType="VARCHAR" property="createTime"/>
+    </resultMap>
+
+    <select id="page" resultMap="BaseResultMap">
+        SELECT id,
+               biz_type,
+               biz_id,
+               action,
+               operator_user_id,
+               operator_name,
+               request_path,
+               before_json,
+               after_json,
+               result,
+               error_msg,
+               create_time
+        FROM console_operation_log
+        WHERE 1 = 1
+        <if test="bizType != null and bizType != ''">
+            AND biz_type = #{bizType}
+        </if>
+        <if test="operatorUserId != null and operatorUserId != ''">
+            AND operator_user_id = #{operatorUserId}
+        </if>
+        <if test="startTime != null and startTime != ''">
+            AND create_time &gt;= #{startTime}
+        </if>
+        <if test="endTime != null and endTime != ''">
+            AND create_time &lt;= #{endTime}
+        </if>
+        ORDER BY create_time DESC, id DESC
+    </select>
+
+    <select id="countRecentSince" resultType="java.lang.Integer">
+        SELECT COUNT(1)
+        FROM console_operation_log
+        WHERE create_time &gt;= #{sinceTime}
+    </select>
+
+    <select id="listRecent" resultMap="BaseResultMap">
+        SELECT id,
+               biz_type,
+               biz_id,
+               action,
+               operator_user_id,
+               operator_name,
+               request_path,
+               before_json,
+               after_json,
+               result,
+               error_msg,
+               create_time
+        FROM console_operation_log
+        ORDER BY create_time DESC, id DESC
+        LIMIT #{limit}
+    </select>
+</mapper>

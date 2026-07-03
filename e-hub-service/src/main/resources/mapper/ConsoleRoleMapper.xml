@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.sl.ehub.service.mapper.ConsoleRoleMapper">
+
+    <resultMap id="BaseResultMap" type="cn.sl.ehub.service.vo.ConsoleRole">
+        <id column="id" jdbcType="BIGINT" property="id"/>
+        <result column="role_id" jdbcType="VARCHAR" property="roleId"/>
+        <result column="role_name" jdbcType="VARCHAR" property="roleName"/>
+        <result column="role_code" jdbcType="VARCHAR" property="roleCode"/>
+        <result column="platform_type" jdbcType="VARCHAR" property="platformType"/>
+        <result column="status" jdbcType="INTEGER" property="status"/>
+        <result column="remark" jdbcType="VARCHAR" property="remark"/>
+        <result column="create_time" jdbcType="VARCHAR" property="createTime"/>
+        <result column="update_time" jdbcType="VARCHAR" property="updateTime"/>
+    </resultMap>
+
+    <select id="page" resultMap="BaseResultMap">
+        SELECT id,
+               role_id,
+               role_name,
+               role_code,
+               platform_type,
+               status,
+               remark,
+               create_time,
+               update_time
+        FROM console_role
+        WHERE 1 = 1
+        <if test="platformType != null and platformType != ''">
+            AND platform_type = #{platformType}
+        </if>
+        <if test="status != null">
+            AND status = #{status}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (
+                role_name LIKE CONCAT('%', #{keyword}, '%')
+                OR role_code LIKE CONCAT('%', #{keyword}, '%')
+                OR role_id LIKE CONCAT('%', #{keyword}, '%')
+            )
+        </if>
+        ORDER BY update_time DESC, id DESC
+    </select>
+
+    <select id="getByRoleId" resultMap="BaseResultMap">
+        SELECT id,
+               role_id,
+               role_name,
+               role_code,
+               platform_type,
+               status,
+               remark,
+               create_time,
+               update_time
+        FROM console_role
+        WHERE role_id = #{roleId}
+        LIMIT 1
+    </select>
+
+    <select id="countByRoleCode" resultType="java.lang.Integer">
+        SELECT COUNT(1)
+        FROM console_role
+        WHERE platform_type = #{platformType}
+          AND role_code = #{roleCode}
+        <if test="excludeRoleId != null and excludeRoleId != ''">
+            AND role_id != #{excludeRoleId}
+        </if>
+    </select>
+
+    <select id="countAll" resultType="java.lang.Integer">
+        SELECT COUNT(1)
+        FROM console_role
+    </select>
+
+    <select id="listByRoleIds" resultMap="BaseResultMap">
+        SELECT id,
+               role_id,
+               role_name,
+               role_code,
+               platform_type,
+               status,
+               remark,
+               create_time,
+               update_time
+        FROM console_role
+        WHERE role_id IN
+        <foreach collection="roleIds" item="roleId" open="(" separator="," close=")">
+            #{roleId}
+        </foreach>
+    </select>
+</mapper>

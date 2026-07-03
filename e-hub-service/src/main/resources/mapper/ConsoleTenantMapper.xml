@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.sl.ehub.service.mapper.ConsoleTenantMapper">
+
+    <resultMap id="BaseResultMap" type="cn.sl.ehub.service.vo.ConsoleTenant">
+        <id column="id" jdbcType="BIGINT" property="id"/>
+        <result column="tenant_id" jdbcType="VARCHAR" property="tenantId"/>
+        <result column="tenant_name" jdbcType="VARCHAR" property="tenantName"/>
+        <result column="tenant_type" jdbcType="VARCHAR" property="tenantType"/>
+        <result column="status" jdbcType="INTEGER" property="status"/>
+        <result column="aggregator_id" jdbcType="VARCHAR" property="aggregatorId"/>
+        <result column="ent_id" jdbcType="VARCHAR" property="entId"/>
+        <result column="owner_user_id" jdbcType="VARCHAR" property="ownerUserId"/>
+        <result column="contact_name" jdbcType="VARCHAR" property="contactName"/>
+        <result column="contact_phone" jdbcType="VARCHAR" property="contactPhone"/>
+        <result column="remark" jdbcType="VARCHAR" property="remark"/>
+        <result column="create_time" jdbcType="VARCHAR" property="createTime"/>
+        <result column="update_time" jdbcType="VARCHAR" property="updateTime"/>
+    </resultMap>
+
+    <select id="page" resultMap="BaseResultMap">
+        SELECT t.id,
+               t.tenant_id,
+               t.tenant_name,
+               t.tenant_type,
+               t.status,
+               t.aggregator_id,
+               t.ent_id,
+               t.owner_user_id,
+               t.contact_name,
+               t.contact_phone,
+               t.remark,
+               t.create_time,
+               t.update_time
+        FROM console_tenant t
+        WHERE 1 = 1
+        <if test="tenantType != null and tenantType != ''">
+            AND t.tenant_type = #{tenantType}
+        </if>
+        <if test="status != null">
+            AND t.status = #{status}
+        </if>
+        <if test="productCode != null and productCode != ''">
+            AND EXISTS (
+                SELECT 1
+                FROM console_tenant_product tp
+                WHERE tp.tenant_id = t.tenant_id
+                  AND tp.product_code = #{productCode}
+                  AND tp.enabled = 1
+            )
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (
+                t.tenant_id LIKE CONCAT('%', #{keyword}, '%')
+                OR t.tenant_name LIKE CONCAT('%', #{keyword}, '%')
+                OR t.aggregator_id LIKE CONCAT('%', #{keyword}, '%')
+                OR t.ent_id LIKE CONCAT('%', #{keyword}, '%')
+                OR t.owner_user_id LIKE CONCAT('%', #{keyword}, '%')
+            )
+        </if>
+        ORDER BY t.update_time DESC, t.id DESC
+    </select>
+
+    <select id="getByTenantId" resultMap="BaseResultMap">
+        SELECT id,
+               tenant_id,
+               tenant_name,
+               tenant_type,
+               status,
+               aggregator_id,
+               ent_id,
+               owner_user_id,
+               contact_name,
+               contact_phone,
+               remark,
+               create_time,
+               update_time
+        FROM console_tenant
+        WHERE tenant_id = #{tenantId}
+        LIMIT 1
+    </select>
+
+    <select id="countByTenantName" resultType="java.lang.Integer">
+        SELECT COUNT(1)
+        FROM console_tenant
+        WHERE tenant_name = #{tenantName}
+        <if test="excludeTenantId != null and excludeTenantId != ''">
+            AND tenant_id != #{excludeTenantId}
+        </if>
+    </select>
+
+    <select id="countAll" resultType="java.lang.Integer">
+        SELECT COUNT(1)
+        FROM console_tenant
+    </select>
+
+    <select id="countActive" resultType="java.lang.Integer">
+        SELECT COUNT(1)
+        FROM console_tenant
+        WHERE status = 1
+    </select>
+
+    <select id="listByTenantIds" resultMap="BaseResultMap">
+        SELECT id,
+               tenant_id,
+               tenant_name,
+               tenant_type,
+               status,
+               aggregator_id,
+               ent_id,
+               owner_user_id,
+               contact_name,
+               contact_phone,
+               remark,
+               create_time,
+               update_time
+        FROM console_tenant
+        WHERE tenant_id IN
+        <foreach collection="tenantIds" item="tenantId" open="(" separator="," close=")">
+            #{tenantId}
+        </foreach>
+    </select>
+</mapper>

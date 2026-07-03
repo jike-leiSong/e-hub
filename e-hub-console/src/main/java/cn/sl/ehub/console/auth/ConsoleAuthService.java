@@ -72,6 +72,7 @@ public class ConsoleAuthService implements AuthService {
                 .withClaim("userType", authUser.getUserType())
                 .withClaim("aggregatorId", authUser.getAggregatorId())
                 .withClaim("entId", authUser.getEntId())
+                .withClaim("tenantId", authUser.getTenantId())
                 .withIssuedAt(new Date(now))
                 .withExpiresAt(new Date(expireAt))
                 .withJWTId(nonce)
@@ -90,6 +91,7 @@ public class ConsoleAuthService implements AuthService {
         resp.setUserType(authUser.getUserType());
         resp.setAggregatorId(authUser.getAggregatorId());
         resp.setEntId(authUser.getEntId());
+        resp.setTenantId(authUser.getTenantId());
         resp.setExpireAt(expireAt);
         resp.setExpireSeconds(expireMinutes() * 60);
         permissionService.fillLoginResp(resp, authUser);
@@ -99,7 +101,7 @@ public class ConsoleAuthService implements AuthService {
     @Override
     public AuthUser verify(String token) {
         if (Boolean.FALSE.equals(properties.getEnabled())) {
-            return new AuthUser(null, "anonymous", "anonymous", ConsoleProductService.USER_TYPE_ADMIN, null, null);
+            return new AuthUser(null, "anonymous", "anonymous", ConsoleProductService.USER_TYPE_ADMIN, null, null, null);
         }
         if (StringUtils.isBlank(token)) {
             throw new BaseException(StatusCode.L.getCode(), StatusCode.L.getMsg());
@@ -138,7 +140,8 @@ public class ConsoleAuthService implements AuthService {
                 consoleUser.getDisplayName(),
                 normalizeUserType(consoleUser.getUserType()),
                 consoleUser.getAggregatorId(),
-                consoleUser.getEntId()
+                consoleUser.getEntId(),
+                consoleUser.getTenantId()
         );
     }
 

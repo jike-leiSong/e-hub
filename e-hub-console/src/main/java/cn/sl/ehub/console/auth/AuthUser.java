@@ -20,4 +20,6 @@ public class AuthUser {
     private String aggregatorId;
 
     private String entId;
+
+    private String tenantId;
 }

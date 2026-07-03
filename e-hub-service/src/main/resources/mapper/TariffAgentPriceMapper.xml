@@ -11,6 +11,25 @@
     ORDER BY p.version DESC
   </select>
 
+  <select id="selectVersionOptions" resultType="cn.sl.ehub.service.dto.tariff.AgentPriceVersionResp">
+    SELECT
+      p.version AS version,
+      p.province_code AS provinceCode,
+      MAX(p.province_name) AS provinceName
+    FROM e_agent_price p
+    WHERE p.del_flag = '0'
+      AND p.version IS NOT NULL
+      AND p.version != ''
+    <if test="provinceCode != null and provinceCode != ''">
+      AND p.province_code = #{provinceCode}
+    </if>
+    <if test="version != null and version != ''">
+      AND p.version = #{version}
+    </if>
+    GROUP BY p.version, p.province_code
+    ORDER BY p.version DESC, p.province_code
+  </select>
+
   <sql id="agentPriceWhere">
     <if test="req.provinceCode != null and req.provinceCode != ''">
       AND p.province_code = #{req.provinceCode}
@@ -81,6 +100,33 @@
       AND p.price_type LIKE CONCAT('%', #{req.priceType}, '%')
     </if>
     ORDER BY d.biz_time
+  </select>
+
+  <select id="selectAgentPricePointData" resultType="cn.sl.ehub.service.dto.tariff.AgentPriceValuePointResp">
+    SELECT
+      d.biz_time AS bizTime,
+      d.price AS price
+    FROM e_agent_price p
+    INNER JOIN e_agent_price_data d ON p.id = d.en_agent_price_id
+    WHERE p.del_flag = '0'
+      AND d.del_flag = '0'
+    <include refid="agentPriceWhere"/>
+    <if test="req.priceType != null and req.priceType != ''">
+      AND p.price_type LIKE CONCAT('%', #{req.priceType}, '%')
+    </if>
+    ORDER BY d.biz_time
+  </select>
+
+  <select id="selectAgentPriceHeader" resultType="cn.sl.ehub.service.dto.tariff.AgentPriceHeaderResp">
+    SELECT
+      p.province_name AS provinceName,
+      p.capacity_electricity_price AS capacityElectricityPrice,
+      p.demand_electricity_price AS demandElectricityPrice
+    FROM e_agent_price p
+    WHERE p.del_flag = '0'
+    <include refid="agentPriceWhere"/>
+    ORDER BY p.id
+    LIMIT 1
   </select>
 
   <select id="selectAreaOptions" resultType="cn.sl.ehub.service.dto.tariff.AgentPriceAreaOption">

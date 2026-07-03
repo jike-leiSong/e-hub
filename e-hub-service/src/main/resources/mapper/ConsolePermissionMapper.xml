@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.sl.ehub.service.mapper.ConsolePermissionMapper">
+
+    <resultMap id="BaseResultMap" type="cn.sl.ehub.service.vo.ConsolePermission">
+        <id column="id" jdbcType="BIGINT" property="id"/>
+        <result column="permission_code" jdbcType="VARCHAR" property="permissionCode"/>
+        <result column="permission_name" jdbcType="VARCHAR" property="permissionName"/>
+        <result column="permission_type" jdbcType="VARCHAR" property="permissionType"/>
+        <result column="module_code" jdbcType="VARCHAR" property="moduleCode"/>
+        <result column="parent_code" jdbcType="VARCHAR" property="parentCode"/>
+        <result column="path" jdbcType="VARCHAR" property="path"/>
+        <result column="sort_no" jdbcType="INTEGER" property="sortNo"/>
+        <result column="status" jdbcType="INTEGER" property="status"/>
+        <result column="create_time" jdbcType="VARCHAR" property="createTime"/>
+        <result column="update_time" jdbcType="VARCHAR" property="updateTime"/>
+    </resultMap>
+
+    <select id="listEnabled" resultMap="BaseResultMap">
+        SELECT id,
+               permission_code,
+               permission_name,
+               permission_type,
+               module_code,
+               parent_code,
+               path,
+               sort_no,
+               status,
+               create_time,
+               update_time
+        FROM console_permission
+        WHERE status = 1
+        ORDER BY module_code, sort_no, id
+    </select>
+
+    <select id="listByCodes" resultMap="BaseResultMap">
+        SELECT id,
+               permission_code,
+               permission_name,
+               permission_type,
+               module_code,
+               parent_code,
+               path,
+               sort_no,
+               status,
+               create_time,
+               update_time
+        FROM console_permission
+        WHERE permission_code IN
+        <foreach collection="permissionCodes" item="permissionCode" open="(" separator="," close=")">
+            #{permissionCode}
+        </foreach>
+        ORDER BY module_code, sort_no, id
+    </select>
+</mapper>

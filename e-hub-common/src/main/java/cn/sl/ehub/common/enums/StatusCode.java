@@ -38,6 +38,10 @@ public enum StatusCode {
     TS_SUCCESS(9000, "成功!"),
     TS_ERROR(9001, "失败!"),
 
+    TARIFF_NO_DATA(12001, "未查询到电价数据"),
+    TARIFF_VERSION_NOT_FOUND(12002, "电价版本不存在"),
+    TARIFF_IMPORT_VALIDATE_FAILED(12003, "电价导入校验失败"),
+
     A(1000, "数据库错误!"),
     B(1001, "服务器错误!"),
     C(1002, "参数错误!"),

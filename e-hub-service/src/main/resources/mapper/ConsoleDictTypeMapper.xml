@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.sl.ehub.service.mapper.ConsoleDictTypeMapper">
+
+    <resultMap id="BaseResultMap" type="cn.sl.ehub.service.vo.ConsoleDictType">
+        <id column="id" jdbcType="BIGINT" property="id"/>
+        <result column="dict_type" jdbcType="VARCHAR" property="dictType"/>
+        <result column="dict_name" jdbcType="VARCHAR" property="dictName"/>
+        <result column="status" jdbcType="INTEGER" property="status"/>
+        <result column="remark" jdbcType="VARCHAR" property="remark"/>
+        <result column="create_time" jdbcType="VARCHAR" property="createTime"/>
+        <result column="update_time" jdbcType="VARCHAR" property="updateTime"/>
+    </resultMap>
+
+    <select id="listAll" resultMap="BaseResultMap">
+        SELECT id,
+               dict_type,
+               dict_name,
+               status,
+               remark,
+               create_time,
+               update_time
+        FROM console_dict_type
+        <if test="status != null">
+            WHERE status = #{status}
+        </if>
+        ORDER BY dict_type, id
+    </select>
+
+    <select id="getByDictType" resultMap="BaseResultMap">
+        SELECT id,
+               dict_type,
+               dict_name,
+               status,
+               remark,
+               create_time,
+               update_time
+        FROM console_dict_type
+        WHERE dict_type = #{dictType}
+        LIMIT 1
+    </select>
+</mapper>

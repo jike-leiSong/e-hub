@@ -52,6 +52,10 @@ public class ConsoleUser {
     @Column(name = "ent_id")
     private String entId;
 
+    @ApiModelProperty("租户ID")
+    @Column(name = "tenant_id")
+    private String tenantId;
+
     @ApiModelProperty("状态 1启用 0禁用")
     @Column(name = "status")
     private Integer status;

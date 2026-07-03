@@ -28,6 +28,9 @@ public class AuthUserInfoResp {
     @ApiModelProperty("企业用户ID")
     private String entId;
 
+    @ApiModelProperty("租户ID")
+    private String tenantId;
+
     @ApiModelProperty("平台类型 owner/customer")
     private String platformType;
 

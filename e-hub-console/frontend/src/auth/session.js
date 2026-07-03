@@ -44,6 +44,7 @@ export function normalizeAuthUser(authUser = {}) {
     role: authUser.role || (userType === "ADMIN" ? "owner_admin" : "customer_user"),
     aggregatorId: authUser.aggregatorId || "",
     entId: authUser.entId || "",
+    tenantId: authUser.tenantId || "",
     products,
     permissions,
     allowedPages,
@@ -273,6 +274,11 @@ export function persistUserSession(user) {
   sessionStorage.setItem("ehub-platform-type", normalized.platformType);
   sessionStorage.setItem("ehub-products", normalized.products.join(","));
   sessionStorage.setItem("ehub-user", normalized.account);
+  if (normalized.tenantId) {
+    sessionStorage.setItem("tenantId", normalized.tenantId);
+  } else {
+    sessionStorage.removeItem("tenantId");
+  }
   if (normalized.aggregatorId) {
     sessionStorage.setItem("aggregatorId", normalized.aggregatorId);
   } else {
@@ -292,6 +298,7 @@ export function clearUserSession() {
   sessionStorage.removeItem("ehub-products");
   sessionStorage.removeItem("ehub-user");
   sessionStorage.removeItem("ehub-authenticated");
+  sessionStorage.removeItem("tenantId");
   sessionStorage.removeItem("aggregatorId");
   sessionStorage.removeItem("entId");
 }
@@ -302,6 +309,7 @@ export function clearAuthStorage() {
   sessionStorage.removeItem("ehub-token");
   sessionStorage.removeItem("console-token");
   sessionStorage.removeItem("ticket");
+  sessionStorage.removeItem("tenantId");
   sessionStorage.removeItem("aggregatorId");
   sessionStorage.removeItem("entId");
 }

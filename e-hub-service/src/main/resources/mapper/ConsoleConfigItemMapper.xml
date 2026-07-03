@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.sl.ehub.service.mapper.ConsoleConfigItemMapper">
+
+    <resultMap id="BaseResultMap" type="cn.sl.ehub.service.vo.ConsoleConfigItem">
+        <id column="id" jdbcType="BIGINT" property="id"/>
+        <result column="config_key" jdbcType="VARCHAR" property="configKey"/>
+        <result column="config_name" jdbcType="VARCHAR" property="configName"/>
+        <result column="config_value" jdbcType="LONGVARCHAR" property="configValue"/>
+        <result column="config_group" jdbcType="VARCHAR" property="configGroup"/>
+        <result column="value_type" jdbcType="VARCHAR" property="valueType"/>
+        <result column="status" jdbcType="INTEGER" property="status"/>
+        <result column="remark" jdbcType="VARCHAR" property="remark"/>
+        <result column="create_time" jdbcType="VARCHAR" property="createTime"/>
+        <result column="update_time" jdbcType="VARCHAR" property="updateTime"/>
+    </resultMap>
+
+    <select id="page" resultMap="BaseResultMap">
+        SELECT id,
+               config_key,
+               config_name,
+               config_value,
+               config_group,
+               value_type,
+               status,
+               remark,
+               create_time,
+               update_time
+        FROM console_config_item
+        WHERE 1 = 1
+        <if test="configGroup != null and configGroup != ''">
+            AND config_group = #{configGroup}
+        </if>
+        <if test="status != null">
+            AND status = #{status}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (
+                config_key LIKE CONCAT('%', #{keyword}, '%')
+                OR config_name LIKE CONCAT('%', #{keyword}, '%')
+            )
+        </if>
+        ORDER BY update_time DESC, id DESC
+    </select>
+
+    <select id="getByConfigKey" resultMap="BaseResultMap">
+        SELECT id,
+               config_key,
+               config_name,
+               config_value,
+               config_group,
+               value_type,
+               status,
+               remark,
+               create_time,
+               update_time
+        FROM console_config_item
+        WHERE config_key = #{configKey}
+        LIMIT 1
+    </select>
+
+    <select id="countAll" resultType="java.lang.Integer">
+        SELECT COUNT(1)
+        FROM console_config_item
+    </select>
+</mapper>

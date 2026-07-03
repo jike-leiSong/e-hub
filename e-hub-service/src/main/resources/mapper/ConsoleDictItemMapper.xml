@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.sl.ehub.service.mapper.ConsoleDictItemMapper">
+
+    <resultMap id="BaseResultMap" type="cn.sl.ehub.service.vo.ConsoleDictItem">
+        <id column="id" jdbcType="BIGINT" property="id"/>
+        <result column="dict_type" jdbcType="VARCHAR" property="dictType"/>
+        <result column="item_code" jdbcType="VARCHAR" property="itemCode"/>
+        <result column="item_name" jdbcType="VARCHAR" property="itemName"/>
+        <result column="item_value" jdbcType="VARCHAR" property="itemValue"/>
+        <result column="sort_no" jdbcType="INTEGER" property="sortNo"/>
+        <result column="status" jdbcType="INTEGER" property="status"/>
+        <result column="ext_json" jdbcType="LONGVARCHAR" property="extJson"/>
+        <result column="create_time" jdbcType="VARCHAR" property="createTime"/>
+        <result column="update_time" jdbcType="VARCHAR" property="updateTime"/>
+    </resultMap>
+
+    <select id="listByDictType" resultMap="BaseResultMap">
+        SELECT id,
+               dict_type,
+               item_code,
+               item_name,
+               item_value,
+               sort_no,
+               status,
+               ext_json,
+               create_time,
+               update_time
+        FROM console_dict_item
+        WHERE dict_type = #{dictType}
+        <if test="status != null">
+            AND status = #{status}
+        </if>
+        ORDER BY sort_no ASC, id ASC
+    </select>
+</mapper>

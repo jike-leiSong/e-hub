@@ -17,4 +17,8 @@ public interface ConsoleCustomerProductMapper extends Mapper<ConsoleCustomerProd
                                                             @Param("customerIds") List<String> customerIds);
 
     int deleteByUserId(@Param("userId") String userId);
+
+    int deleteByCustomerId(@Param("customerId") String customerId);
+
+    List<ConsoleCustomerProduct> listByCustomerId(@Param("customerId") String customerId);
 }

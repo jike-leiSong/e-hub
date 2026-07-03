@@ -34,6 +34,9 @@ public class AuthLoginResp {
     @ApiModelProperty("企业用户ID")
     private String entId;
 
+    @ApiModelProperty("租户ID")
+    private String tenantId;
+
     @ApiModelProperty("过期时间戳")
     private Long expireAt;
 

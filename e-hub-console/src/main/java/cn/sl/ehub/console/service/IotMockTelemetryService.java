@@ -92,10 +92,14 @@ public class IotMockTelemetryService {
             throw new BaseException(400, "所选设备没有任何测点，请先在设备管理中添加测点");
         }
 
-        // 4. 解析 accessKey（entId 为空时取第一个设备的企业的凭证）
-        AccessApp accessApp = resolveAccessApp(
-                StringUtils.isNotBlank(actualEntId) ? actualEntId
-                        : (CollectionUtils.isNotEmpty(devices) ? devices.get(0).getEntId() : null));
+        // 4. 解析 accessKey：优先用入参，否则按聚合商匹配启用凭证
+        String actualAccessKey = StringUtils.defaultIfBlank(
+                accessKey,
+                resolveAccessApp(StringUtils.defaultIfBlank(
+                        actualAggregatorId,
+                        CollectionUtils.isNotEmpty(devices) ? devices.get(0).getAggregatorId() : null
+                )).accessKey
+        );
 
         // 5. 生成数据点并推送
         LocalDateTime baseTime = LocalDateTime.now().plusHours(hourOffset);
@@ -128,7 +132,7 @@ public class IotMockTelemetryService {
             }
 
             // 批量推送（按数据时间聚合）
-            PushResult pushResult = pushBatch(device, records, accessApp.accessKey);
+            PushResult pushResult = pushBatch(device, records, actualAccessKey);
             totalDevices++;
             totalPoints += points.size();
             totalPushSuccess += pushResult.success;
@@ -182,10 +186,18 @@ public class IotMockTelemetryService {
         }
     }
 
-    private AccessApp resolveAccessApp() {
+    private AccessApp resolveAccessApp(String aggregatorId) {
         Example ex = new Example(IotAccessApp.class);
-        ex.createCriteria().andEqualTo("enabled", 1);
+        Example.Criteria criteria = ex.createCriteria().andEqualTo("enabled", 1);
+        if (StringUtils.isNotBlank(aggregatorId)) {
+            criteria.andEqualTo("aggregatorId", aggregatorId);
+        }
         List<IotAccessApp> apps = iotAccessAppMapper.selectByExample(ex);
+        if (CollectionUtils.isEmpty(apps) && StringUtils.isNotBlank(aggregatorId)) {
+            ex = new Example(IotAccessApp.class);
+            ex.createCriteria().andEqualTo("enabled", 1);
+            apps = iotAccessAppMapper.selectByExample(ex);
+        }
         if (CollectionUtils.isEmpty(apps)) {
             throw new BaseException(400, "未找到有效的接入凭证，请检查 iot_access_app 表，或传入 accessKey 参数");
         }

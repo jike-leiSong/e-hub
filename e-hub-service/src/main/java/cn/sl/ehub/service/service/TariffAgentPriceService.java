@@ -6,9 +6,16 @@ import cn.sl.ehub.service.dto.tariff.AgentPriceAreaOption;
 import cn.sl.ehub.service.dto.tariff.AgentPriceAreaMenuNode;
 import cn.sl.ehub.service.dto.tariff.AgentPriceDefaultMenuResp;
 import cn.sl.ehub.service.dto.tariff.AgentPriceDictItemResp;
+import cn.sl.ehub.service.dto.tariff.AgentPriceHeaderResp;
+import cn.sl.ehub.service.dto.tariff.AgentPriceOpenApiQueryReq;
+import cn.sl.ehub.service.dto.tariff.AgentPriceOpenApiResp;
 import cn.sl.ehub.service.dto.tariff.AgentPriceOptionsResp;
 import cn.sl.ehub.service.dto.tariff.AgentPricePeriodResp;
+import cn.sl.ehub.service.dto.tariff.AgentPricePointResp;
 import cn.sl.ehub.service.dto.tariff.AgentPriceQueryReq;
+import cn.sl.ehub.service.dto.tariff.AgentPriceValuePointResp;
+import cn.sl.ehub.service.dto.tariff.AgentPriceVersionQueryReq;
+import cn.sl.ehub.service.dto.tariff.AgentPriceVersionResp;
 import cn.sl.ehub.service.dto.tariff.FpgjPointResp;
 import cn.sl.ehub.service.dto.tariff.HaomaidianMenuReq;
 import cn.sl.ehub.service.mapper.TariffAgentPriceMapper;
@@ -44,6 +51,93 @@ public class TariffAgentPriceService {
         this.tariffAgentPriceMapper = tariffAgentPriceMapper;
     }
 
+    public List<AgentPriceVersionResp> getVersions(AgentPriceVersionQueryReq req) {
+        AgentPriceVersionQueryReq query = req == null ? new AgentPriceVersionQueryReq() : req;
+        String version = StringUtils.isBlank(query.getYearMonth()) ? "" : resolveRequestedVersion(query.getYearMonth());
+        List<AgentPriceVersionResp> versions = tariffAgentPriceMapper.selectVersionOptions(query.getProvinceCode(), version);
+        if (CollectionUtils.isEmpty(versions)) {
+            return Collections.emptyList();
+        }
+        for (AgentPriceVersionResp item : versions) {
+            item.setYearMonth(toDisplayMonth(item.getVersion()));
+            item.setStatus(StringUtils.defaultIfBlank(item.getStatus(), "PUBLISHED"));
+            item.setEffectiveStart(resolveEffectiveStart(item.getVersion()));
+            item.setEffectiveEnd(resolveEffectiveEnd(item.getVersion()));
+        }
+        return versions;
+    }
+
+    public List<AgentPriceAreaMenuNode> getOpenApiAreas(AgentPriceVersionQueryReq req) {
+        if (req == null || StringUtils.isBlank(req.getYearMonth())) {
+            throwParam("电费年月不能为空");
+        }
+        String version = resolveRequestedVersion(req.getYearMonth());
+        List<AgentPriceAreaOption> areas = tariffAgentPriceMapper.selectAreaOptions(version);
+        if (StringUtils.isNotBlank(req.getProvinceCode())) {
+            areas = areas.stream()
+                    .filter(item -> StringUtils.equals(req.getProvinceCode(), item.getProvinceCode()))
+                    .collect(Collectors.toList());
+        }
+        return buildAreaTree(areas);
+    }
+
+    public AgentPriceOptionsResp getOpenApiOptions(AgentPriceQueryReq req) {
+        if (req == null || StringUtils.isBlank(resolveDateOrMonth(req.getSelectedDate(), req.getYearMonth()))) {
+            throwParam("电费日期不能为空");
+        }
+        return getOptions(req);
+    }
+
+    public AgentPriceOpenApiResp getOpenApiAgentPrices(AgentPriceOpenApiQueryReq req) {
+        validateQuery(req);
+        AgentPriceQueryReq query = copy(req);
+        String dateOrMonth = resolveDateOrMonth(query.getSelectedDate(), query.getYearMonth());
+        query.setYearMonth(resolveRequestedVersion(dateOrMonth));
+
+        List<FpgjPointResp> fpgj = resolveFpgjData(query, dateOrMonth);
+        AgentPriceQueryReq fallbackFpgjQuery = copy(query);
+        fallbackFpgjQuery.setSecondType("不限");
+        List<FpgjPointResp> fallbackFpgj = tariffAgentPriceMapper.selectFpgjData(fallbackFpgjQuery);
+
+        List<BigDecimal> ddPrices = selectPriceData(query, "电度");
+        if (CollectionUtils.isEmpty(ddPrices)) {
+            throwNoData(dateOrMonth);
+        }
+        List<BigDecimal> spPrices = selectPriceData(query, "输配");
+        List<BigDecimal> fjPrices = selectPriceData(query, "附加");
+        List<BigDecimal> xsPrices = selectPriceData(query, "线损");
+        List<BigDecimal> xtyxPrices = selectPriceData(query, "系统运行");
+
+        AgentPriceHeaderResp header = tariffAgentPriceMapper.selectAgentPriceHeader(query);
+        AgentPriceOpenApiResp resp = new AgentPriceOpenApiResp();
+        resp.setVersion(query.getYearMonth());
+        resp.setYearMonth(toDisplayMonth(query.getYearMonth()));
+        resp.setProvinceCode(query.getProvinceCode());
+        resp.setProvinceName(header == null ? query.getProvinceName() : header.getProvinceName());
+        resp.setSecondType(query.getSecondType());
+        resp.setThirdType(query.getThirdType());
+        resp.setUserType(query.getUserType());
+        resp.setDyLevel(query.getDyLevel());
+        resp.setSfType(query.getSfType());
+        if (header != null) {
+            resp.setCapacityElectricityPrice(header.getCapacityElectricityPrice());
+            resp.setDemandElectricityPrice(header.getDemandElectricityPrice());
+        }
+
+        Map<String, AgentPricePeriodResp> summary = new LinkedHashMap<>();
+        summary.put("jian", buildPeriod("尖", fpgj, fallbackFpgj, ddPrices, spPrices, fjPrices, xsPrices, xtyxPrices));
+        summary.put("feng", buildPeriod("峰", fpgj, fallbackFpgj, ddPrices, spPrices, fjPrices, xsPrices, xtyxPrices));
+        summary.put("ping", buildPeriod("平", fpgj, fallbackFpgj, ddPrices, spPrices, fjPrices, xsPrices, xtyxPrices));
+        summary.put("gu", buildPeriod("谷", fpgj, fallbackFpgj, ddPrices, spPrices, fjPrices, xsPrices, xtyxPrices));
+        summary.put("shengu", buildPeriod("深谷", fpgj, fallbackFpgj, ddPrices, spPrices, fjPrices, xsPrices, xtyxPrices));
+        resp.setPeriodSummary(summary);
+
+        if (Boolean.TRUE.equals(req.getReturnPoints())) {
+            resp.setPoints96(buildOpenApiPoints(query, fpgj, fallbackFpgj));
+        }
+        return resp;
+    }
+
     public Map<String, AgentPricePeriodResp> getAgentPrices(AgentPriceQueryReq req) {
         validateQuery(req);
         AgentPriceQueryReq query = copy(req);
@@ -57,6 +151,9 @@ public class TariffAgentPriceService {
 
         query.setPriceType("电度");
         List<BigDecimal> ddPrices = tariffAgentPriceMapper.selectAgentPriceData(query);
+        if (CollectionUtils.isEmpty(ddPrices)) {
+            throwNoData(dateOrMonth);
+        }
         query.setPriceType("输配");
         List<BigDecimal> spPrices = tariffAgentPriceMapper.selectAgentPriceData(query);
         query.setPriceType("附加");
@@ -168,6 +265,86 @@ public class TariffAgentPriceService {
             result.put(type, toDictItems(values));
         }
         return result;
+    }
+
+    private List<BigDecimal> selectPriceData(AgentPriceQueryReq query, String priceType) {
+        query.setPriceType(priceType);
+        List<BigDecimal> rows = tariffAgentPriceMapper.selectAgentPriceData(query);
+        return rows == null ? Collections.emptyList() : rows;
+    }
+
+    private List<AgentPriceValuePointResp> selectPricePointData(AgentPriceQueryReq query, String priceType) {
+        query.setPriceType(priceType);
+        List<AgentPriceValuePointResp> rows = tariffAgentPriceMapper.selectAgentPricePointData(query);
+        return rows == null ? Collections.emptyList() : rows;
+    }
+
+    private List<AgentPricePointResp> buildOpenApiPoints(AgentPriceQueryReq query,
+                                                         List<FpgjPointResp> fpgj,
+                                                         List<FpgjPointResp> fallbackFpgj) {
+        Map<String, String> periodMap = toPeriodMap(fallbackFpgj);
+        periodMap.putAll(toPeriodMap(fpgj));
+
+        Map<String, BigDecimal> ddPriceMap = toScaledPriceMap(selectPricePointData(query, "电度"));
+        Map<String, BigDecimal> spPriceMap = toScaledPriceMap(selectPricePointData(query, "输配"));
+        Map<String, BigDecimal> fjPriceMap = toScaledPriceMap(selectPricePointData(query, "附加"));
+        Map<String, BigDecimal> xsPriceMap = toScaledPriceMap(selectPricePointData(query, "线损"));
+        Map<String, BigDecimal> xtyxPriceMap = toScaledPriceMap(selectPricePointData(query, "系统运行"));
+
+        List<AgentPricePointResp> points = new ArrayList<>();
+        for (int i = 0; i < 96; i++) {
+            String time = indexTransBizTime(i);
+            BigDecimal ddPrice = defaultPrice(ddPriceMap.get(time));
+            BigDecimal spPrice = defaultPrice(spPriceMap.get(time));
+            BigDecimal fjPrice = defaultPrice(fjPriceMap.get(time));
+            BigDecimal xsPrice = defaultPrice(xsPriceMap.get(time));
+            BigDecimal systemPrice = defaultPrice(xtyxPriceMap.get(time));
+            BigDecimal dlPrice = ddPrice.subtract(spPrice).subtract(fjPrice).subtract(xsPrice).subtract(systemPrice);
+
+            AgentPricePointResp point = new AgentPricePointResp();
+            point.setTime(time);
+            point.setPeriodType(StringUtils.defaultString(periodMap.get(time)));
+            point.setDdPrice(formatPrice(ddPrice));
+            point.setSpPrice(formatPrice(spPrice));
+            point.setFjPrice(formatPrice(fjPrice));
+            point.setXsPrice(formatPrice(xsPrice));
+            point.setSystemPrice(formatPrice(systemPrice));
+            point.setDlPrice(formatPrice(dlPrice));
+            points.add(point);
+        }
+        return points;
+    }
+
+    private Map<String, String> toPeriodMap(List<FpgjPointResp> rows) {
+        if (CollectionUtils.isEmpty(rows)) {
+            return new LinkedHashMap<>();
+        }
+        return rows.stream()
+                .filter(item -> item != null && StringUtils.isNotBlank(item.getBizTime()))
+                .collect(Collectors.toMap(
+                        FpgjPointResp::getBizTime,
+                        item -> StringUtils.defaultString(item.getFgvalue()),
+                        (left, right) -> right,
+                        LinkedHashMap::new
+                ));
+    }
+
+    private Map<String, BigDecimal> toScaledPriceMap(List<AgentPriceValuePointResp> rows) {
+        if (CollectionUtils.isEmpty(rows)) {
+            return new LinkedHashMap<>();
+        }
+        Map<String, BigDecimal> result = new LinkedHashMap<>();
+        for (AgentPriceValuePointResp row : rows) {
+            if (row == null || StringUtils.isBlank(row.getBizTime())) {
+                continue;
+            }
+            result.put(row.getBizTime(), defaultPrice(row.getPrice()).multiply(RATE).stripTrailingZeros());
+        }
+        return result;
+    }
+
+    private BigDecimal defaultPrice(BigDecimal value) {
+        return value == null ? BigDecimal.ZERO : value;
     }
 
     private List<FpgjPointResp> resolveFpgjData(AgentPriceQueryReq query, String dateOrMonth) {
@@ -347,8 +524,14 @@ public class TariffAgentPriceService {
         if (version.matches("\\d{4}")) {
             return "20" + version.substring(0, 2) + "-" + version.substring(2, 4);
         }
-        if (version.matches("\\d{6}")) {
+        if (version.matches("\\d{6}") && !version.startsWith("20")) {
             return "20" + version.substring(0, 2) + "-" + version.substring(2, 4);
+        }
+        if (version.matches("\\d{6}") && version.startsWith("20")) {
+            return version.substring(0, 4) + "-" + version.substring(4, 6);
+        }
+        if (version.matches("\\d{8}")) {
+            return version.substring(0, 4) + "-" + version.substring(4, 6);
         }
         if (version.matches("\\d{4}-\\d{2}")) {
             return version;
@@ -357,6 +540,44 @@ public class TariffAgentPriceService {
             return version.substring(0, 7);
         }
         return version;
+    }
+
+    private String resolveEffectiveStart(String version) {
+        String displayDate = toDisplayDate(version);
+        if (StringUtils.isNotBlank(displayDate)) {
+            return displayDate;
+        }
+        String month = toDisplayMonth(version);
+        return month.matches("\\d{4}-\\d{2}") ? month + "-01" : "";
+    }
+
+    private String resolveEffectiveEnd(String version) {
+        String displayDate = toDisplayDate(version);
+        if (StringUtils.isNotBlank(displayDate)) {
+            return displayDate;
+        }
+        String month = toDisplayMonth(version);
+        if (!month.matches("\\d{4}-\\d{2}")) {
+            return "";
+        }
+        YearMonth yearMonth = YearMonth.parse(month);
+        return yearMonth.atEndOfMonth().format(DateTimeFormatter.ISO_DATE);
+    }
+
+    private String toDisplayDate(String version) {
+        if (StringUtils.isBlank(version)) {
+            return "";
+        }
+        if (version.matches("\\d{6}") && !version.startsWith("20")) {
+            return "20" + version.substring(0, 2) + "-" + version.substring(2, 4) + "-" + version.substring(4, 6);
+        }
+        if (version.matches("\\d{8}")) {
+            return version.substring(0, 4) + "-" + version.substring(4, 6) + "-" + version.substring(6, 8);
+        }
+        if (version.matches("\\d{4}-\\d{2}-\\d{2}")) {
+            return version;
+        }
+        return "";
     }
 
     private String resolveDateOrMonth(String selectedDate, String yearMonth) {
@@ -535,6 +756,9 @@ public class TariffAgentPriceService {
     }
 
     public static String resolveVersion(String yearMonth) {
+        if (StringUtils.isNotBlank(yearMonth) && yearMonth.matches("\\d{4}|\\d{6}|\\d{8}")) {
+            return yearMonth;
+        }
         if (StringUtils.isNotBlank(yearMonth)) {
             Pattern pattern = Pattern.compile("^(\\d{4})-(\\d{2})(?:-(\\d{2}))?$");
             Matcher matcher = pattern.matcher(yearMonth);
@@ -550,6 +774,11 @@ public class TariffAgentPriceService {
 
     private void throwParam(String message) {
         throw new BaseException(StatusCode.C.getCode(), message);
+    }
+
+    private void throwNoData(String dateOrMonth) {
+        String target = StringUtils.defaultIfBlank(dateOrMonth, "当前条件");
+        throw new BaseException(StatusCode.TARIFF_NO_DATA.getCode(), "未查询到 " + target + " 对应的代理电价数据");
     }
 
     private static class SelectedArea {

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.sl.ehub.service.mapper.ConsoleUserRoleMapper">
+
+    <resultMap id="BaseResultMap" type="cn.sl.ehub.service.vo.ConsoleUserRole">
+        <id column="id" jdbcType="BIGINT" property="id"/>
+        <result column="user_id" jdbcType="VARCHAR" property="userId"/>
+        <result column="role_id" jdbcType="VARCHAR" property="roleId"/>
+        <result column="create_time" jdbcType="VARCHAR" property="createTime"/>
+        <result column="update_time" jdbcType="VARCHAR" property="updateTime"/>
+    </resultMap>
+
+    <select id="listByUserIds" resultMap="BaseResultMap">
+        SELECT id,
+               user_id,
+               role_id,
+               create_time,
+               update_time
+        FROM console_user_role
+        WHERE user_id IN
+        <foreach collection="userIds" item="userId" open="(" separator="," close=")">
+            #{userId}
+        </foreach>
+    </select>
+
+    <select id="listByUserId" resultMap="BaseResultMap">
+        SELECT id,
+               user_id,
+               role_id,
+               create_time,
+               update_time
+        FROM console_user_role
+        WHERE user_id = #{userId}
+    </select>
+
+    <delete id="deleteByUserId">
+        DELETE FROM console_user_role
+        WHERE user_id = #{userId}
+    </delete>
+</mapper>
