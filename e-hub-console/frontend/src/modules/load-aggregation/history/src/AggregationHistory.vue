@@ -223,5 +223,39 @@ function defaultShowPage(viewType) {
     margin-top: 16px;
     overflow: auto;
   }
+  ::v-deep .el-date-editor.el-range-editor,
+  ::v-deep .el-date-editor.el-range-editor.el-input__inner {
+    width: 330px !important;
+    max-width: 100%;
+    height: 32px !important;
+    padding: 3px 10px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    box-sizing: border-box;
+  }
+  ::v-deep .el-date-editor .el-range-input {
+    flex: 1 1 0;
+    min-width: 0;
+    width: auto !important;
+    height: 24px;
+    line-height: 24px;
+  }
+  ::v-deep .el-date-editor .el-range-separator {
+    flex: 0 0 24px;
+    width: 24px !important;
+    min-width: 24px;
+    padding: 0;
+    color: #607d8f;
+    line-height: 24px !important;
+    text-align: center;
+  }
+  ::v-deep .el-date-editor .el-range__icon,
+  ::v-deep .el-date-editor .el-range__close-icon,
+  ::v-deep .el-date-editor .el-input__icon {
+    flex: 0 0 18px;
+    width: 18px;
+    line-height: 24px !important;
+  }
 }
 </style>

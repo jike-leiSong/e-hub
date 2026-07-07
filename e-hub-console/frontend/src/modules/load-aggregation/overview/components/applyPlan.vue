@@ -31,8 +31,8 @@
             <strong>{{ applyUserText }}家</strong>
           </div>
           <div class="summaryItem">
-            <span>报价状态</span>
-            <strong>{{ priceStatusText }}</strong>
+            <span>申报准备</span>
+            <strong>{{ preparationStatusText }}</strong>
           </div>
         </div>
 
@@ -52,7 +52,7 @@
         <button
           type="button"
           class="primaryApply"
-          :class="{ disabled: !canApply }"
+          :class="{ disabled: !isPrimaryActionActive }"
           @click="handlePrimaryAction"
         >
           {{ actionText }}
@@ -60,10 +60,10 @@
         <div class="actionTip">{{ applyContextText }}</div>
         <div class="actionRows">
           <div class="actionRow">
-            <span>报价</span>
-            <strong>{{ priceStatusText }}</strong>
+            <span>申报准备</span>
+            <strong>{{ preparationStatusText }}</strong>
             <button type="button" @click="goApplyPage(applyData.applyPriceStatus)">
-              {{ applyData.applyPriceStatus === "0" ? "进入" : "查看" }}
+              {{ needsApplyPreparation ? "去处理" : "查看" }}
             </button>
           </div>
           <div class="actionRow">
@@ -156,6 +156,12 @@ export default {
       }
       return String(this.applyData.applyPriceStatus) === "1" ? "已提交" : "未提交";
     },
+    preparationStatusText() {
+      if (!this.hasApplyPlan) {
+        return "待完善";
+      }
+      return this.priceStatusText;
+    },
     planDateText() {
       return this.applyData.planDate || "--";
     },
@@ -165,10 +171,29 @@ export default {
     applyUserText() {
       return this.formatNumber(this.applyData.applyYesNum);
     },
+    hasApplyPlan() {
+      const userCount = Number(this.applyData.applyYesNum);
+      const hasUser = Number.isFinite(userCount) && userCount > 0;
+      const resourceType = String(this.applyData.applyResourceType || this.resourceTypeName || "");
+      return hasUser && resourceType !== "无";
+    },
+    needsApplyPreparation() {
+      return String(this.applyData.applyStatus) === "0"
+        && this.applyData.winStatus == null
+        && (!this.hasApplyPlan || String(this.applyData.applyPriceStatus) === "0");
+    },
+    isPrimaryActionActive() {
+      return this.canApply || this.needsApplyPreparation;
+    },
     canApply() {
-      return String(this.applyData.applyStatus) === "0" && this.applyData.winStatus == null;
+      return String(this.applyData.applyStatus) === "0"
+        && this.applyData.winStatus == null
+        && !this.needsApplyPreparation;
     },
     actionText() {
+      if (this.needsApplyPreparation) {
+        return "去完善申报";
+      }
       if (this.canApply) {
         return "立即申报";
       }
@@ -238,6 +263,10 @@ export default {
       this.$emit("goApplyPage", e);
     },
     handlePrimaryAction() {
+      if (this.needsApplyPreparation) {
+        this.goApplyPage(this.applyData.applyPriceStatus);
+        return;
+      }
       if (this.canApply) {
         this.doApply();
         return;

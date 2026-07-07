@@ -6,13 +6,18 @@ import service from "@/services/http";
 
 // 统一请求封装
 function request(config) {
+  const headers = {
+    ...config.headers,
+    Authorization: `Bearer ${sessionStorage.getItem("token") || sessionStorage.getItem("console-token")}`,
+  };
+  const hasBody = config.data !== undefined;
+  const isFormData = typeof FormData !== "undefined" && config.data instanceof FormData;
+  if (hasBody && !isFormData && !headers["Content-Type"] && !headers["content-type"]) {
+    headers["Content-Type"] = "application/json";
+  }
   return service({
     ...config,
-    headers: {
-      ...config.headers,
-      // 使用Console的token认证
-      Authorization: `Bearer ${sessionStorage.getItem("token") || sessionStorage.getItem("console-token")}`,
-    },
+    headers,
   });
 }
 

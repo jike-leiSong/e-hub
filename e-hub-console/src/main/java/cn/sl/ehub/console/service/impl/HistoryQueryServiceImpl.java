@@ -1,5 +1,6 @@
 package cn.sl.ehub.console.service.impl;
 
+import cn.afterturn.easypoi.excel.entity.params.ExcelExportEntity;
 import cn.sl.ehub.common.enums.StatusCode;
 import cn.sl.ehub.common.exception.BaseException;
 import cn.sl.ehub.common.utils.MathUtils;
@@ -23,7 +24,11 @@ import cn.sl.ehub.console.service.IAggregatorBaseLineLoadChartService;
 import cn.sl.ehub.console.service.IAggregatorCrChartService;
 import cn.sl.ehub.console.service.IAggregatorDapChartService;
 import cn.sl.ehub.console.service.IAggregatorDateIssueChartService;
+import cn.sl.ehub.console.service.IAggregatorEntService;
+import cn.sl.ehub.console.service.IAggregatorEntBaseLineLoadChartService;
+import cn.sl.ehub.console.service.IAggregatorEntDateAdjustService;
 import cn.sl.ehub.console.service.IAggregatorEntDeviceService;
+import cn.sl.ehub.console.service.IAggregatorInfoService;
 import cn.sl.ehub.console.service.IAggregatorResourceDateIssueOfferService;
 import cn.sl.ehub.console.service.IHistoryQueryService;
 import cn.sl.ehub.service.mapper.IotTelemetryMinuteMapper;
@@ -31,11 +36,16 @@ import cn.sl.ehub.service.req.AdjustSituationExcelRep;
 import cn.sl.ehub.service.req.IndexOverviewTableResp;
 import cn.sl.ehub.service.resp.HistoryQueryDeviceMetricResp;
 import cn.sl.ehub.service.resp.IndexOverviewResp;
+import cn.sl.ehub.service.resp.AggregatorEntDateAdjustResp;
 import cn.sl.ehub.service.vo.AggregatorBaseLineLoadChart;
 import cn.sl.ehub.service.vo.AggregatorCrChart;
 import cn.sl.ehub.service.vo.AggregatorDapChart;
 import cn.sl.ehub.service.vo.AggregatorDateIssueChart;
+import cn.sl.ehub.service.vo.AggregatorEnt;
+import cn.sl.ehub.service.vo.AggregatorEntBaseLineLoadChart;
+import cn.sl.ehub.service.vo.AggregatorEntDateAdjust;
 import cn.sl.ehub.service.vo.AggregatorEntDevice;
+import cn.sl.ehub.service.vo.AggregatorInfo;
 import cn.sl.ehub.service.vo.AggregatorResourceDateIssueOffer;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
@@ -44,12 +54,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
+import java.text.Collator;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
-import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
@@ -87,23 +99,54 @@ public class HistoryQueryServiceImpl implements IHistoryQueryService {
     private static final DateTimeFormatter SHORT_TIME_SECOND_FORMATTER = DateTimeFormatter.ofPattern("H:mm:ss");
 
     private final IAggregatorEntDeviceService aggregatorEntDeviceService;
+    private final IAggregatorEntDateAdjustService aggregatorEntDateAdjustService;
+    private final IAggregatorEntBaseLineLoadChartService aggregatorEntBaseLineLoadChartService;
     private final IAggregatorDateIssueChartService aggregatorDateIssueChartService;
     private final IAggregatorDapChartService aggregatorDapChartService;
     private final IAggregatorBaseLineLoadChartService aggregatorBaseLineLoadChartService;
     private final IAggregatorCrChartService aggregatorCrChartService;
     private final IAggregatorResourceDateIssueOfferService aggregatorResourceDateIssueOfferService;
+    private final IAggregatorEntService aggregatorEntService;
+    private final IAggregatorInfoService aggregatorInfoService;
     private final IotTelemetryMinuteMapper iotTelemetryMinuteMapper;
 
     @Override
     public HistoryQueryGraphVO userAdjustmentGraph(UserAdjustmentGraphReq userAdjustmentGraphReq) {
-        log.warn("userAdjustmentGraph called - empty implementation");
-        return new HistoryQueryGraphVO();
+        NewUserAdjustmentGraphReq req = new NewUserAdjustmentGraphReq(
+                userAdjustmentGraphReq.getStartTime(),
+                userAdjustmentGraphReq.getEndTime(),
+                userAdjustmentGraphReq.getSubEntId(),
+                userAdjustmentGraphReq.getResourceTypeId()
+        );
+        HistoryQueryGraphVO resp = userAdjustmentGraphNew(req);
+        resp.setResolvedPower(resp.getAdjustPower());
+        resp.setEffectivePower(resp.getAdjustPower());
+        resp.setFillColor(resp.getTimeColorRespList());
+        return resp;
     }
 
     @Override
     public HistoryQueryGraphVO userAdjustmentGraphNew(NewUserAdjustmentGraphReq userAdjustmentGraphReq) {
-        log.warn("userAdjustmentGraphNew called - empty implementation");
-        return new HistoryQueryGraphVO();
+        DateRange dateRange = resolveAdjustmentDateRange(userAdjustmentGraphReq.getStartTime(), userAdjustmentGraphReq.getEndTime());
+        List<String> quarterTimeList = buildQuarterTimeList(dateRange.getStartDate(), dateRange.getEndDate());
+        List<AggregatorEntDevice> deviceList = aggregatorEntDeviceService
+                .getDeviceListByEntId(userAdjustmentGraphReq.getSubEntId(), userAdjustmentGraphReq.getResourceTypeId());
+
+        HistoryQueryGraphVO resp = new HistoryQueryGraphVO();
+        List<DataResp> powerChart = buildEntQuarterAveragePowerChart(deviceList, dateRange, quarterTimeList);
+        List<DataResp> adjustPower = buildEntAdjustChart(userAdjustmentGraphReq, quarterTimeList);
+        List<DataResp> baseLineChart = buildEntBaseLineChart(userAdjustmentGraphReq, quarterTimeList);
+
+        resp.setActualPower(powerChart);
+        resp.setResolvedPower(adjustPower);
+        resp.setPowerChart(powerChart);
+        resp.setAdjustPower(adjustPower);
+        resp.setBaseLineChart(baseLineChart);
+        resp.setFillColor(Collections.emptyList());
+        resp.setTimeColorRespList(Collections.emptyList());
+        resp.setProfit("0");
+        resp.setProfitUnit("元");
+        return resp;
     }
 
     @Override
@@ -195,14 +238,52 @@ public class HistoryQueryServiceImpl implements IHistoryQueryService {
 
     @Override
     public HistoryAdjustExcelResp exportAdjustSituationExcel(AdjustSituationExcelRep adjustSituationExcelRep) {
-        log.warn("exportAdjustSituationExcel called - empty implementation");
-        return new HistoryAdjustExcelResp();
+        DateRange dateRange = resolveAdjustmentDateRange(adjustSituationExcelRep.getStartDate(), adjustSituationExcelRep.getEndDate());
+        List<String> dateList = buildDateList(dateRange.getStartDate(), dateRange.getEndDate());
+        List<String> quarterAxis = buildQuarterTimeList(dateRange.getStartDate(), dateRange.getEndDate());
+        String aggregatorId = adjustSituationExcelRep.getAggregatorId();
+        String resourceTypeId = adjustSituationExcelRep.getSourceId();
+        String aggregatorName = resolveAggregatorName(aggregatorId);
+
+        HistoryAdjustExcelResp resp = new HistoryAdjustExcelResp();
+        resp.setEntityList(buildAdjustExportTitle());
+
+        List<Map<String, String>> rowDataList = new ArrayList<>();
+        if (StringUtils.isBlank(adjustSituationExcelRep.getEntId())) {
+            rowDataList.addAll(buildAggregatorAdjustExportRows(
+                    aggregatorId,
+                    resourceTypeId,
+                    aggregatorName,
+                    dateRange,
+                    dateList,
+                    quarterAxis
+            ));
+        }
+
+        List<AggregatorEnt> entList = resolveExportEntList(aggregatorId, adjustSituationExcelRep.getEntId());
+        for (AggregatorEnt ent : entList) {
+            rowDataList.addAll(buildEntAdjustExportRows(
+                    ent,
+                    aggregatorName,
+                    resourceTypeId,
+                    dateRange,
+                    dateList,
+                    quarterAxis
+            ));
+        }
+        resp.setAllExcelDataList(rowDataList);
+        return resp;
     }
 
     @Override
     public HistoryAdjustExcelResp exportBuZhaoUploadData(AdjustSituationExcelRep req) {
-        log.warn("exportBuZhaoUploadData called - empty implementation");
-        return new HistoryAdjustExcelResp();
+        DateRange dateRange = resolveDateRange(req.getStartDate(), req.getEndDate());
+        List<DataResp> powerChart = buildPowerChart(req.getAggregatorId(), req.getSourceId(), dateRange);
+
+        HistoryAdjustExcelResp resp = new HistoryAdjustExcelResp();
+        resp.setEntityList(buildBuzhaoExportTitle());
+        resp.setAllExcelDataList(buildBuzhaoExportRows(powerChart, dateRange));
+        return resp;
     }
 
     private List<DataResp> buildPowerChart(String aggregatorId, String resourceTypeId, DateRange dateRange) {
@@ -231,6 +312,123 @@ public class HistoryQueryServiceImpl implements IHistoryQueryService {
                 dateRange.getStartTime(),
                 dateRange.getEndTime()
         );
+    }
+
+    private List<DataResp> buildEntQuarterAveragePowerChart(List<AggregatorEntDevice> deviceList,
+                                                            DateRange dateRange,
+                                                            List<String> quarterTimeList) {
+        if (deviceList == null || deviceList.isEmpty() || quarterTimeList.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<AggregatorEntDevice> onlineDeviceList = deviceList.stream()
+                .filter(device -> Integer.valueOf(1).equals(device.getModelFlag()))
+                .filter(device -> Integer.valueOf(1).equals(device.getStatus()))
+                .collect(Collectors.toList());
+        if (onlineDeviceList.isEmpty()) {
+            return quarterTimeList.stream().map(time -> new DataResp(time, null)).collect(Collectors.toList());
+        }
+
+        List<DataResp> minutePowerChart = buildPowerChart(onlineDeviceList.get(0).getAggregatorId(), onlineDeviceList, dateRange);
+        Map<String, Double> minuteValueMap = minutePowerChart.stream()
+                .filter(item -> StringUtils.isNotBlank(item.getTime()))
+                .collect(Collectors.toMap(DataResp::getTime, DataResp::getValue, (v1, v2) -> v1, LinkedHashMap::new));
+
+        List<DataResp> result = new ArrayList<>(quarterTimeList.size());
+        for (String quarterTime : quarterTimeList) {
+            LocalDateTime endTime = LocalDateTime.parse(quarterTime, DATE_TIME_FORMATTER);
+            double total = 0D;
+            int count = 0;
+            for (int i = 14; i >= 0; i--) {
+                String minuteKey = DATE_TIME_FORMATTER.format(endTime.minusMinutes(i));
+                Double value = minuteValueMap.get(minuteKey);
+                if (value != null) {
+                    total += value;
+                    count++;
+                }
+            }
+            result.add(new DataResp(quarterTime, count == 0 ? null : MathUtils.doublePoint(total / count, 2)));
+        }
+        return result;
+    }
+
+    private List<DataResp> buildPowerChart(String aggregatorId, List<AggregatorEntDevice> deviceList, DateRange dateRange) {
+        if (deviceList == null || deviceList.isEmpty()) {
+            return Collections.emptyList();
+        }
+        Set<Long> deviceIds = new LinkedHashSet<>();
+        Set<String> deviceCodes = deviceList.stream()
+                .peek(device -> addTelemetryDeviceId(deviceIds, device.getIotDeviceBaseId()))
+                .map(AggregatorEntDevice::getDeviceId)
+                .filter(StringUtils::isNotBlank)
+                .map(this::normalizeTelemetryDeviceCode)
+                .filter(StringUtils::isNotBlank)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        if (deviceIds.isEmpty() && deviceCodes.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return iotTelemetryMinuteMapper.sumPointValueByMinute(
+                aggregatorId,
+                new ArrayList<>(deviceIds),
+                new ArrayList<>(deviceCodes),
+                POWER_POINT_CODE,
+                dateRange.getStartTime(),
+                dateRange.getEndTime()
+        );
+    }
+
+    private List<DataResp> buildEntAdjustChart(NewUserAdjustmentGraphReq req, List<String> quarterTimeList) {
+        List<AggregatorEntDateAdjust> adjustList = aggregatorEntDateAdjustService.getEntAdjust(
+                req.getSubEntId(),
+                req.getStartTime(),
+                req.getEndTime(),
+                req.getResourceTypeId()
+        );
+        if (adjustList == null || adjustList.isEmpty()) {
+            return quarterTimeList.stream().map(time -> new DataResp(time, null)).collect(Collectors.toList());
+        }
+
+        Map<String, Double> valueMap = new LinkedHashMap<>();
+        for (AggregatorEntDateAdjust item : adjustList) {
+            if (StringUtils.isBlank(item.getProfitDetail())) {
+                continue;
+            }
+            List<AggregatorEntDateAdjustResp> detailList = JSONArray.parseArray(item.getProfitDetail(), AggregatorEntDateAdjustResp.class);
+            if (detailList == null || detailList.isEmpty()) {
+                continue;
+            }
+            for (AggregatorEntDateAdjustResp detail : detailList) {
+                if (detail == null || StringUtils.isBlank(detail.getEndTime())) {
+                    continue;
+                }
+                String normalizedTime = normalizeCurveTime(item.getDate(), detail.getEndTime());
+                if (normalizedTime == null) {
+                    continue;
+                }
+                valueMap.put(normalizedTime, detail.getCountPower());
+            }
+        }
+        return quarterTimeList.stream()
+                .map(time -> new DataResp(time, valueMap.containsKey(time) ? MathUtils.doublePoint(valueMap.get(time), 2) : null))
+                .collect(Collectors.toList());
+    }
+
+    private List<DataResp> buildEntBaseLineChart(NewUserAdjustmentGraphReq req, List<String> quarterTimeList) {
+        List<AggregatorEntBaseLineLoadChart> baseLineList = aggregatorEntBaseLineLoadChartService.getEntBaseLine(
+                req.getSubEntId(),
+                req.getResourceTypeId(),
+                req.getStartTime(),
+                req.getEndTime()
+        );
+        if (baseLineList == null || baseLineList.isEmpty()) {
+            return quarterTimeList.stream().map(time -> new DataResp(time, null)).collect(Collectors.toList());
+        }
+        Map<String, Double> valueMap = new LinkedHashMap<>();
+        for (AggregatorEntBaseLineLoadChart item : baseLineList) {
+            valueMap.putAll(parseCurveJson(item.getBaseDate(), item.getBaseLineLoadChart()));
+        }
+        return quarterTimeList.stream()
+                .map(time -> new DataResp(time, valueMap.containsKey(time) ? valueMap.get(time) : null))
+                .collect(Collectors.toList());
     }
 
     private Map<String, Double> buildIssueChartMap(String aggregatorId, String resourceTypeId, List<String> dateList) {
@@ -367,6 +565,15 @@ public class HistoryQueryServiceImpl implements IHistoryQueryService {
             return null;
         }
         String value = StringUtils.trim(rawTime);
+        if (StringUtils.isNotBlank(recordDate) && ("24:00".equals(value) || "24:00:00".equals(value))) {
+            try {
+                LocalDate date = LocalDate.parse(recordDate, DATE_FORMATTER).plusDays(1);
+                return DATE_TIME_FORMATTER.format(LocalDateTime.of(date, LocalTime.MIN));
+            } catch (DateTimeParseException ex) {
+                log.warn("解析24点曲线时间失败, recordDate={}", recordDate, ex);
+                return null;
+            }
+        }
         String normalized = normalizeFullDateTime(value);
         if (normalized != null) {
             return normalized;
@@ -478,6 +685,31 @@ public class HistoryQueryServiceImpl implements IHistoryQueryService {
         }
     }
 
+    private DateRange resolveAdjustmentDateRange(String startDate, String endDate) {
+        LocalDate start = parseDateOrDefault(startDate, LocalDate.now().minusDays(1));
+        LocalDate end = parseDateOrDefault(endDate, start);
+        if (start.isAfter(end)) {
+            LocalDate tmp = start;
+            start = end;
+            end = tmp;
+        }
+        ZoneId zoneId = ZoneId.systemDefault();
+        Date startTime = Date.from(start.atStartOfDay(zoneId).toInstant());
+        Date endTime = Date.from(end.plusDays(1).atStartOfDay(zoneId).toInstant());
+        return new DateRange(start, end, startTime, endTime);
+    }
+
+    private List<String> buildQuarterTimeList(LocalDate startDate, LocalDate endDate) {
+        List<String> result = new ArrayList<>();
+        LocalDateTime current = startDate.atStartOfDay().plusMinutes(15);
+        LocalDateTime end = endDate.plusDays(1).atStartOfDay();
+        while (!current.isAfter(end)) {
+            result.add(DATE_TIME_FORMATTER.format(current));
+            current = current.plusMinutes(15);
+        }
+        return result;
+    }
+
     private List<String> buildDateList(LocalDate startDate, LocalDate endDate) {
         List<String> dateList = new ArrayList<>();
         LocalDate current = startDate;
@@ -486,6 +718,247 @@ public class HistoryQueryServiceImpl implements IHistoryQueryService {
             current = current.plusDays(1);
         }
         return dateList;
+    }
+
+    private List<ExcelExportEntity> buildAdjustExportTitle() {
+        List<ExcelExportEntity> entityList = new ArrayList<>();
+        entityList.add(buildExportEntity("日期", "date", 15D));
+        entityList.add(buildExportEntity("聚合商名称", "aggregatorName", 22D));
+        entityList.add(buildExportEntity("用户名称", "entName", 22D));
+        entityList.add(buildExportEntity("功率(kw)", "power", 18D));
+        for (String label : buildQuarterLabels()) {
+            entityList.add(buildExportEntity(label, label, 12D));
+        }
+        return entityList;
+    }
+
+    private List<ExcelExportEntity> buildBuzhaoExportTitle() {
+        List<ExcelExportEntity> entityList = new ArrayList<>();
+        entityList.add(buildExportEntity("时间", "-1", 20D));
+        for (int i = 0; i < 60; i++) {
+            entityList.add(buildExportEntity(String.valueOf(i), String.valueOf(i), 8D));
+        }
+        return entityList;
+    }
+
+    private ExcelExportEntity buildExportEntity(String name, String key, Double width) {
+        ExcelExportEntity entity = new ExcelExportEntity();
+        entity.setName(name);
+        entity.setKey(key);
+        entity.setOrderNum(1);
+        if (width != null) {
+            entity.setWidth(width);
+        }
+        return entity;
+    }
+
+    private List<String> buildQuarterLabels() {
+        List<String> labels = new ArrayList<>(96);
+        LocalTime current = LocalTime.of(0, 15);
+        for (int i = 0; i < 96; i++) {
+            if (i == 95) {
+                labels.add("24:00");
+            } else {
+                labels.add(current.format(TIME_FORMATTER));
+            }
+            current = current.plusMinutes(15);
+        }
+        return labels;
+    }
+
+    private List<AggregatorEnt> resolveExportEntList(String aggregatorId, String entId) {
+        if (StringUtils.isNotBlank(entId)) {
+            AggregatorEnt ent = aggregatorEntService.getAggregatorEnt(entId);
+            return ent == null ? Collections.emptyList() : Collections.singletonList(ent);
+        }
+        List<AggregatorEnt> entList = aggregatorEntService.getAggregatorEntList(aggregatorId);
+        if (entList == null || entList.isEmpty()) {
+            return Collections.emptyList();
+        }
+        Collator collator = Collator.getInstance(Locale.CHINA);
+        return entList.stream()
+                .filter(java.util.Objects::nonNull)
+                .sorted((left, right) -> collator.compare(
+                        StringUtils.defaultString(left.getEntName()),
+                        StringUtils.defaultString(right.getEntName())))
+                .collect(Collectors.toList());
+    }
+
+    private String resolveAggregatorName(String aggregatorId) {
+        AggregatorInfo aggregatorInfo = aggregatorInfoService.getAggregatorInfo(aggregatorId);
+        if (aggregatorInfo != null && StringUtils.isNotBlank(aggregatorInfo.getAggregatorName())) {
+            return aggregatorInfo.getAggregatorName();
+        }
+        return aggregatorId;
+    }
+
+    private List<Map<String, String>> buildAggregatorAdjustExportRows(String aggregatorId,
+                                                                      String resourceTypeId,
+                                                                      String aggregatorName,
+                                                                      DateRange dateRange,
+                                                                      List<String> dateList,
+                                                                      List<String> quarterAxis) {
+        List<DataResp> quarterPowerChart = buildQuarterAverageChart(buildPowerChart(aggregatorId, resourceTypeId, dateRange), quarterAxis);
+        Map<String, Double> powerMap = toDateTimeValueMap(quarterPowerChart);
+        Map<String, Double> issueMap = buildIssueChartMap(aggregatorId, resourceTypeId, dateList);
+        String startDate = DATE_FORMATTER.format(dateRange.getStartDate());
+        String endDate = DATE_FORMATTER.format(dateRange.getEndDate());
+        Map<String, Double> dapMap = buildDapChartMap(aggregatorId, resourceTypeId, startDate, endDate);
+        Map<String, Double> baseLineMap = buildBaseLineChartMap(aggregatorId, resourceTypeId, startDate, endDate);
+        Map<String, Double> crMap = buildCrChartMap(aggregatorId, resourceTypeId, startDate, endDate);
+        Map<String, Double> issuePriceMap = buildIssuePriceMap(aggregatorId, resourceTypeId, startDate, endDate);
+
+        List<Map<String, String>> rowList = new ArrayList<>();
+        for (String date : dateList) {
+            rowList.add(buildAdjustExportRow(date, aggregatorName, "", "聚合申报功率", issueMap, false));
+            rowList.add(buildAdjustExportRow(date, aggregatorName, "", "实际汇总功率", powerMap, false));
+            rowList.add(buildAdjustExportRow(date, aggregatorName, "", "基线", baseLineMap, false));
+            rowList.add(buildAdjustExportRow(date, aggregatorName, "", "碳排因子", crMap, false));
+            rowList.add(buildAdjustExportRow(date, aggregatorName, "", "调度下发功率", dapMap, false));
+            rowList.add(buildAdjustExportRow(date, aggregatorName, "", "出清价格", issuePriceMap, false));
+        }
+        return rowList;
+    }
+
+    private List<Map<String, String>> buildEntAdjustExportRows(AggregatorEnt ent,
+                                                               String aggregatorName,
+                                                               String resourceTypeId,
+                                                               DateRange dateRange,
+                                                               List<String> dateList,
+                                                               List<String> quarterAxis) {
+        if (ent == null || StringUtils.isBlank(ent.getEntId())) {
+            return Collections.emptyList();
+        }
+        List<AggregatorEntDevice> deviceList = aggregatorEntDeviceService.getDeviceListByEntId(ent.getEntId(), resourceTypeId);
+        NewUserAdjustmentGraphReq req = new NewUserAdjustmentGraphReq(
+                DATE_FORMATTER.format(dateRange.getStartDate()),
+                DATE_FORMATTER.format(dateRange.getEndDate()),
+                ent.getEntId(),
+                resourceTypeId
+        );
+        Map<String, Double> powerMap = toDateTimeValueMap(buildEntQuarterAveragePowerChart(deviceList, dateRange, quarterAxis));
+        Map<String, Double> adjustMap = toDateTimeValueMap(buildEntAdjustChart(req, quarterAxis));
+        Map<String, Double> baseLineMap = toDateTimeValueMap(buildEntBaseLineChart(req, quarterAxis));
+
+        List<Map<String, String>> rowList = new ArrayList<>();
+        for (String date : dateList) {
+            rowList.add(buildAdjustExportRow(date, aggregatorName, ent.getEntName(), "有效调节负荷", adjustMap, false));
+            rowList.add(buildAdjustExportRow(date, aggregatorName, ent.getEntName(), "实际调节功率", powerMap, false));
+            rowList.add(buildAdjustExportRow(date, aggregatorName, ent.getEntName(), "基线", baseLineMap, false));
+        }
+        return rowList;
+    }
+
+    private Map<String, String> buildAdjustExportRow(String date,
+                                                     String aggregatorName,
+                                                     String entName,
+                                                     String metricName,
+                                                     Map<String, Double> valueMap,
+                                                     boolean zeroWhenNull) {
+        Map<String, String> row = new LinkedHashMap<>();
+        row.put("date", date);
+        row.put("aggregatorName", StringUtils.defaultString(aggregatorName));
+        row.put("entName", StringUtils.defaultString(entName));
+        row.put("power", metricName);
+        for (String label : buildQuarterLabels()) {
+            row.put(label, formatExportValue(valueMap.get(resolveQuarterDateTime(date, label)), zeroWhenNull));
+        }
+        return row;
+    }
+
+    private String resolveQuarterDateTime(String date, String quarterLabel) {
+        if ("24:00".equals(quarterLabel)) {
+            return DATE_TIME_FORMATTER.format(LocalDate.parse(date, DATE_FORMATTER).plusDays(1).atStartOfDay());
+        }
+        LocalTime time = LocalTime.parse(quarterLabel, TIME_FORMATTER);
+        return DATE_TIME_FORMATTER.format(LocalDate.parse(date, DATE_FORMATTER).atTime(time));
+    }
+
+    private Map<String, Double> toDateTimeValueMap(List<DataResp> dataList) {
+        if (dataList == null || dataList.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<String, Double> valueMap = new LinkedHashMap<>();
+        for (DataResp item : dataList) {
+            if (item == null || StringUtils.isBlank(item.getTime())) {
+                continue;
+            }
+            String normalized = normalizeCurveTime(null, item.getTime());
+            if (normalized != null) {
+                valueMap.put(normalized, item.getValue());
+            }
+        }
+        return valueMap;
+    }
+
+    private List<DataResp> buildQuarterAverageChart(List<DataResp> minuteChart, List<String> quarterAxis) {
+        if (minuteChart == null || minuteChart.isEmpty() || quarterAxis == null || quarterAxis.isEmpty()) {
+            return Collections.emptyList();
+        }
+        Map<String, Double> minuteValueMap = new LinkedHashMap<>();
+        for (DataResp item : minuteChart) {
+            if (item == null || StringUtils.isBlank(item.getTime())) {
+                continue;
+            }
+            String normalized = normalizeCurveTime(null, item.getTime());
+            if (normalized != null) {
+                minuteValueMap.putIfAbsent(normalized, item.getValue());
+            }
+        }
+
+        List<DataResp> result = new ArrayList<>(quarterAxis.size());
+        for (String quarterTime : quarterAxis) {
+            LocalDateTime endTime = LocalDateTime.parse(quarterTime, DATE_TIME_FORMATTER);
+            double total = 0D;
+            int count = 0;
+            for (int i = 14; i >= 0; i--) {
+                Double value = minuteValueMap.get(DATE_TIME_FORMATTER.format(endTime.minusMinutes(i)));
+                if (value != null) {
+                    total += value;
+                    count++;
+                }
+            }
+            result.add(new DataResp(quarterTime, count == 0 ? null : MathUtils.doublePoint(total / count, 2)));
+        }
+        return result;
+    }
+
+    private List<Map<String, String>> buildBuzhaoExportRows(List<DataResp> powerChart, DateRange dateRange) {
+        if (powerChart == null || powerChart.isEmpty()) {
+            return Collections.emptyList();
+        }
+        Map<String, Double> minuteValueMap = new LinkedHashMap<>();
+        for (DataResp item : powerChart) {
+            if (item == null || StringUtils.isBlank(item.getTime())) {
+                continue;
+            }
+            String normalized = normalizeCurveTime(null, item.getTime());
+            if (normalized != null) {
+                minuteValueMap.putIfAbsent(normalized, item.getValue());
+            }
+        }
+
+        List<Map<String, String>> rowList = new ArrayList<>();
+        LocalDateTime current = dateRange.getStartDate().atStartOfDay();
+        LocalDateTime end = dateRange.getEndDate().plusDays(1).atStartOfDay();
+        while (current.isBefore(end)) {
+            Map<String, String> row = new LinkedHashMap<>();
+            row.put("-1", DATE_TIME_SECOND_FORMATTER.format(current));
+            for (int minute = 0; minute < 60; minute++) {
+                String fullTime = DATE_TIME_FORMATTER.format(current.plusMinutes(minute));
+                row.put(String.valueOf(minute), formatExportValue(minuteValueMap.get(fullTime), true));
+            }
+            rowList.add(row);
+            current = current.plusHours(1);
+        }
+        return rowList;
+    }
+
+    private String formatExportValue(Double value, boolean zeroWhenNull) {
+        if (value == null) {
+            return zeroWhenNull ? "0" : "";
+        }
+        return String.valueOf(MathUtils.doublePoint(value, 2));
     }
 
     private String formatDate(Date value) {

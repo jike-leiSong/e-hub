@@ -30,6 +30,9 @@ public class HistoryQueryGraphVO {
     @ApiModelProperty(value = "颜色填充时间段", notes = "起止时间用#拼接")
     private List<List<IndexOverviewTimeColorResp>> fillColor;
 
+    @ApiModelProperty(value = "颜色填充时间段", notes = "前端兼容字段")
+    private List<List<IndexOverviewTimeColorResp>> timeColorRespList;
+
     @ApiModelProperty(value = "基线")
     private List<DataResp> baseLineChart;
 

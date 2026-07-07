@@ -96,9 +96,7 @@ public class AggregatorApplyPlanController {
     @ApiOperation(value = "获取申报日期列表")
     @GetMapping("/getApplyDateList")
     public ResultVO<List<String>> getApplyDateList(@RequestParam("aggregatorId") String aggregatorId){
-        // TODO: 实现获取申报日期列表的逻辑
-        // 这个接口可能需要从Service层获取
-        return ResultVO.success(null);
+        return ResultVO.success(aggregatorDateHolidayService.getApplyDateList(null, true));
     }
 
 }

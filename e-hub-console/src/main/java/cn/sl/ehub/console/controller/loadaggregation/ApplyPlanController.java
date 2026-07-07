@@ -1,6 +1,7 @@
 package cn.sl.ehub.console.controller.loadaggregation;
 
 import cn.sl.ehub.common.vo.ResultVO;
+import cn.sl.ehub.console.service.IAggregatorDateHolidayService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
@@ -26,12 +27,14 @@ import java.util.List;
 @Api(tags = "申报计划（兼容）")
 public class ApplyPlanController {
 
+    private final IAggregatorDateHolidayService aggregatorDateHolidayService;
+
     @ApiOperation(value = "获取申报日期列表")
     @GetMapping("/getApplyDateList")
     public ResultVO<List<String>> getApplyDateList(
-            @ApiParam(value = "聚合商ID") @RequestParam("aggregatorId") String aggregatorId) {
-        // TODO: 实现获取申报日期列表的逻辑
-        // 这个接口需要根据业务逻辑实现
-        return ResultVO.success(null);
+            @ApiParam(value = "聚合商ID", required = false) @RequestParam(value = "aggregatorId", required = false) String aggregatorId) {
+        // date 参数不传则默认查当前日期的节假日窗口（内部已 defaultIfBlank）
+        List<String> dateList = aggregatorDateHolidayService.getApplyDateList(null, true);
+        return ResultVO.success(dateList);
     }
 }

@@ -215,8 +215,8 @@ export default {
         },
         {
           key: "price-status",
-          label: "报价状态",
-          value: this.formatPriceStatus(this.metricApplyData.applyPriceStatus),
+          label: "申报准备",
+          value: this.formatPreparationStatus(this.metricApplyData),
           unit: "",
           desc: this.currentResourceTypeName || this.metricApplyData.applyResourceType || "暂无资源类型",
           target: "declarationPlan",
@@ -311,6 +311,18 @@ export default {
         return "--"
       }
       return String(status) === "1" ? "已提交" : "未提交"
+    },
+    formatPreparationStatus(applyData) {
+      if (!applyData) {
+        return "--"
+      }
+      const applyYesNum = Number(applyData.applyYesNum)
+      const resourceType = String(applyData.applyResourceType || "")
+      const hasPlan = Number.isFinite(applyYesNum) && applyYesNum > 0 && resourceType !== "无"
+      if (!hasPlan) {
+        return "待完善"
+      }
+      return this.formatPriceStatus(applyData.applyPriceStatus)
     },
     formatApplyStatus(status) {
       const statusMap = {

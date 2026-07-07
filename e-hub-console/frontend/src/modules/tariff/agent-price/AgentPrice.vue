@@ -127,9 +127,9 @@
             <h3>分时段电度价格</h3>
             <span>单位：元/千瓦时</span>
           </div>
-          <div v-if="hasPeriodData" class="period-list">
+          <div v-if="hasPricedPeriodData" class="period-list">
             <div
-              v-for="item in periodRows"
+              v-for="item in pricedPeriodRows"
               :key="item.key"
               class="period-row"
               :style="{ '--period-color': item.color }"
@@ -163,38 +163,53 @@
             <h3>分时段电度价格分布</h3>
             <span>单位：元/千瓦时</span>
           </div>
-          <template v-if="hasPeriodData">
-            <div class="bar-chart">
-              <div class="bars">
-                <div
-                  v-for="bar in chartBars"
-                  :key="bar.hour"
-                  class="bar-column"
-                  :title="`${bar.label} ${fmtPrice(bar.price)}`"
-                >
-                  <i
+          <template v-if="hasChartData">
+            <div class="range-chart">
+              <div
+                v-for="row in chartPeriodRows"
+                :key="row.key"
+                class="range-row"
+                :style="{ '--period-color': row.color }"
+              >
+                <div class="range-row-head">
+                  <strong>{{ fmtPrice(row.data.ddPrice) }}</strong>
+                  <span>{{ row.name }}</span>
+                </div>
+                <div class="range-track">
+                  <span
+                    v-for="segment in row.segments"
+                    :key="segment.key"
+                    class="range-segment"
+                    :class="{ compact: segment.compact }"
+                    :title="segment.title"
                     :style="{
-                      height: `${bar.height}%`,
-                      background: bar.color,
-                      opacity: bar.price > 0 ? 1 : 0.18,
+                      left: `${segment.left}%`,
+                      width: `${segment.width}%`,
+                      background: row.color,
                     }"
-                  />
+                  >
+                    <em v-if="segment.showLabel">{{ segment.timeText }}</em>
+                  </span>
                 </div>
               </div>
-              <div class="axis">
-                <span>0:00</span>
-                <span>4:00</span>
-                <span>8:00</span>
-                <span>12:00</span>
-                <span>16:00</span>
-                <span>20:00</span>
-                <span>24:00</span>
+              <div class="range-axis">
+                <i />
+                <div class="range-axis-labels">
+                  <span>00:00</span>
+                  <span>04:00</span>
+                  <span>08:00</span>
+                  <span>12:00</span>
+                  <span>16:00</span>
+                  <span>20:00</span>
+                  <span>24:00</span>
+                </div>
               </div>
             </div>
             <div class="legend">
-              <span v-for="item in periodRows" :key="item.key">
+              <span v-for="item in pricedPeriodRows" :key="item.key" :title="item.timeText">
                 <i :style="{ background: item.color }" />
-                {{ item.name }}时电价&nbsp;&nbsp;{{ fmtPrice(item.data.ddPrice) }}
+                <strong>{{ item.name }}时 {{ fmtPrice(item.data.ddPrice) }}</strong>
+                <em v-if="item.timeText">{{ item.timeText }}</em>
               </span>
             </div>
           </template>
@@ -290,29 +305,47 @@ export default {
     periodRows() {
       return PERIOD_META.map(meta => {
         const data = this.priceData[meta.key] || emptyPeriod();
+        const timeRanges = Array.isArray(data.times)
+          ? data.times.map(range => this.normalizeTimeRange(range)).filter(Boolean)
+          : [];
         return {
           ...meta,
           data,
-          timeText: Array.isArray(data.times) ? data.times.join("  ") : "",
+          timeRanges,
+          timeText: timeRanges.map(range => range.text).join(" / "),
         };
       });
     },
-    chartBars() {
-      const maxPrice = Math.max(...this.periodRows.map(item => Number(item.data.ddPrice) || 0), 0.0001);
-      return Array.from({ length: 24 }).map((_, hour) => {
-        const period = this.findPeriodByHour(hour);
-        const price = Number(period.data.ddPrice) || 0;
-        return {
-          hour,
-          label: `${hour}:00`,
-          price,
-          color: period.color,
-          height: Math.max(18, Math.round((price / maxPrice) * 90)),
-        };
-      });
+    pricedPeriodRows() {
+      return this.periodRows.filter(item => Number(item.data.ddPrice) > 0);
     },
-    hasPeriodData() {
-      return this.periodRows.some(item => Array.isArray(item.data.times) && item.data.times.length > 0);
+    chartPeriodRows() {
+      return this.pricedPeriodRows
+        .filter(item => item.timeRanges.length > 0)
+        .slice()
+        .sort((a, b) => (Number(b.data.ddPrice) || 0) - (Number(a.data.ddPrice) || 0))
+        .map(item => ({
+          ...item,
+          segments: item.timeRanges.map((range, index) => {
+            const left = (range.startMinute / 1440) * 100;
+            const width = ((range.endMinute - range.startMinute) / 1440) * 100;
+            return {
+              key: `${item.key}-${index}-${range.startMinute}-${range.endMinute}`,
+              left,
+              width,
+              compact: width < 5,
+              showLabel: width >= 7,
+              timeText: range.text,
+              title: `${item.name}时段 ${range.text}，电价 ${this.fmtPrice(item.data.ddPrice)} 元/千瓦时`,
+            };
+          }),
+        }));
+    },
+    hasPricedPeriodData() {
+      return this.pricedPeriodRows.length > 0;
+    },
+    hasChartData() {
+      return this.chartPeriodRows.length > 0;
     },
   },
   created() {
@@ -501,28 +534,33 @@ export default {
         dyLevel: this.form.dyLevel,
       };
     },
-    findPeriodByHour(hour) {
-      const minute = hour * 60;
-      for (const item of this.periodRows) {
-        const ranges = Array.isArray(item.data.times) ? item.data.times : [];
-        if (ranges.some(range => this.minuteInRange(minute, range))) {
-          return item;
-        }
-      }
-      return this.periodRows.find(item => Number(item.data.ddPrice) > 0) || this.periodRows[0];
-    },
-    minuteInRange(minute, range) {
+    normalizeTimeRange(range) {
       const parts = String(range || "").split(",");
-      if (parts.length !== 2) return false;
-      const start = this.timeToMinute(parts[0]);
-      const end = this.timeToMinute(parts[1]);
-      if (start == null || end == null) return false;
-      return minute >= start && minute < end;
+      if (parts.length !== 2) return null;
+      const startMinute = this.timeToMinute(parts[0]);
+      const endMinute = this.timeToMinute(parts[1]);
+      if (startMinute == null || endMinute == null || endMinute <= startMinute) return null;
+      return {
+        startMinute,
+        endMinute,
+        text: `${this.minuteToTime(startMinute)}-${this.minuteToTime(endMinute)}`,
+      };
     },
     timeToMinute(value) {
-      const parts = String(value || "").split(":");
+      const parts = String(value || "").trim().split(":");
       if (parts.length !== 2) return null;
-      return Number(parts[0]) * 60 + Number(parts[1]);
+      const hour = Number(parts[0]);
+      const minute = Number(parts[1]);
+      if (!Number.isInteger(hour) || !Number.isInteger(minute)) return null;
+      if (hour === 24 && minute === 0) return 1440;
+      if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+      return hour * 60 + minute;
+    },
+    minuteToTime(minute) {
+      const safeMinute = Math.max(0, Math.min(1440, minute));
+      const hour = Math.floor(safeMinute / 60);
+      const minutePart = safeMinute % 60;
+      return `${String(hour).padStart(2, "0")}:${String(minutePart).padStart(2, "0")}`;
     },
     fmtPrice(value) {
       const num = Number(value);
@@ -717,67 +755,206 @@ export default {
   flex-direction: column;
 }
 
-.bar-chart {
+.range-chart {
   flex: 1;
-  min-height: 300px;
+  min-height: 320px;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
-  padding: 18px 10px 4px;
+  justify-content: center;
+  padding: 4px 0 0;
 }
 
-.bars {
-  height: 230px;
+.range-row {
+  min-height: 62px;
   display: grid;
-  grid-template-columns: repeat(24, 1fr);
-  align-items: end;
-  gap: 5px;
+  grid-template-columns: 104px minmax(0, 1fr);
+  align-items: center;
 }
 
-.bar-column {
-  height: 100%;
+.range-row-head {
+  min-width: 0;
   display: flex;
-  align-items: flex-end;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  padding-right: 10px;
 
-  i {
-    width: 100%;
-    min-height: 16px;
-    border-radius: 8px 8px 0 0;
-    display: block;
-    transition: height 0.2s ease;
+  strong {
+    max-width: 100%;
+    color: #5f6f7b;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  span {
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 8px;
+    border: 1px solid var(--period-color);
+    border-radius: 6px;
+    background: #ffffff;
+    color: var(--period-color);
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1;
+    white-space: nowrap;
   }
 }
 
-.axis {
+.range-track {
+  position: relative;
+  height: 62px;
+  border-left: 1px solid #d8e3ec;
+  border-bottom: 1px dashed #c2ccd6;
+  background-image: repeating-linear-gradient(
+    to right,
+    transparent 0,
+    transparent calc(16.666% - 1px),
+    rgba(138, 160, 184, 0.36) calc(16.666% - 1px),
+    rgba(138, 160, 184, 0.36) 16.666%
+  );
+}
+
+.range-row:first-child .range-track {
+  border-top: 1px dashed #c2ccd6;
+}
+
+.range-segment {
+  position: absolute;
+  top: 50%;
+  height: 5px;
+  min-width: 3px;
+  border-radius: 999px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.62);
+  transform: translateY(-50%);
+
+  em {
+    position: absolute;
+    left: 50%;
+    bottom: 11px;
+    max-width: 136px;
+    padding: 3px 6px;
+    border: 1px solid var(--period-color);
+    border-radius: 5px;
+    background: #ffffff;
+    color: #0e2638;
+    font-size: 12px;
+    font-style: normal;
+    font-weight: 700;
+    line-height: 1.2;
+    text-align: center;
+    white-space: nowrap;
+    transform: translateX(-50%);
+    box-shadow: 0 4px 10px rgba(14, 38, 56, 0.08);
+  }
+}
+
+.range-segment.compact {
+  height: 7px;
+}
+
+.range-axis {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: 104px minmax(0, 1fr);
+  align-items: start;
   margin-top: 10px;
+
+  i {
+    display: block;
+  }
+}
+
+.range-axis-labels {
+  position: relative;
+  height: 22px;
   color: #8aa0b8;
   font-size: 12px;
 
   span {
-    text-align: center;
+    position: absolute;
+    top: 0;
+    transform: translateX(-50%);
+  }
+
+  span:nth-child(1) {
+    left: 0;
+    transform: none;
+  }
+
+  span:nth-child(2) {
+    left: 16.666%;
+  }
+
+  span:nth-child(3) {
+    left: 33.333%;
+  }
+
+  span:nth-child(4) {
+    left: 50%;
+  }
+
+  span:nth-child(5) {
+    left: 66.666%;
+  }
+
+  span:nth-child(6) {
+    left: 83.333%;
+  }
+
+  span:nth-child(7) {
+    right: 0;
+    transform: none;
   }
 }
 
 .legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px 18px;
-  margin-top: 18px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(172px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
   color: #60738c;
   font-size: 13px;
 
   span {
-    display: inline-flex;
+    min-width: 0;
+    display: grid;
+    grid-template-columns: 9px minmax(0, 1fr);
     align-items: center;
-    gap: 6px;
+    gap: 3px 8px;
+    padding: 8px 10px;
+    border: 1px solid #edf2f7;
+    border-radius: 8px;
+    background: #fbfdff;
+  }
+
+  strong {
+    min-width: 0;
+    color: #0e2638;
+    font-size: 13px;
+    line-height: 1.35;
+  }
+
+  em {
+    grid-column: 2;
+    min-width: 0;
+    color: #607d8f;
+    font-style: normal;
+    font-size: 12px;
+    line-height: 1.35;
+    word-break: break-all;
   }
 
   i {
     width: 9px;
     height: 9px;
     border-radius: 50%;
+    grid-row: 1 / span 2;
   }
 }
 
@@ -821,6 +998,29 @@ export default {
 
   .period-breakdown {
     grid-template-columns: 1fr;
+  }
+
+  .range-row,
+  .range-axis {
+    grid-template-columns: 76px minmax(0, 1fr);
+  }
+
+  .range-row-head {
+    padding-right: 6px;
+
+    strong {
+      font-size: 11px;
+    }
+
+    span {
+      height: 22px;
+      padding: 0 6px;
+      font-size: 12px;
+    }
+  }
+
+  .range-segment em {
+    display: none;
   }
 }
 </style>

@@ -1,6 +1,8 @@
 package cn.sl.ehub.service.service;
 
+import cn.sl.ehub.common.vo.DataResp;
 import cn.sl.ehub.service.dto.iot.*;
+import cn.sl.ehub.service.mapper.IotTelemetryMinuteMapper;
 import cn.sl.ehub.service.mapper.IotTelemetryQueryMapper;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
@@ -18,11 +20,14 @@ public class IotTelemetryQueryService {
     private static final int DEFAULT_RAW_LIMIT = 100;
 
     private final IotTelemetryQueryMapper mapper;
+    private final IotTelemetryMinuteMapper minuteMapper;
     private final IotBusinessScopeResolver businessScopeResolver;
 
     public IotTelemetryQueryService(IotTelemetryQueryMapper mapper,
+                                    IotTelemetryMinuteMapper minuteMapper,
                                     IotBusinessScopeResolver businessScopeResolver) {
         this.mapper = mapper;
+        this.minuteMapper = minuteMapper;
         this.businessScopeResolver = businessScopeResolver;
     }
 
@@ -42,6 +47,15 @@ public class IotTelemetryQueryService {
         result.setStartTime(req.getStartTime());
         result.setEndTime(req.getEndTime());
         return result;
+    }
+
+    public List<DataResp> sumPointValueByMinute(String aggregatorId,
+                                                List<Long> deviceIds,
+                                                List<String> deviceCodes,
+                                                String pointCode,
+                                                Date startTime,
+                                                Date endTime) {
+        return minuteMapper.sumPointValueByMinute(aggregatorId, deviceIds, deviceCodes, pointCode, startTime, endTime);
     }
 
     public IotTelemetryAggResult queryAgg(IotTelemetryQueryReq req) {

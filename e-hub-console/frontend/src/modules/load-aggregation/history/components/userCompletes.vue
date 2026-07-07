@@ -94,7 +94,7 @@ import { downLoadXls } from "@/utils/util.js"
 import  mixin  from './mixin.js'
 import {
   doSaveOperation,
-  getEntUserOptions,
+  getEntUserDetailRespList,
   getUserCompletionEcharts,
   getResourceTypeList,
   getTotalPowerChart,
@@ -171,7 +171,9 @@ export default {
       this.resourceTypeId = data.id
       this.queryTopEcharts()
       this.queryEnterpriseList().then(() => {
-        this.queryBottomEcharts()
+        if (this.form.enterpriseName) {
+          this.queryBottomEcharts()
+        }
       })
     },
     // 上方 - dateChange
@@ -259,21 +261,26 @@ export default {
         aggregatorId: this.aggregatorId,
         resourceTypeId: this.resourceTypeId,
       }
-      await getEntUserOptions(params).then(res => {
+      await getEntUserDetailRespList(params).then(res => {
         if (res.data.code === 200) {
-          if (res.data.data && res.data.data.length > 0) {
-            this.enterpriseList = JSON.parse(JSON.stringify(res.data.data)).filter(item => item != null)
-            if (this.enterpriseList.length > 0 && this.enterpriseList[0] && this.enterpriseList[0].value) {
-              this.form.enterpriseName = this.enterpriseList[0].value
+          const currentEnterprise = this.form.enterpriseName
+          this.enterpriseList = this.normalizeEnterpriseOptions(res.data.data)
+          if (this.enterpriseList.length > 0) {
+            const currentOption = this.enterpriseList.find(item => item.value === currentEnterprise)
+            if (currentOption) {
+              this.form.enterpriseName = currentOption.value
             } else {
-              this.form.enterpriseName = ''
+              this.form.enterpriseName = this.enterpriseList[0].value
             }
           } else {
-            this.enterpriseList = []
             this.form.enterpriseName = ''
+            this.clearBottomData()
           }
         } else {
           this.$message.error(res.data.msg)
+          this.enterpriseList = []
+          this.form.enterpriseName = ''
+          this.clearBottomData()
         }
       })
     },
@@ -307,6 +314,7 @@ export default {
     queryData(type) {
       if (!this.form.enterpriseName) {
         this.$message.warning('请选择企业')
+        this.clearBottomData()
         return
       }
       // if (!this.form.resourceTypeId) {
@@ -317,15 +325,22 @@ export default {
     },
     // 下方 - 重置
     reset() {
-      this.bottomEchartsData = []
-      this.bottomEchartsMarkArea = {}
-      this.queryEnterpriseList()
-      // this.queryResourceTypeList()
+      this.clearBottomData()
       const yesterday = moment().subtract(1, "days").format("YYYY-MM-DD")
       this.form.bottomDateData = [yesterday, yesterday]
+      this.queryEnterpriseList().then(() => {
+        if (this.form.enterpriseName) {
+          this.queryBottomEcharts()
+        }
+      })
+      // this.queryResourceTypeList()
     },
     // 【改】 下方 - 导出
     bottomExport() {
+      if (!this.form.enterpriseName) {
+        this.$message.warning('请选择企业')
+        return
+      }
       const params = {
         aggregatorId: this.aggregatorId,
         sourceId: this.resourceTypeId,
@@ -346,6 +361,10 @@ export default {
     },
     // 【改】 下方 - 获取下方echarts
     queryBottomEcharts() {
+      if (!this.form.enterpriseName) {
+        this.clearBottomData()
+        return
+      }
       const params = {
         subEntId: this.form.enterpriseName,
         resourceTypeId: this.resourceTypeId,
@@ -381,7 +400,24 @@ export default {
         }
       }).catch(err => {
         this.echartsLoading2 = false
+        this.clearBottomData()
       })
+    },
+    // 企业详情接口按聚合商 + 资源类型返回 entId/entName，这里统一转换为下拉结构
+    normalizeEnterpriseOptions(data) {
+      return (data || [])
+        .filter(item => item && item.entId)
+        .map(item => ({
+          ...item,
+          value: item.entId,
+          label: item.entName || item.entId,
+        }))
+    },
+    clearBottomData() {
+      this.incomeNumber = 0
+      this.incomeUnit = ''
+      this.bottomEchartsData = []
+      this.bottomEchartsMarkArea = {}
     },
     // codeToName
     codeToName(type, code) {
@@ -541,14 +577,8 @@ export default {
     gap: 12px;
   }
   ::v-deep .range-picker.el-date-editor {
-    width: 330px;
+    width: 330px !important;
     max-width: 100%;
-    .el-range-input {
-      width: 39%;
-    }
-    .el-input__icon {
-      display: none;
-    }
   }
   @media screen and (max-width: 1440px) {
     .summary-part {
