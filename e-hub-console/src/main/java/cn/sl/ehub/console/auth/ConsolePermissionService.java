@@ -43,6 +43,7 @@ public class ConsolePermissionService {
     private static final String PAGE_LOAD_RESOURCES = "load-resources";
     private static final String PAGE_LOAD_DEVICE_OPERATION = "load-device-operation";
     private static final String PAGE_TARIFF_QUERY = "tariff-query";
+    private static final String PAGE_TARIFF_SOURCES = "tariff-sources";
     private static final String PAGE_TARIFF_API = "tariff-api";
     private static final String PAGE_TARIFF_LOGS = "tariff-logs";
 
@@ -52,6 +53,7 @@ public class ConsolePermissionService {
     private static final String PERM_LOAD_DEVICE_OPERATION = "load:device-operation:view";
     private static final String PERM_LOAD_RESOURCES = "load:resources:view";
     private static final String PERM_TARIFF_QUERY = "tariff:query:view";
+    private static final String PERM_TARIFF_SOURCES = "tariff:sources:view";
     private static final String PERM_TARIFF_API = "tariff:api:view";
     private static final String PERM_TARIFF_LOGS = "tariff:logs:view";
     private static final String PERM_OWNER_TENANT = "owner:tenant:manage";
@@ -68,6 +70,7 @@ public class ConsolePermissionService {
 
     private static final List<String> TARIFF_PERMISSION_CODES = Arrays.asList(
             PERM_TARIFF_QUERY,
+            PERM_TARIFF_SOURCES,
             PERM_TARIFF_API,
             PERM_TARIFF_LOGS
     );
@@ -100,6 +103,10 @@ public class ConsolePermissionService {
             "/tariff/agent-price/",
             "/haomaidian/index/",
             "/areaDict/"
+    );
+
+    private static final List<String> TARIFF_SOURCE_API_PREFIXES = Collections.singletonList(
+            "/tariff/sources/"
     );
 
     private static final List<String> TARIFF_OPEN_API_PREFIXES = Collections.singletonList(
@@ -202,6 +209,10 @@ public class ConsolePermissionService {
         if (startsWithAny(path, TARIFF_QUERY_API_PREFIXES)) {
             return hasProduct(profile, ConsoleProductService.PRODUCT_TARIFF)
                     && hasPermission(profile, PERM_TARIFF_QUERY);
+        }
+        if (startsWithAny(path, TARIFF_SOURCE_API_PREFIXES)) {
+            return hasProduct(profile, ConsoleProductService.PRODUCT_TARIFF)
+                    && hasPermission(profile, PERM_TARIFF_SOURCES);
         }
         if (startsWithAny(path, TARIFF_OPEN_API_PREFIXES)) {
             return hasProduct(profile, ConsoleProductService.PRODUCT_TARIFF)
@@ -375,6 +386,9 @@ public class ConsolePermissionService {
         if (hasProduct(profile, ConsoleProductService.PRODUCT_TARIFF) && hasPermission(profile, PERM_TARIFF_QUERY)) {
             pages.add(PAGE_TARIFF_QUERY);
         }
+        if (hasProduct(profile, ConsoleProductService.PRODUCT_TARIFF) && hasPermission(profile, PERM_TARIFF_SOURCES)) {
+            pages.add(PAGE_TARIFF_SOURCES);
+        }
         if (hasProduct(profile, ConsoleProductService.PRODUCT_TARIFF) && hasPermission(profile, PERM_TARIFF_API)) {
             pages.add(PAGE_TARIFF_API);
         }
@@ -450,6 +464,9 @@ public class ConsolePermissionService {
             List<AuthMenuItemResp> children = new ArrayList<>();
             if (allowedPages.contains(PAGE_TARIFF_QUERY)) {
                 children.add(item(PAGE_TARIFF_QUERY, "电网代理价格", null));
+            }
+            if (allowedPages.contains(PAGE_TARIFF_SOURCES)) {
+                children.add(item(PAGE_TARIFF_SOURCES, "数据来源", null));
             }
             if (allowedPages.contains(PAGE_TARIFF_API)) {
                 children.add(item(PAGE_TARIFF_API, "接口能力", null));

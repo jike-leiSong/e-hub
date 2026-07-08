@@ -12,7 +12,9 @@ function request(config) {
   };
   const hasBody = config.data !== undefined;
   const isFormData = typeof FormData !== "undefined" && config.data instanceof FormData;
-  if (hasBody && !isFormData && !headers["Content-Type"] && !headers["content-type"]) {
+  if (isFormData && !headers["Content-Type"] && !headers["content-type"]) {
+    headers["Content-Type"] = "multipart/form-data";
+  } else if (hasBody && !headers["Content-Type"] && !headers["content-type"]) {
     headers["Content-Type"] = "application/json";
   }
   return service({

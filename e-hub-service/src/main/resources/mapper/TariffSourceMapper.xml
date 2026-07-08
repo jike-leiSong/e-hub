@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.sl.ehub.service.mapper.TariffSourceMapper">
+
+  <sql id="sourceConfigColumns">
+    s.id AS id,
+    s.province_code AS provinceCode,
+    s.province_name AS provinceName,
+    s.source_name AS sourceName,
+    s.source_type AS sourceType,
+    s.source_url AS sourceUrl,
+    s.publish_rule AS publishRule,
+    s.enabled AS enabled,
+    s.remark AS remark,
+    DATE_FORMAT(s.create_time, '%Y-%m-%d %H:%i:%s') AS createTime,
+    DATE_FORMAT(s.update_time, '%Y-%m-%d %H:%i:%s') AS updateTime
+  </sql>
+
+  <select id="selectSourceConfigs" resultType="cn.sl.ehub.service.dto.tariff.TariffSourceConfigResp">
+    SELECT
+      <include refid="sourceConfigColumns"/>
+    FROM tariff_source_config s
+    WHERE 1 = 1
+    <if test="req.provinceCode != null and req.provinceCode != ''">
+      AND s.province_code = #{req.provinceCode}
+    </if>
+    <if test="req.sourceType != null and req.sourceType != ''">
+      AND s.source_type = #{req.sourceType}
+    </if>
+    <if test="req.sourceName != null and req.sourceName != ''">
+      AND s.source_name LIKE CONCAT('%', #{req.sourceName}, '%')
+    </if>
+    <if test="req.enabled != null">
+      AND s.enabled = #{req.enabled}
+    </if>
+    ORDER BY s.enabled DESC, s.province_code, s.source_type, s.id DESC
+  </select>
+
+  <select id="selectSourceConfigById" resultType="cn.sl.ehub.service.dto.tariff.TariffSourceConfigResp">
+    SELECT
+      <include refid="sourceConfigColumns"/>
+    FROM tariff_source_config s
+    WHERE s.id = #{id}
+    LIMIT 1
+  </select>
+
+  <insert id="insertSourceConfig" useGeneratedKeys="true" keyProperty="req.id">
+    INSERT INTO tariff_source_config (
+      province_code,
+      province_name,
+      source_name,
+      source_type,
+      source_url,
+      publish_rule,
+      enabled,
+      remark,
+      create_time,
+      update_time
+    ) VALUES (
+      #{req.provinceCode},
+      #{req.provinceName},
+      #{req.sourceName},
+      #{req.sourceType},
+      #{req.sourceUrl},
+      #{req.publishRule},
+      COALESCE(#{req.enabled}, 1),
+      #{req.remark},
+      NOW(),
+      NOW()
+    )
+  </insert>
+
+  <update id="updateSourceConfig">
+    UPDATE tariff_source_config
+    SET
+      province_code = #{req.provinceCode},
+      province_name = #{req.provinceName},
+      source_name = #{req.sourceName},
+      source_type = #{req.sourceType},
+      source_url = #{req.sourceUrl},
+      publish_rule = #{req.publishRule},
+      enabled = COALESCE(#{req.enabled}, 1),
+      remark = #{req.remark},
+      update_time = NOW()
+    WHERE id = #{req.id}
+  </update>
+
+  <update id="updateSourceConfigEnabled">
+    UPDATE tariff_source_config
+    SET enabled = #{enabled},
+        update_time = NOW()
+    WHERE id = #{id}
+  </update>
+
+  <sql id="sourceDocumentColumns">
+    d.id AS id,
+    d.source_config_id AS sourceConfigId,
+    d.batch_no AS batchNo,
+    d.year_month AS yearMonth,
+    d.version AS version,
+    d.province_code AS provinceCode,
+    d.province_name AS provinceName,
+    d.source_type AS sourceType,
+    d.source_name AS sourceName,
+    d.source_url AS sourceUrl,
+    d.source_file_name AS sourceFileName,
+    d.source_file_path AS sourceFilePath,
+    d.source_file_hash AS sourceFileHash,
+    d.document_title AS documentTitle,
+    d.document_no AS documentNo,
+    DATE_FORMAT(d.publish_time, '%Y-%m-%d %H:%i:%s') AS publishTime,
+    DATE_FORMAT(d.effective_start, '%Y-%m-%d') AS effectiveStart,
+    DATE_FORMAT(d.effective_end, '%Y-%m-%d') AS effectiveEnd,
+    d.status AS status,
+    d.operator_id AS operatorId,
+    d.operator_name AS operatorName,
+    d.remark AS remark,
+    DATE_FORMAT(d.create_time, '%Y-%m-%d %H:%i:%s') AS createTime,
+    DATE_FORMAT(d.update_time, '%Y-%m-%d %H:%i:%s') AS updateTime
+  </sql>
+
+  <select id="selectSourceDocuments" resultType="cn.sl.ehub.service.dto.tariff.TariffSourceDocumentResp">
+    SELECT
+      <include refid="sourceDocumentColumns"/>
+    FROM tariff_source_document d
+    WHERE 1 = 1
+    <if test="req.yearMonth != null and req.yearMonth != ''">
+      AND d.year_month = #{req.yearMonth}
+    </if>
+    <if test="req.version != null and req.version != ''">
+      AND d.version = #{req.version}
+    </if>
+    <if test="req.provinceCode != null and req.provinceCode != ''">
+      AND d.province_code = #{req.provinceCode}
+    </if>
+    <if test="req.sourceType != null and req.sourceType != ''">
+      AND d.source_type = #{req.sourceType}
+    </if>
+    <if test="req.status != null and req.status != ''">
+      AND d.status = #{req.status}
+    </if>
+    <if test="req.batchNo != null and req.batchNo != ''">
+      AND d.batch_no = #{req.batchNo}
+    </if>
+    <if test="req.sourceName != null and req.sourceName != ''">
+      AND d.source_name LIKE CONCAT('%', #{req.sourceName}, '%')
+    </if>
+    ORDER BY d.publish_time DESC, d.update_time DESC, d.id DESC
+  </select>
+
+  <select id="selectSourceDocumentById" resultType="cn.sl.ehub.service.dto.tariff.TariffSourceDocumentResp">
+    SELECT
+      <include refid="sourceDocumentColumns"/>
+    FROM tariff_source_document d
+    WHERE d.id = #{id}
+    LIMIT 1
+  </select>
+
+  <insert id="insertSourceDocument" useGeneratedKeys="true" keyProperty="req.id">
+    INSERT INTO tariff_source_document (
+      source_config_id,
+      batch_no,
+      year_month,
+      version,
+      province_code,
+      province_name,
+      source_type,
+      source_name,
+      source_url,
+      source_file_name,
+      source_file_path,
+      source_file_hash,
+      document_title,
+      document_no,
+      publish_time,
+      effective_start,
+      effective_end,
+      status,
+      operator_id,
+      operator_name,
+      remark,
+      create_time,
+      update_time
+    ) VALUES (
+      #{req.sourceConfigId},
+      #{req.batchNo},
+      #{req.yearMonth},
+      #{req.version},
+      #{req.provinceCode},
+      #{req.provinceName},
+      #{req.sourceType},
+      #{req.sourceName},
+      #{req.sourceUrl},
+      #{req.sourceFileName},
+      #{req.sourceFilePath},
+      #{req.sourceFileHash},
+      #{req.documentTitle},
+      #{req.documentNo},
+      NULLIF(#{req.publishTime}, ''),
+      NULLIF(#{req.effectiveStart}, ''),
+      NULLIF(#{req.effectiveEnd}, ''),
+      COALESCE(NULLIF(#{req.status}, ''), 'DRAFT'),
+      #{req.operatorId},
+      #{req.operatorName},
+      #{req.remark},
+      NOW(),
+      NOW()
+    )
+  </insert>
+
+  <update id="updateSourceDocument">
+    UPDATE tariff_source_document
+    SET
+      source_config_id = #{req.sourceConfigId},
+      batch_no = #{req.batchNo},
+      year_month = #{req.yearMonth},
+      version = #{req.version},
+      province_code = #{req.provinceCode},
+      province_name = #{req.provinceName},
+      source_type = #{req.sourceType},
+      source_name = #{req.sourceName},
+      source_url = #{req.sourceUrl},
+      source_file_name = #{req.sourceFileName},
+      source_file_path = #{req.sourceFilePath},
+      source_file_hash = #{req.sourceFileHash},
+      document_title = #{req.documentTitle},
+      document_no = #{req.documentNo},
+      publish_time = NULLIF(#{req.publishTime}, ''),
+      effective_start = NULLIF(#{req.effectiveStart}, ''),
+      effective_end = NULLIF(#{req.effectiveEnd}, ''),
+      status = COALESCE(NULLIF(#{req.status}, ''), 'DRAFT'),
+      operator_id = #{req.operatorId},
+      operator_name = #{req.operatorName},
+      remark = #{req.remark},
+      update_time = NOW()
+    WHERE id = #{req.id}
+  </update>
+
+  <update id="updateSourceDocumentStatus">
+    UPDATE tariff_source_document
+    SET status = #{status},
+        update_time = NOW()
+    WHERE id = #{id}
+  </update>
+
+</mapper>

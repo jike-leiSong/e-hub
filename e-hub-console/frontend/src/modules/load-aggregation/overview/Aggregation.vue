@@ -214,11 +214,13 @@ export default {
           target: "detailPage",
         },
         {
-          key: "price-status",
-          label: "申报准备",
+          key: "declaration-plan",
+          label: "申报计划",
           value: this.formatPreparationStatus(this.metricApplyData),
           unit: "",
-          desc: this.currentResourceTypeName || this.metricApplyData.applyResourceType || "暂无资源类型",
+          desc: this.metricApplyData.planDate
+            ? `${this.metricApplyData.planDate} / ${this.currentResourceTypeName || this.metricApplyData.applyResourceType || "暂无资源类型"}`
+            : this.currentResourceTypeName || this.metricApplyData.applyResourceType || "暂无资源类型",
           target: "declarationPlan",
         },
         {

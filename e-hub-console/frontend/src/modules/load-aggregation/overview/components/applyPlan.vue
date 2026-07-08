@@ -5,9 +5,18 @@
         <div class="text">明日申报</div>
         <span>{{ resourceTypeName || "当前资源类型" }}</span>
       </div>
-      <div class="headerRight" @click="goApplyPlanDetail()">
-        <span class="detailText">详情</span>
-        <img class="detailImg" src="../images/right.png" alt="" />
+      <div class="headerActions">
+        <button
+          type="button"
+          class="headerAction primary"
+          @click="goApplyPage(applyData.applyPriceStatus)"
+        >
+          申报计划
+        </button>
+        <button type="button" class="headerAction" @click="goApplyPlanDetail()">
+          <span>明日详情</span>
+          <img src="../images/right.png" alt="" />
+        </button>
       </div>
     </div>
 
@@ -53,6 +62,7 @@
           type="button"
           class="primaryApply"
           :class="{ disabled: !isPrimaryActionActive }"
+          :disabled="!isPrimaryActionActive"
           @click="handlePrimaryAction"
         >
           {{ actionText }}
@@ -197,13 +207,16 @@ export default {
       if (this.canApply) {
         return "立即申报";
       }
+      if (String(this.applyData.applyStatus) === "1") {
+        return "已申报";
+      }
       if (String(this.applyData.applyStatus) === "2") {
         return "申报结束";
       }
       if (String(this.applyData.applyStatus) === "3") {
         return "未开始";
       }
-      return "查看申报";
+      return "暂无操作";
     },
     applyContextText() {
       return this.applyData.applyContext || this.applyStatusText;
@@ -263,15 +276,16 @@ export default {
       this.$emit("goApplyPage", e);
     },
     handlePrimaryAction() {
+      if (!this.isPrimaryActionActive) {
+        return;
+      }
       if (this.needsApplyPreparation) {
         this.goApplyPage(this.applyData.applyPriceStatus);
         return;
       }
       if (this.canApply) {
         this.doApply();
-        return;
       }
-      this.goApplyPlanDetail();
     },
     doApply() {
       if (this.applyData.applyPriceStatus === "0") {
@@ -402,21 +416,37 @@ export default {
     font-weight: 600;
     color: #333333;
   }
-  .headerRight {
+  .headerActions {
     display: flex;
-    height: 58px;
     align-items: center;
+    gap: 8px;
+  }
+  .headerAction {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 86px;
+    height: 32px;
+    padding: 0 12px;
+    border: 1px solid #d8e6f0;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #456577;
     cursor: pointer;
-    .detailText {
+    span {
       font-size: 14px;
       font-weight: 400;
-      color: #666666;
     }
-    .detailImg {
+    img {
       margin-left: 3px;
       width: 7px;
       height: 11px;
     }
+  }
+  .headerAction.primary {
+    border-color: #0780ed;
+    background: #0780ed;
+    color: #ffffff;
   }
 }
 
@@ -501,6 +531,7 @@ export default {
 
 .primaryApply.disabled {
   background: #8ba2b3;
+  cursor: not-allowed;
 }
 
 .actionTip {

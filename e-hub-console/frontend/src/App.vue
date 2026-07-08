@@ -114,6 +114,7 @@
           :aggregator-id="selectedAggregatorId"
         />
         <AgentPrice v-else-if="activePage === 'tariff-query'" />
+        <TariffSources v-else-if="activePage === 'tariff-sources'" />
         <TenantCenter v-else-if="activePage === 'tenant-center'" />
         <IdentityAccessCenter v-else-if="activePage === 'identity-access'" />
         <PlatformSettingsCenter v-else-if="activePage === 'platform-settings'" />
@@ -135,6 +136,7 @@ import AggregationHistory from "@/modules/load-aggregation/history/src/Aggregati
 import IotManagement from "@/modules/load-aggregation/iot-management/IotManagement.vue";
 import LoadResources from "@/modules/load-aggregation/resources/LoadResources.vue";
 import AgentPrice from "@/modules/tariff/agent-price/AgentPrice.vue";
+import TariffSources from "@/modules/tariff/sources/TariffSources.vue";
 import service from "@/services/http";
 import {
   buildMenu,
@@ -179,6 +181,10 @@ const pageMeta = {
   },
   "tariff-query": {
     title: "电价服务 / 电网代理价格",
+    eyebrow: "POWER TARIFF",
+  },
+  "tariff-sources": {
+    title: "电价服务 / 数据来源",
     eyebrow: "POWER TARIFF",
   },
   "tariff-api": {
@@ -290,6 +296,7 @@ export default {
     IotManagement,
     LoadResources,
     AgentPrice,
+    TariffSources,
   },
   data() {
     const currentUser = readUserSession() || {};

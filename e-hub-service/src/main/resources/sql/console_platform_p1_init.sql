@@ -47,6 +47,10 @@ SELECT 'tariff:query:view', '电价服务代理价格', 'PAGE', 'tariff', NULL, 
 WHERE NOT EXISTS (SELECT 1 FROM console_permission WHERE permission_code = 'tariff:query:view');
 
 INSERT INTO console_permission (permission_code, permission_name, permission_type, module_code, parent_code, path, sort_no, status, create_time, update_time)
+SELECT 'tariff:sources:view', '电价服务数据来源', 'PAGE', 'tariff', NULL, 'tariff-sources', 95, 1, DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s'), DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s')
+WHERE NOT EXISTS (SELECT 1 FROM console_permission WHERE permission_code = 'tariff:sources:view');
+
+INSERT INTO console_permission (permission_code, permission_name, permission_type, module_code, parent_code, path, sort_no, status, create_time, update_time)
 SELECT 'tariff:api:view', '电价服务接口能力', 'PAGE', 'tariff', NULL, 'tariff-api', 100, 1, DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s'), DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s')
 WHERE NOT EXISTS (SELECT 1 FROM console_permission WHERE permission_code = 'tariff:api:view');
 

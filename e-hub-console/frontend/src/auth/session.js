@@ -132,6 +132,7 @@ function fallbackProfile(platformType, products) {
         "load:device-operation:view",
         "load:resources:view",
         "tariff:query:view",
+        "tariff:sources:view",
         "tariff:api:view",
         "tariff:logs:view",
       ],
@@ -146,6 +147,7 @@ function fallbackProfile(platformType, products) {
         "load-device-operation",
         "load-resources",
         "tariff-query",
+        "tariff-sources",
         "tariff-api",
         "tariff-logs",
       ],
@@ -181,6 +183,7 @@ function fallbackProfile(platformType, products) {
               icon: "08",
               children: [
                 { key: "tariff-query", label: "电网代理价格" },
+                { key: "tariff-sources", label: "数据来源" },
                 { key: "tariff-api", label: "接口能力" },
                 { key: "tariff-logs", label: "调用记录" },
               ],
@@ -222,14 +225,15 @@ function fallbackProfile(platformType, products) {
     });
   }
   if (products.includes(PRODUCT_TARIFF)) {
-    permissions.push("tariff:query:view", "tariff:api:view", "tariff:logs:view");
-    allowedPages.push("tariff-query", "tariff-api", "tariff-logs");
+    permissions.push("tariff:query:view", "tariff:sources:view", "tariff:api:view", "tariff:logs:view");
+    allowedPages.push("tariff-query", "tariff-sources", "tariff-api", "tariff-logs");
     productItems.push({
       key: "tariff",
       label: "电价服务",
       icon: "04",
       children: [
         { key: "tariff-query", label: "电网代理价格" },
+        { key: "tariff-sources", label: "数据来源" },
         { key: "tariff-api", label: "接口能力" },
         { key: "tariff-logs", label: "调用记录" },
       ],

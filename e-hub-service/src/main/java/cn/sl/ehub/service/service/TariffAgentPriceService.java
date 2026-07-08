@@ -13,6 +13,7 @@ import cn.sl.ehub.service.dto.tariff.AgentPriceOptionsResp;
 import cn.sl.ehub.service.dto.tariff.AgentPricePeriodResp;
 import cn.sl.ehub.service.dto.tariff.AgentPricePointResp;
 import cn.sl.ehub.service.dto.tariff.AgentPriceQueryReq;
+import cn.sl.ehub.service.dto.tariff.AgentPriceSourceResp;
 import cn.sl.ehub.service.dto.tariff.AgentPriceValuePointResp;
 import cn.sl.ehub.service.dto.tariff.AgentPriceVersionQueryReq;
 import cn.sl.ehub.service.dto.tariff.AgentPriceVersionResp;
@@ -135,6 +136,7 @@ public class TariffAgentPriceService {
         if (Boolean.TRUE.equals(req.getReturnPoints())) {
             resp.setPoints96(buildOpenApiPoints(query, fpgj, fallbackFpgj));
         }
+        resp.setSource(resolveSource(query));
         return resp;
     }
 
@@ -277,6 +279,42 @@ public class TariffAgentPriceService {
         query.setPriceType(priceType);
         List<AgentPriceValuePointResp> rows = tariffAgentPriceMapper.selectAgentPricePointData(query);
         return rows == null ? Collections.emptyList() : rows;
+    }
+
+    private AgentPriceSourceResp resolveSource(AgentPriceQueryReq query) {
+        AgentPriceSourceResp source = null;
+        try {
+            source = tariffAgentPriceMapper.selectSourceDocument(query);
+        } catch (Exception ignored) {
+            // Source metadata is optional and must not affect price query availability.
+        }
+        if (hasSource(source)) {
+            return source;
+        }
+
+        try {
+            source = tariffAgentPriceMapper.selectSourceImportBatch(query);
+        } catch (Exception ignored) {
+            // Older deployments may not have import batch tables yet.
+        }
+        if (hasSource(source)) {
+            return source;
+        }
+
+        try {
+            source = tariffAgentPriceMapper.selectSourceConfigFallback(query);
+        } catch (Exception ignored) {
+            // Source config fallback is best-effort only.
+        }
+        return hasSource(source) ? source : null;
+    }
+
+    private boolean hasSource(AgentPriceSourceResp source) {
+        return source != null
+                && (StringUtils.isNotBlank(source.getSourceName())
+                || StringUtils.isNotBlank(source.getSourceUrl())
+                || StringUtils.isNotBlank(source.getSourceFileName())
+                || StringUtils.isNotBlank(source.getImportBatchNo()));
     }
 
     private List<AgentPricePointResp> buildOpenApiPoints(AgentPriceQueryReq query,

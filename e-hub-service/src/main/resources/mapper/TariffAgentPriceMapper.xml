@@ -183,4 +183,63 @@
     ORDER BY p.dy_level
   </select>
 
+  <select id="selectSourceDocument" resultType="cn.sl.ehub.service.dto.tariff.AgentPriceSourceResp">
+    SELECT
+      d.source_type AS sourceType,
+      d.source_name AS sourceName,
+      d.source_url AS sourceUrl,
+      d.source_file_name AS sourceFileName,
+      d.source_file_hash AS sourceFileHash,
+      d.batch_no AS importBatchNo,
+      d.document_title AS documentTitle,
+      d.document_no AS documentNo,
+      DATE_FORMAT(d.publish_time, '%Y-%m-%d %H:%i:%s') AS publishTime,
+      DATE_FORMAT(d.effective_start, '%Y-%m-%d') AS effectiveStart,
+      DATE_FORMAT(d.effective_end, '%Y-%m-%d') AS effectiveEnd
+    FROM tariff_source_document d
+    WHERE d.status = 'PUBLISHED'
+    <if test="req.provinceCode != null and req.provinceCode != ''">
+      AND d.province_code = #{req.provinceCode}
+    </if>
+    <if test="req.yearMonth != null and req.yearMonth != ''">
+      AND d.version = #{req.yearMonth}
+    </if>
+    ORDER BY d.publish_time DESC, d.update_time DESC, d.id DESC
+    LIMIT 1
+  </select>
+
+  <select id="selectSourceImportBatch" resultType="cn.sl.ehub.service.dto.tariff.AgentPriceSourceResp">
+    SELECT
+      b.source_type AS sourceType,
+      b.source_name AS sourceName,
+      b.source_url AS sourceUrl,
+      b.source_file_name AS sourceFileName,
+      b.batch_no AS importBatchNo,
+      DATE_FORMAT(b.publish_time, '%Y-%m-%d %H:%i:%s') AS publishTime
+    FROM tariff_import_batch b
+    WHERE 1 = 1
+    <if test="req.provinceCode != null and req.provinceCode != ''">
+      AND b.province_code = #{req.provinceCode}
+    </if>
+    <if test="req.yearMonth != null and req.yearMonth != ''">
+      AND b.version = #{req.yearMonth}
+    </if>
+    ORDER BY b.publish_time DESC, b.update_time DESC, b.id DESC
+    LIMIT 1
+  </select>
+
+  <select id="selectSourceConfigFallback" resultType="cn.sl.ehub.service.dto.tariff.AgentPriceSourceResp">
+    SELECT
+      c.source_type AS sourceType,
+      c.source_name AS sourceName,
+      c.source_url AS sourceUrl
+    FROM tariff_source_config c
+    WHERE c.enabled = 1
+    <if test="req.provinceCode != null and req.provinceCode != ''">
+      AND (c.province_code = #{req.provinceCode} OR c.province_code = '000000')
+    </if>
+    ORDER BY CASE WHEN c.province_code = #{req.provinceCode} THEN 0 ELSE 1 END, c.id DESC
+    LIMIT 1
+  </select>
+
 </mapper>

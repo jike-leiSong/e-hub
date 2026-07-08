@@ -20,9 +20,24 @@ public class AgentPriceSourceResp {
     @ApiModelProperty("来源文件名")
     private String sourceFileName;
 
+    @ApiModelProperty("来源文件hash")
+    private String sourceFileHash;
+
     @ApiModelProperty("导入批次号")
     private String importBatchNo;
 
+    @ApiModelProperty("文档标题")
+    private String documentTitle;
+
+    @ApiModelProperty("文号")
+    private String documentNo;
+
     @ApiModelProperty("发布时间")
     private String publishTime;
+
+    @ApiModelProperty("生效开始")
+    private String effectiveStart;
+
+    @ApiModelProperty("生效结束")
+    private String effectiveEnd;
 }

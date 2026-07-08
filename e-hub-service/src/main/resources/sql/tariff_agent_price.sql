@@ -67,6 +67,37 @@ CREATE TABLE IF NOT EXISTS `tariff_source_config` (
   KEY `idx_source_province` (`province_code`,`enabled`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='代理电价数据来源配置';
 
+CREATE TABLE IF NOT EXISTS `tariff_source_document` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `source_config_id` bigint(20) DEFAULT NULL COMMENT '来源配置ID',
+  `batch_no` varchar(64) DEFAULT NULL COMMENT '关联导入批次号',
+  `year_month` varchar(7) NOT NULL COMMENT '电价月份',
+  `version` varchar(24) NOT NULL COMMENT '内部版本',
+  `province_code` varchar(20) NOT NULL COMMENT '省份编码',
+  `province_name` varchar(64) NOT NULL COMMENT '省份名称',
+  `source_type` varchar(32) DEFAULT NULL COMMENT '来源类型',
+  `source_name` varchar(128) DEFAULT NULL COMMENT '来源名称',
+  `source_url` varchar(512) DEFAULT NULL COMMENT '来源地址',
+  `source_file_name` varchar(255) DEFAULT NULL COMMENT '来源文件名',
+  `source_file_path` varchar(512) DEFAULT NULL COMMENT '来源文件路径',
+  `source_file_hash` varchar(128) DEFAULT NULL COMMENT '来源文件hash',
+  `document_title` varchar(255) DEFAULT NULL COMMENT '文档标题',
+  `document_no` varchar(128) DEFAULT NULL COMMENT '文号',
+  `publish_time` datetime DEFAULT NULL COMMENT '发布时间',
+  `effective_start` date DEFAULT NULL COMMENT '生效开始日期',
+  `effective_end` date DEFAULT NULL COMMENT '生效结束日期',
+  `status` varchar(32) NOT NULL DEFAULT 'DRAFT' COMMENT '状态 DRAFT/PUBLISHED/ARCHIVED',
+  `operator_id` varchar(64) DEFAULT NULL COMMENT '操作人ID',
+  `operator_name` varchar(64) DEFAULT NULL COMMENT '操作人名称',
+  `remark` varchar(512) DEFAULT NULL COMMENT '备注',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_tariff_source_doc_version` (`version`,`province_code`,`status`),
+  KEY `idx_tariff_source_doc_month` (`year_month`,`province_code`,`status`),
+  KEY `idx_tariff_source_doc_batch` (`batch_no`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='电价来源文档';
+
 CREATE TABLE IF NOT EXISTS `tariff_import_batch` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `batch_no` varchar(64) NOT NULL COMMENT '导入批次号',
@@ -169,3 +200,21 @@ CREATE TABLE IF NOT EXISTS `tariff_api_call_log` (
   KEY `idx_tariff_api_call_app_time` (`app_key`,`create_time`),
   KEY `idx_tariff_api_call_request` (`request_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='代理电价开放接口调用日志';
+
+INSERT INTO tariff_source_config (province_code, province_name, source_name, source_type, source_url, publish_rule, enabled, remark)
+SELECT '000000', '全国', '国家发展改革委', 'NDRC', 'https://www.ndrc.gov.cn/', '政策文件、输配电价和分时电价机制通知', 1, '全国政策来源'
+WHERE NOT EXISTS (
+  SELECT 1 FROM tariff_source_config WHERE province_code = '000000' AND source_type = 'NDRC' AND source_name = '国家发展改革委'
+);
+
+INSERT INTO tariff_source_config (province_code, province_name, source_name, source_type, source_url, publish_rule, enabled, remark)
+SELECT '000000', '全国', '国家电网95598智能互动网站', 'SGCC', 'https://www.95598.cn/', '各省电价政策、95598和网上国网发布入口', 1, '国网区域来源入口'
+WHERE NOT EXISTS (
+  SELECT 1 FROM tariff_source_config WHERE province_code = '000000' AND source_type = 'SGCC' AND source_name = '国家电网95598智能互动网站'
+);
+
+INSERT INTO tariff_source_config (province_code, province_name, source_name, source_type, source_url, publish_rule, enabled, remark)
+SELECT '000000', '全国', '南网在线', 'CSG', 'https://95598.csg.cn/', '南方五省区电价政策、代理购电公告发布入口', 1, '南网区域来源入口'
+WHERE NOT EXISTS (
+  SELECT 1 FROM tariff_source_config WHERE province_code = '000000' AND source_type = 'CSG' AND source_name = '南网在线'
+);

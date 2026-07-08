@@ -6,7 +6,7 @@
         <span>返回运营总览</span>
       </button>
       <div class="page-title">
-        <h1>明日申报计划</h1>
+        <h1>申报计划</h1>
         <p>{{activeResourceName || '全部资源类型'}}</p>
       </div>
       <div class="header-actions">
@@ -45,8 +45,8 @@
         </div>
         <div class="tab">
           <div class="tab-title">资源类型</div>
-          <p v-for="item in planList" :key="item.sourceId" :class="{'active': planId === item.sourceId}">
-            <span @click="planChange(item)">{{codeToName('resourceType', item.sourceId)}}</span>
+          <p v-for="item in resourcePlanList" :key="item.sourceId" :class="{'active': planId === item.sourceId}">
+            <span @click="planChange(item)">{{item.resourceName || codeToName('resourceType', item.sourceId)}}</span>
             <em>{{planDataCount(item)}}</em>
           </p>
         </div>
@@ -60,7 +60,7 @@
           <div class="summary-boxes">
             <div>
               <span>资源类型</span>
-              <strong>{{planList.length}}</strong>
+              <strong>{{resourcePlanList.length}}</strong>
             </div>
             <div>
               <span>计划数量</span>
@@ -68,10 +68,10 @@
             </div>
           </div>
         </div>
-        <div v-if="planList.length > 0" class="content-list">
-          <section v-for="(item, index) in planList" :key="item.sourceId" :ref="`ref_details${item.sourceId}`" class="content-item">
+        <div v-if="resourcePlanList.length > 0" class="content-list">
+          <section v-for="(item, index) in resourcePlanList" :key="item.sourceId" :ref="`ref_details${item.sourceId}`" class="content-item">
             <div class="resource-heading">
-              <h3>{{codeToName('resourceType', item.sourceId)}}</h3>
+              <h3>{{item.resourceName || codeToName('resourceType', item.sourceId)}}</h3>
               <span>{{planDataCount(item)}}个计划</span>
             </div>
             <article v-for="(childItem, childIndex) in item.planDataList" :key="childItem.id || childIndex" class="item-details">
@@ -87,7 +87,7 @@
               <div class="item-details-other">
                 <div>
                   <p>申报曲线</p>
-                  <button type="button" @click="seeEcharts(childItem, index, childIndex)">
+                  <button type="button" @click="seeEcharts(childItem)">
                     {{childItem.echartsShow ? '收起曲线' : '查看曲线'}}
                     <i :class="childItem.echartsShow ? 'el-icon-arrow-up' : 'el-icon-arrow-down'" />
                   </button>
@@ -97,6 +97,10 @@
                 </div>
               </div>
             </article>
+            <div v-if="!item.planDataList || item.planDataList.length === 0" class="empty-resource-plan">
+              <span>该资源类型暂无申报计划</span>
+              <el-button @click="addPlan" icon="el-icon-plus" plain size="mini">创建计划</el-button>
+            </div>
           </section>
         </div>
         <div v-else class="content-default">
@@ -160,10 +164,37 @@ export default {
   },
   computed: {
     planTotal() {
-      return this.planList.reduce((total, item) => total + this.planDataCount(item), 0)
+      return this.resourcePlanList.reduce((total, item) => total + this.planDataCount(item), 0)
     },
     activeResourceName() {
       return this.planId ? this.codeToName('resourceType', this.planId) : ''
+    },
+    resourcePlanList() {
+      const planMap = {}
+      this.planList.forEach(item => {
+        if (item && item.sourceId) {
+          planMap[item.sourceId] = item
+        }
+      })
+      const resourceList = this.resourceTypeList.map(item => {
+        const plan = planMap[item.id] || {}
+        return {
+          ...item,
+          sourceId: item.id,
+          resourceName: item.name,
+          planDataList: plan.planDataList || [],
+        }
+      })
+      this.planList.forEach(item => {
+        if (item && item.sourceId && !this.resourceTypeList.some(resource => resource.id === item.sourceId)) {
+          resourceList.push({
+            ...item,
+            resourceName: this.codeToName('resourceType', item.sourceId),
+            planDataList: item.planDataList || [],
+          })
+        }
+      })
+      return resourceList
     },
   },
   created() {
@@ -213,6 +244,7 @@ export default {
             } else {
               this.resourceTypeList = []
             }
+            this.setDefaultPlanId()
             this.queryPlanList()
           } catch (err) {
             this.resourceTypeList = []
@@ -232,21 +264,21 @@ export default {
           try {
             if (res.data.data.list && res.data.data.list.length > 0) {
               const responseData = JSON.parse(JSON.stringify(res.data.data.list))
-              responseData.map(item => {
-                item.planDataList.map(child => {
+              responseData.forEach(item => {
+                item.planDataList = item.planDataList || []
+                item.planDataList.forEach(child => {
                   this.$set(child, 'echartsShow', false)
                   this.$set(child, 'echartsDataList', [])
                 })
               })
               this.planList = JSON.parse(JSON.stringify(responseData))
-              this.planId = this.planList[0].sourceId
             } else {
               this.planList = []
-              this.planId = ''
             }
+            this.setDefaultPlanId()
           } catch (err) {
             this.planList = []
-            this.planId = ''
+            this.setDefaultPlanId()
           }
         } else {
           this.$message.error(res.data.msg)
@@ -254,19 +286,19 @@ export default {
       })
     },
     // 查看申报曲线
-    seeEcharts(data, index, childIndex) {
-      if (this.planList[index].planDataList[childIndex].echartsShow) {
-        this.$set(this.planList[index].planDataList[childIndex], 'echartsShow', !this.planList[index].planDataList[childIndex].echartsShow)
+    seeEcharts(data) {
+      if (data.echartsShow) {
+        this.$set(data, 'echartsShow', !data.echartsShow)
       } else {
-        if (!(this.planList[index].planDataList[childIndex].echartsDataList && this.planList[index].planDataList[childIndex].echartsDataList.length > 0)) {
+        if (!(data.echartsDataList && data.echartsDataList.length > 0)) {
           const params = {
             planId: data.id,
           }
           getPlanDetail(params).then(res => {
             if (res.data.code === 200) {
               if (res.data.data.dataList && res.data.data.dataList.length > 0) {
-                this.$set(this.planList[index].planDataList[childIndex], 'echartsDataList', JSON.parse(JSON.stringify(res.data.data.dataList)))
-                this.$set(this.planList[index].planDataList[childIndex], 'echartsShow', !this.planList[index].planDataList[childIndex].echartsShow)
+                this.$set(data, 'echartsDataList', JSON.parse(JSON.stringify(res.data.data.dataList)))
+                this.$set(data, 'echartsShow', !data.echartsShow)
               } else {
                 this.$message.warning('该曲线暂无数据')
               }
@@ -275,7 +307,7 @@ export default {
             }
           })
         } else {
-          this.$set(this.planList[index].planDataList[childIndex], 'echartsShow', !this.planList[index].planDataList[childIndex].echartsShow)
+          this.$set(data, 'echartsShow', !data.echartsShow)
         }
       }
     },
@@ -298,6 +330,13 @@ export default {
     },
     updatePlan() {
       this.queryResourceTypeList()
+    },
+    setDefaultPlanId() {
+      const currentResource = this.resourcePlanList.find(item => item.sourceId === this.planId)
+      if (currentResource) {
+        return
+      }
+      this.planId = this.resourcePlanList.length > 0 ? this.resourcePlanList[0].sourceId : ''
     },
     planDataCount(item) {
       return item && item.planDataList ? item.planDataList.length : 0
@@ -638,6 +677,24 @@ export default {
       span {
         color: #607d8f;
         font-size: 13px;
+      }
+    }
+    .empty-resource-plan {
+      min-height: 72px;
+      margin-top: 10px;
+      padding: 14px 16px;
+      box-sizing: border-box;
+      border: 1px dashed #d8e0e8;
+      border-radius: 6px;
+      background: #f8fafc;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      span {
+        color: #607d8f;
+        font-size: 13px;
+        line-height: 18px;
       }
     }
   }
