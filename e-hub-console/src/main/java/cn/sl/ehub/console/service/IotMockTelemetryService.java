@@ -2,6 +2,8 @@ package cn.sl.ehub.console.service;
 
 import cn.sl.ehub.common.exception.BaseException;
 import cn.sl.ehub.console.auth.LoadAggregationScopeService;
+import cn.sl.ehub.service.dto.iot.IotMockPowerDataReq;
+import cn.sl.ehub.service.dto.iot.IotMockPowerDataResp;
 import cn.sl.ehub.service.mapper.IotAccessAppMapper;
 import cn.sl.ehub.service.mapper.IotDeviceMapper;
 import cn.sl.ehub.service.mapper.IotDevicePointMapper;
@@ -14,17 +16,24 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import tk.mybatis.mapper.entity.Example;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.net.HttpURLConnection;
+import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -41,16 +50,22 @@ import java.util.stream.Collectors;
 public class IotMockTelemetryService {
 
     /** 三方数据接入端点（本机） */
-    private static final String INGEST_URL = "http://127.0.0.1:8080/data-collector/thirdPart/data/receive/originData";
+    private static final String DEFAULT_INGEST_URL = "http://127.0.0.1:8080/data-collector/thirdPart/data/receive/originData";
 
     /** 默认 X-GW-AccessKey（从 iot_access_app 表查询） */
     private static final String HEADER_ACCESS_KEY = "X-GW-AccessKey";
+    private static final String POWER_POINT_CODE = "P";
+    private static final int DEFAULT_INTERVAL_SECONDS = 60;
+    private static final int MAX_GENERATE_DAYS = 7;
+    private static final int MAX_GENERATE_RECORDS = 100000;
 
     private final IotDeviceMapper iotDeviceMapper;
     private final IotDevicePointMapper iotDevicePointMapper;
     private final IotAccessAppMapper iotAccessAppMapper;
     private final LoadAggregationScopeService loadScopeService;
 
+    @Value("${iot.mock.ingest-url:" + DEFAULT_INGEST_URL + "}")
+    private String ingestUrl;
 
     /**
      * 推送模拟遥测数据
@@ -148,6 +163,132 @@ public class IotMockTelemetryService {
         );
     }
 
+    /**
+     * 手动生成现有设备 P 功率物联数据。
+     */
+    public IotMockPowerDataResp generatePowerData(IotMockPowerDataReq req) {
+        if (req == null) {
+            req = new IotMockPowerDataReq();
+        }
+        LoadAggregationScopeService.Scope scope = loadScopeService.resolveQueryScope(req.getAggregatorId(), req.getEntId());
+        String actualAggregatorId = StringUtils.defaultIfBlank(req.getAggregatorId(), scope.getAggregatorId());
+        String actualEntId = StringUtils.defaultIfBlank(req.getEntId(), scope.getEntId());
+
+        int intervalSeconds = req.getIntervalSeconds() == null ? DEFAULT_INTERVAL_SECONDS : req.getIntervalSeconds();
+        if (intervalSeconds < DEFAULT_INTERVAL_SECONDS) {
+            throw new BaseException(400, "采样间隔不能小于60秒");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime startTime = parseMockTime(req.getStartTime(), LocalDate.now().atStartOfDay(), "开始时间");
+        LocalDateTime endTime = parseMockTime(req.getEndTime(), now, "结束时间");
+        if (endTime.isBefore(startTime)) {
+            throw new BaseException(400, "结束时间不能早于开始时间");
+        }
+        long rangeSeconds = Duration.between(startTime, endTime).getSeconds();
+        if (rangeSeconds > MAX_GENERATE_DAYS * 24L * 60 * 60) {
+            throw new BaseException(400, "单次最多生成" + MAX_GENERATE_DAYS + "天数据");
+        }
+
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        IotMockPowerDataResp resp = new IotMockPowerDataResp();
+        resp.setStartTime(startTime.format(dtf));
+        resp.setEndTime(endTime.format(dtf));
+
+        List<IotDevice> devices = listPowerDevices(actualAggregatorId, actualEntId,
+                req.getEnergyStationCode(), req.getDeviceIds());
+        if (CollectionUtils.isEmpty(devices)) {
+            throw new BaseException(400, "当前条件下没有找到可生成数据的设备");
+        }
+
+        Map<Long, IotDevicePoint> powerPointMap = listPowerPointMap(devices);
+        if (powerPointMap.isEmpty()) {
+            throw new BaseException(400, "当前设备没有配置功率P测点，请先在设备点表中维护P点");
+        }
+
+        Map<String, AccessApp> accessAppMap = listAccessAppsBySource(actualAggregatorId);
+        if (accessAppMap.isEmpty()) {
+            throw new BaseException(400, "未找到有效的物联接入凭证，请先维护 iot_access_app");
+        }
+        Set<String> duplicateDeviceMappingKeys = findDuplicateDeviceMappingKeys(actualAggregatorId);
+
+        List<PowerDataTask> tasks = new ArrayList<>();
+        for (IotDevice device : devices) {
+            IotDevicePoint point = powerPointMap.get(device.getId());
+            if (point == null) {
+                resp.setSkippedPointCount(resp.getSkippedPointCount() + 1);
+                addWarning(resp, "设备[" + device.getDeviceName() + "]未配置P测点");
+                continue;
+            }
+            if (StringUtils.isBlank(device.getThirdPartyApi()) || StringUtils.isBlank(device.getThirdPartyCode())) {
+                resp.setSkippedDeviceCount(resp.getSkippedDeviceCount() + 1);
+                addWarning(resp, "设备[" + device.getDeviceName() + "]缺少第三方API或第三方标识");
+                continue;
+            }
+            if (duplicateDeviceMappingKeys.contains(buildDeviceMappingKey(device))) {
+                resp.setSkippedDeviceCount(resp.getSkippedDeviceCount() + 1);
+                addWarning(resp, "设备[" + device.getDeviceName() + "]三方设备标识重复："
+                        + device.getThirdPartyApi() + "/" + device.getThirdPartyCode());
+                continue;
+            }
+            if (StringUtils.isBlank(point.getThirdPartyCode())) {
+                resp.setSkippedPointCount(resp.getSkippedPointCount() + 1);
+                addWarning(resp, "设备[" + device.getDeviceName() + "]的P测点缺少第三方标识");
+                continue;
+            }
+            AccessApp accessApp = accessAppMap.get(StringUtils.trim(device.getThirdPartyApi()));
+            if (accessApp == null) {
+                resp.setSkippedDeviceCount(resp.getSkippedDeviceCount() + 1);
+                addWarning(resp, "设备[" + device.getDeviceName() + "]第三方API[" + device.getThirdPartyApi() + "]没有启用的接入凭证");
+                continue;
+            }
+            tasks.add(new PowerDataTask(device, point, accessApp));
+        }
+
+        if (tasks.isEmpty()) {
+            resp.setMessage("没有可生成的数据，请检查设备和P测点第三方映射");
+            return resp;
+        }
+
+        long slots = countSlots(startTime, endTime, intervalSeconds);
+        long estimate = slots * tasks.size();
+        if (estimate > MAX_GENERATE_RECORDS) {
+            throw new BaseException(400, "本次预计生成" + estimate + "条，超过上限" + MAX_GENERATE_RECORDS + "条，请缩小时间范围或设备数量");
+        }
+
+        Map<String, List<TelemetryRecord>> recordsByAccessKey = new LinkedHashMap<>();
+        for (PowerDataTask task : tasks) {
+            List<TelemetryRecord> records = generatePowerTelemetryRecords(
+                    task.device, task.point, startTime, endTime, intervalSeconds, resolveBasePower(task.device), dtf);
+            if (records.isEmpty()) {
+                continue;
+            }
+            List<TelemetryRecord> accessRecords = recordsByAccessKey.get(task.accessApp.accessKey);
+            if (accessRecords == null) {
+                accessRecords = new ArrayList<>();
+                recordsByAccessKey.put(task.accessApp.accessKey, accessRecords);
+            }
+            accessRecords.addAll(records);
+        }
+
+        int success = 0;
+        int fail = 0;
+        for (Map.Entry<String, List<TelemetryRecord>> entry : recordsByAccessKey.entrySet()) {
+            PushResult pushResult = pushRecords(entry.getValue(), entry.getKey(), "P功率模拟数据");
+            success += pushResult.success;
+            fail += pushResult.fail;
+        }
+
+        resp.setDeviceCount(tasks.size());
+        resp.setPointCount(tasks.size());
+        resp.setSuccess(success);
+        resp.setFail(fail);
+        resp.setTotal(success + fail);
+        resp.setMessage(String.format("生成完成：设备=%d，P测点=%d，数据点=%d（成功=%d，失败=%d）",
+                resp.getDeviceCount(), resp.getPointCount(), resp.getTotal(), success, fail));
+        return resp;
+    }
+
     // ── 私有方法 ────────────────────────────────────────────────────────────────
 
     private List<IotDevice> listDevices(String aggregatorId, String entId) {
@@ -179,9 +320,93 @@ public class IotMockTelemetryService {
         return allPoints.stream().collect(Collectors.groupingBy(IotDevicePoint::getDeviceId));
     }
 
+    private List<IotDevice> listPowerDevices(String aggregatorId, String entId,
+                                             String energyStationCode, List<Long> deviceIds) {
+        Example ex = new Example(IotDevice.class);
+        Example.Criteria criteria = ex.createCriteria()
+                .andEqualTo("deleted", 0)
+                .andEqualTo("status", 1)
+                .andEqualTo("assetStatus", 1);
+        if (StringUtils.isNotBlank(aggregatorId)) {
+            criteria.andEqualTo("aggregatorId", StringUtils.trim(aggregatorId));
+        }
+        if (StringUtils.isNotBlank(entId)) {
+            criteria.andEqualTo("entId", StringUtils.trim(entId));
+        }
+        if (StringUtils.isNotBlank(energyStationCode)) {
+            criteria.andEqualTo("projectId", StringUtils.trim(energyStationCode));
+        }
+        if (CollectionUtils.isNotEmpty(deviceIds)) {
+            criteria.andIn("id", deviceIds);
+        }
+        ex.orderBy("id").asc();
+        return iotDeviceMapper.selectByExample(ex);
+    }
+
+    private Set<String> findDuplicateDeviceMappingKeys(String aggregatorId) {
+        Set<String> duplicates = new HashSet<>();
+        Example ex = new Example(IotDevice.class);
+        Example.Criteria criteria = ex.createCriteria()
+                .andEqualTo("deleted", 0)
+                .andEqualTo("status", 1)
+                .andEqualTo("assetStatus", 1);
+        if (StringUtils.isNotBlank(aggregatorId)) {
+            criteria.andEqualTo("aggregatorId", StringUtils.trim(aggregatorId));
+        }
+        List<IotDevice> devices = iotDeviceMapper.selectByExample(ex);
+        Map<String, Integer> counts = new HashMap<>();
+        for (IotDevice device : devices) {
+            String key = buildDeviceMappingKey(device);
+            if (key == null) {
+                continue;
+            }
+            Integer count = counts.get(key);
+            counts.put(key, count == null ? 1 : count + 1);
+        }
+        for (Map.Entry<String, Integer> entry : counts.entrySet()) {
+            if (entry.getValue() > 1) {
+                duplicates.add(entry.getKey());
+            }
+        }
+        return duplicates;
+    }
+
+    private String buildDeviceMappingKey(IotDevice device) {
+        if (device == null || StringUtils.isBlank(device.getThirdPartyApi())
+                || StringUtils.isBlank(device.getThirdPartyCode())) {
+            return null;
+        }
+        return StringUtils.trim(device.getThirdPartyApi()) + "\n" + StringUtils.trim(device.getThirdPartyCode());
+    }
+
+    private Map<Long, IotDevicePoint> listPowerPointMap(List<IotDevice> devices) {
+        Map<Long, IotDevicePoint> result = new LinkedHashMap<>();
+        if (CollectionUtils.isEmpty(devices)) {
+            return result;
+        }
+        List<Long> deviceIds = devices.stream().map(IotDevice::getId).collect(Collectors.toList());
+        Example ex = new Example(IotDevicePoint.class);
+        ex.createCriteria()
+                .andIn("deviceId", deviceIds)
+                .andEqualTo("propertyCode", POWER_POINT_CODE)
+                .andEqualTo("deleted", 0)
+                .andEqualTo("status", 1);
+        ex.orderBy("deviceId").asc();
+        List<IotDevicePoint> points = iotDevicePointMapper.selectByExample(ex);
+        for (IotDevicePoint point : points) {
+            if (point.getDeviceId() != null && !result.containsKey(point.getDeviceId())) {
+                result.put(point.getDeviceId(), point);
+            }
+        }
+        return result;
+    }
+
     private static class AccessApp {
+        final String sourceCode;
         final String accessKey;
-        AccessApp(String accessKey) {
+
+        AccessApp(String sourceCode, String accessKey) {
+            this.sourceCode = sourceCode;
             this.accessKey = accessKey;
         }
     }
@@ -201,7 +426,37 @@ public class IotMockTelemetryService {
         if (CollectionUtils.isEmpty(apps)) {
             throw new BaseException(400, "未找到有效的接入凭证，请检查 iot_access_app 表，或传入 accessKey 参数");
         }
-        return new AccessApp(apps.get(0).getAccessKey());
+        IotAccessApp app = apps.get(0);
+        return new AccessApp(app.getSourceCode(), app.getAccessKey());
+    }
+
+    private Map<String, AccessApp> listAccessAppsBySource(String aggregatorId) {
+        Map<String, AccessApp> result = new LinkedHashMap<>();
+        appendAccessApps(result, listEnabledAccessApps(aggregatorId));
+        if (StringUtils.isNotBlank(aggregatorId)) {
+            appendAccessApps(result, listEnabledAccessApps(null));
+        }
+        return result;
+    }
+
+    private void appendAccessApps(Map<String, AccessApp> result, List<IotAccessApp> apps) {
+        for (IotAccessApp app : apps) {
+            String sourceCode = StringUtils.trimToNull(app.getSourceCode());
+            String accessKey = StringUtils.trimToNull(app.getAccessKey());
+            if (sourceCode == null || accessKey == null || result.containsKey(sourceCode)) {
+                continue;
+            }
+            result.put(sourceCode, new AccessApp(sourceCode, accessKey));
+        }
+    }
+
+    private List<IotAccessApp> listEnabledAccessApps(String aggregatorId) {
+        Example ex = new Example(IotAccessApp.class);
+        Example.Criteria criteria = ex.createCriteria().andEqualTo("enabled", 1);
+        if (StringUtils.isNotBlank(aggregatorId)) {
+            criteria.andEqualTo("aggregatorId", StringUtils.trim(aggregatorId));
+        }
+        return iotAccessAppMapper.selectByExample(ex);
     }
 
     /**
@@ -231,16 +486,81 @@ public class IotMockTelemetryService {
             int minute = dataTime.getMinute();
 
             for (IotDevicePoint point : points) {
+                String externalDeviceId = StringUtils.trimToNull(device.getThirdPartyCode());
+                String externalMetric = StringUtils.trimToNull(point.getThirdPartyCode());
+                if (externalDeviceId == null || externalMetric == null) {
+                    continue;
+                }
                 BigDecimal value = generateValue(basePower, hour, minute, minuteIdx, point);
                 records.add(new TelemetryRecord(
                         dataTime.format(dtf),
-                        device.getId().toString(),
-                        point.getPropertyCode(),
+                        externalDeviceId,
+                        externalMetric,
                         value.toPlainString()
                 ));
             }
         }
         return records;
+    }
+
+    private List<TelemetryRecord> generatePowerTelemetryRecords(IotDevice device,
+                                                               IotDevicePoint point,
+                                                               LocalDateTime startTime,
+                                                               LocalDateTime endTime,
+                                                               int intervalSeconds,
+                                                               BigDecimal basePower,
+                                                               DateTimeFormatter dtf) {
+        List<TelemetryRecord> records = new ArrayList<>();
+        String externalDeviceId = StringUtils.trimToNull(device.getThirdPartyCode());
+        String externalMetric = StringUtils.trimToNull(point.getThirdPartyCode());
+        if (externalDeviceId == null || externalMetric == null) {
+            return records;
+        }
+        LocalDateTime cursor = startTime;
+        while (!cursor.isAfter(endTime)) {
+            long minuteIdx = Duration.between(startTime, cursor).toMinutes();
+            BigDecimal value = generateValue(basePower, cursor.getHour(), cursor.getMinute(), minuteIdx, point);
+            records.add(new TelemetryRecord(
+                    cursor.format(dtf),
+                    externalDeviceId,
+                    externalMetric,
+                    value.toPlainString()
+            ));
+            cursor = cursor.plusSeconds(intervalSeconds);
+        }
+        return records;
+    }
+
+    private LocalDateTime parseMockTime(String value, LocalDateTime defaultValue, String fieldName) {
+        if (StringUtils.isBlank(value)) {
+            return defaultValue;
+        }
+        String text = StringUtils.trim(value);
+        String[] patterns = new String[]{
+                "yyyy-MM-dd HH:mm:ss",
+                "yyyy-M-d H:mm:ss",
+                "yyyy-MM-dd HH:mm",
+                "yyyy-M-d H:mm"
+        };
+        for (String pattern : patterns) {
+            try {
+                return LocalDateTime.parse(text, DateTimeFormatter.ofPattern(pattern));
+            } catch (RuntimeException ignored) {
+                // try next pattern
+            }
+        }
+        throw new BaseException(400, fieldName + "格式错误，请使用 yyyy-MM-dd HH:mm:ss");
+    }
+
+    private long countSlots(LocalDateTime startTime, LocalDateTime endTime, int intervalSeconds) {
+        long seconds = Duration.between(startTime, endTime).getSeconds();
+        return seconds / intervalSeconds + 1;
+    }
+
+    private void addWarning(IotMockPowerDataResp resp, String warning) {
+        if (resp.getWarnings().size() < 20) {
+            resp.getWarnings().add(warning);
+        }
     }
 
     /**
@@ -301,7 +621,14 @@ public class IotMockTelemetryService {
     private PushResult pushBatch(IotDevice device,
                                 List<TelemetryRecord> records,
                                 String accessKey) {
+        return pushRecords(records, accessKey, device == null ? "unknown" : device.getDeviceCode());
+    }
+
+    private PushResult pushRecords(List<TelemetryRecord> records, String accessKey, String context) {
         PushResult result = new PushResult();
+        if (CollectionUtils.isEmpty(records)) {
+            return result;
+        }
 
         // 按 dataTime 分组
         Map<String, List<TelemetryRecord>> byTime = records.stream()
@@ -313,21 +640,29 @@ public class IotMockTelemetryService {
             req.setDataList(entry.getValue());
 
             String json = JSON.toJSONString(req);
-            String resp = httpPost(INGEST_URL, json, accessKey);
+            String resp = httpPost(ingestUrl, json, accessKey);
 
             if (StringUtils.isNotBlank(resp)) {
                 try {
                     JSONObject jsonResp = JSON.parseObject(resp);
                     Integer code = jsonResp.getInteger("code");
                     if (code != null && code == 200) {
-                        result.success += entry.getValue().size();
+                        JSONObject data = jsonResp.getJSONObject("data");
+                        if (data == null) {
+                            result.success += entry.getValue().size();
+                        } else {
+                            Integer success = data.getInteger("success");
+                            Integer fail = data.getInteger("fail");
+                            result.success += success == null ? 0 : success;
+                            result.fail += fail == null ? 0 : fail;
+                        }
                     } else {
                         result.fail += entry.getValue().size();
-                        log.warn("推送失败 [device={}, time={}]: {}", device.getDeviceCode(), entry.getKey(), resp);
+                        log.warn("推送失败 [context={}, time={}]: {}", context, entry.getKey(), resp);
                     }
                 } catch (Exception e) {
                     result.fail += entry.getValue().size();
-                    log.warn("解析响应异常 [device={}, time={}]: {}", device.getDeviceCode(), entry.getKey(), resp);
+                    log.warn("解析响应异常 [context={}, time={}]: {}", context, entry.getKey(), resp);
                 }
             } else {
                 result.fail += entry.getValue().size();
@@ -355,17 +690,45 @@ public class IotMockTelemetryService {
 
     // ── 内部类 ──────────────────────────────────────────────────────────────────
 
+    private static class PowerDataTask {
+        final IotDevice device;
+        final IotDevicePoint point;
+        final AccessApp accessApp;
+
+        PowerDataTask(IotDevice device, IotDevicePoint point, AccessApp accessApp) {
+            this.device = device;
+            this.point = point;
+            this.accessApp = accessApp;
+        }
+    }
+
     private static class TelemetryRecord {
-        String dataTime;
-        String deviceId;
-        String metric;
-        String value;
+        private final String dataTime;
+        private final String deviceId;
+        private final String metric;
+        private final String value;
 
         TelemetryRecord(String dataTime, String deviceId, String metric, String value) {
             this.dataTime = dataTime;
             this.deviceId = deviceId;
             this.metric = metric;
             this.value = value;
+        }
+
+        public String getDataTime() {
+            return dataTime;
+        }
+
+        public String getDeviceId() {
+            return deviceId;
+        }
+
+        public String getMetric() {
+            return metric;
+        }
+
+        public String getValue() {
+            return value;
         }
     }
 

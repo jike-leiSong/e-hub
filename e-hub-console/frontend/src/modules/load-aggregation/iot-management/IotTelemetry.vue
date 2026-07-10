@@ -6,6 +6,11 @@
         <h3>物联数据查询</h3>
         <p class="toolbar-subtitle">查询设备测点时序数据，支持分钟/聚合维度，支持导出 Excel。</p>
       </div>
+      <div class="toolbar-actions">
+        <el-button type="warning" size="small" icon="el-icon-magic-stick" @click="openMockDialog">
+          生成P功率数据
+        </el-button>
+      </div>
     </div>
 
     <div class="query-bar">
@@ -18,9 +23,10 @@
             clearable
             size="small"
             class="field-select"
-            placeholder="选择企业"
+            placeholder="全部企业"
             @change="onEntChange"
           >
+            <el-option label="全部企业" value="" />
             <el-option
               v-for="item in entOptions"
               :key="item.entId"
@@ -39,6 +45,7 @@
             size="small"
             class="field-select-wide"
             placeholder="选择项目"
+            :disabled="!form.entId"
             @change="onProjectChange"
           >
             <el-option
@@ -162,6 +169,143 @@
       </div>
     </div>
 
+    <el-dialog
+      :visible.sync="showMockDialog"
+      title="生成P功率数据"
+      width="760px"
+      top="8vh"
+      @close="mockResult = null"
+    >
+      <el-form :model="mockForm" label-width="100px" size="small" class="mock-form">
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="企业">
+              <el-select
+                v-model="mockForm.entId"
+                class="full-field"
+                clearable
+                filterable
+                placeholder="全部企业"
+                @change="onMockEntChange"
+              >
+                <el-option label="全部企业" value="" />
+                <el-option
+                  v-for="item in entOptions"
+                  :key="item.entId"
+                  :label="item.entName || item.entId"
+                  :value="item.entId"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="项目">
+              <el-select
+                v-model="mockForm.energyStationCode"
+                class="full-field"
+                clearable
+                filterable
+                :disabled="!mockForm.entId"
+                :placeholder="mockForm.entId ? '全部项目' : '选择企业后筛选项目'"
+                @change="onMockProjectChange"
+              >
+                <el-option
+                  v-for="item in mockProjectOptions"
+                  :key="item.energyStationCode"
+                  :label="formatProjectLabel(item)"
+                  :value="item.energyStationCode"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-form-item label="设备">
+          <el-select
+            v-model="mockForm.deviceIds"
+            class="full-field"
+            multiple
+            filterable
+            clearable
+            collapse-tags
+            :disabled="!mockForm.entId"
+            :placeholder="mockForm.entId ? '不选则生成所选企业/项目下全部设备' : '不选则生成全部企业设备'"
+          >
+            <el-option
+              v-for="item in mockDeviceOptions"
+              :key="item.id"
+              :label="formatDeviceLabel(item)"
+              :value="item.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="开始时间">
+              <el-date-picker
+                v-model="mockForm.startTime"
+                type="datetime"
+                class="full-field"
+                format="yyyy-MM-dd HH:mm"
+                value-format="yyyy-MM-dd HH:mm:ss"
+                :default-time="'00:00:00'"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="结束时间">
+              <el-date-picker
+                v-model="mockForm.endTime"
+                type="datetime"
+                class="full-field"
+                format="yyyy-MM-dd HH:mm"
+                value-format="yyyy-MM-dd HH:mm:ss"
+                :default-time="'23:59:59'"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="采样间隔">
+              <el-input-number
+                v-model="mockForm.intervalSeconds"
+                class="full-field"
+                :min="60"
+                :max="3600"
+                :step="60"
+                controls-position="right"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="测点">
+              <el-input value="P 功率" disabled />
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </el-form>
+
+      <div v-if="mockResult" class="mock-result">
+        <div class="mock-result-grid">
+          <div><span>设备</span><strong>{{ mockResult.deviceCount || 0 }}</strong></div>
+          <div><span>P测点</span><strong>{{ mockResult.pointCount || 0 }}</strong></div>
+          <div><span>成功</span><strong>{{ mockResult.success || 0 }}</strong></div>
+          <div><span>失败</span><strong>{{ mockResult.fail || 0 }}</strong></div>
+        </div>
+        <p class="mock-message">{{ mockResult.message }}</p>
+        <ul v-if="mockResult.warnings && mockResult.warnings.length" class="mock-warnings">
+          <li v-for="item in mockResult.warnings" :key="item">{{ item }}</li>
+        </ul>
+      </div>
+
+      <span slot="footer">
+        <el-button @click="showMockDialog = false">关闭</el-button>
+        <el-button type="primary" :loading="mockSubmitting" @click="submitMockPowerData">
+          开始生成
+        </el-button>
+      </span>
+    </el-dialog>
+
     <div class="result-area">
       <div v-if="loading" v-loading="loading" class="loading-mask" />
       <div v-else-if="!tableData.length && searched" class="empty-state">
@@ -243,6 +387,7 @@ import {
   listDevices,
   listDevicePoints,
   listProjectsByEnt,
+  generatePowerData,
   queryTelemetryData,
 } from "./api/index.js";
 
@@ -260,6 +405,8 @@ export default {
       projectOptions: [],
       deviceOptions: [],
       pointCodeOptions: [],
+      mockProjectOptions: [],
+      mockDeviceOptions: [],
 
       form: {
         entId: "",
@@ -277,6 +424,17 @@ export default {
 
       loading: false,
       exporting: false,
+      mockSubmitting: false,
+      showMockDialog: false,
+      mockResult: null,
+      mockForm: {
+        entId: "",
+        energyStationCode: "",
+        deviceIds: [],
+        startTime: "",
+        endTime: "",
+        intervalSeconds: 60,
+      },
 
       page: { pageNum: 1, pageSize: 20, total: 0 },
     };
@@ -297,14 +455,18 @@ export default {
       const body = res.data || {};
       const list = body.code === 200 && Array.isArray(body.data) ? body.data : [];
       this.entOptions = list;
-      if (list.length) {
-        this.form.entId = sessionStorage.getItem("entId") || list[0].entId;
-        this.onEntChange();
+      if (this.form.entId && !list.some(item => item.entId === this.form.entId)) {
+        this.form.entId = "";
       }
+      this.resetEntDependentFields();
     },
 
     onEntChange() {
       sessionStorage.setItem("entId", this.form.entId || "");
+      this.resetEntDependentFields();
+    },
+
+    resetEntDependentFields() {
       this.form.energyStationCode = "";
       this.form.deviceIds = [];
       this.form.pointCodes = [];
@@ -464,6 +626,124 @@ export default {
       }
     },
 
+    async openMockDialog() {
+      this.mockResult = null;
+      this.mockProjectOptions = [];
+      this.mockDeviceOptions = [];
+      this.mockForm = {
+        entId: this.form.entId || "",
+        energyStationCode: this.form.entId ? (this.form.energyStationCode || "") : "",
+        deviceIds: this.form.entId && Array.isArray(this.form.deviceIds) ? [...this.form.deviceIds] : [],
+        startTime: this.form.startTime || moment().startOf("day").format("YYYY-MM-DD HH:mm:ss"),
+        endTime: this.form.endTime || moment().format("YYYY-MM-DD HH:mm:ss"),
+        intervalSeconds: 60,
+      };
+      this.showMockDialog = true;
+      if (this.mockForm.entId) {
+        await this.loadMockScopeOptions();
+      }
+    },
+
+    onMockEntChange() {
+      this.mockForm.energyStationCode = "";
+      this.mockForm.deviceIds = [];
+      this.mockProjectOptions = [];
+      this.mockDeviceOptions = [];
+      if (this.mockForm.entId) {
+        this.loadMockScopeOptions();
+      }
+    },
+
+    onMockProjectChange() {
+      this.mockForm.deviceIds = [];
+    },
+
+    async loadMockScopeOptions() {
+      await Promise.all([
+        this.loadMockProjects(),
+        this.loadMockDevices(),
+      ]);
+    },
+
+    async loadMockProjects() {
+      const aggId = this.aggregatorId || sessionStorage.getItem("aggregatorId") || "";
+      if (!this.mockForm.entId) {
+        this.mockProjectOptions = [];
+        return;
+      }
+      const res = await listProjectsByEnt(this.mockForm.entId, aggId);
+      const body = res.data || {};
+      this.mockProjectOptions = body.code === 200 && Array.isArray(body.data) ? body.data : [];
+    },
+
+    async loadMockDevices() {
+      const aggId = this.aggregatorId || sessionStorage.getItem("aggregatorId") || "";
+      if (!this.mockForm.entId) {
+        this.mockDeviceOptions = [];
+        return;
+      }
+      const res = await listDevices({
+        aggregatorId: aggId,
+        entId: this.mockForm.entId,
+        pageNum: 1,
+        pageSize: 1000,
+      });
+      const body = res.data || {};
+      const page = body.code === 200 && body.data ? body.data : {};
+      this.mockDeviceOptions = Array.isArray(page.list) ? page.list : [];
+    },
+
+    async submitMockPowerData() {
+      if (!this.mockForm.startTime || !this.mockForm.endTime) {
+        this.$message.warning("请选择生成时间范围");
+        return;
+      }
+      this.mockSubmitting = true;
+      try {
+        const res = await generatePowerData({
+          aggregatorId: this.aggregatorId || sessionStorage.getItem("aggregatorId") || "",
+          entId: this.mockForm.entId || undefined,
+          energyStationCode: this.mockForm.energyStationCode || undefined,
+          deviceIds: this.mockForm.deviceIds && this.mockForm.deviceIds.length ? this.mockForm.deviceIds : undefined,
+          startTime: this.mockForm.startTime,
+          endTime: this.mockForm.endTime,
+          intervalSeconds: this.mockForm.intervalSeconds || 60,
+        });
+        const body = res.data || {};
+        if (body.code !== 200) {
+          this.$message.error(body.msg || "生成失败");
+          return;
+        }
+        this.mockResult = body.data || {};
+        const hasFail = Number(this.mockResult.fail || 0) > 0;
+        if (hasFail) {
+          this.$message.warning(this.mockResult.message || "生成完成，存在失败数据");
+        } else {
+          this.$message.success(this.mockResult.message || "生成成功");
+        }
+        this.applyMockQueryCondition();
+        await this.doSearch();
+      } catch (e) {
+        const msg = e && e.response && e.response.data ? e.response.data.msg : e.message;
+        this.$message.error(msg || "生成失败");
+      } finally {
+        this.mockSubmitting = false;
+      }
+    },
+
+    applyMockQueryCondition() {
+      this.form.entId = this.mockForm.entId || "";
+      this.form.energyStationCode = this.mockForm.energyStationCode || "";
+      this.form.deviceIds = Array.isArray(this.mockForm.deviceIds) ? [...this.mockForm.deviceIds] : [];
+      this.form.pointCodes = ["P"];
+      this.form.startTime = this.mockForm.startTime;
+      this.form.endTime = this.mockForm.endTime;
+      this.form.aggType = "minute";
+      this.form.aggFunc = "avg";
+      this.projectOptions = [...this.mockProjectOptions];
+      this.deviceOptions = [...this.mockDeviceOptions];
+    },
+
     fmtValue(v) {
       if (v === null || v === undefined) return "--";
       return typeof v === "number" ? v.toFixed(4) : v;
@@ -491,6 +771,11 @@ export default {
       }
       return item.energyStation || item.energyStationCode || "";
     },
+
+    formatDeviceLabel(item) {
+      if (!item) return "";
+      return item.deviceCode ? `${item.deviceName}（${item.deviceCode}）` : item.deviceName;
+    },
   },
 };
 </script>
@@ -506,7 +791,21 @@ export default {
   color: #1f2933;
 }
 
-.page-toolbar { margin-bottom: 16px; }
+.page-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.toolbar-copy {
+  min-width: 0;
+}
+
+.toolbar-actions {
+  flex: 0 0 auto;
+}
 
 .toolbar-kicker {
   margin: 0 0 4px;
@@ -559,6 +858,66 @@ export default {
   align-items: center;
   gap: 8px;
   margin-left: auto;
+}
+
+.full-field {
+  width: 100%;
+}
+
+.mock-form {
+  padding-right: 8px;
+}
+
+.mock-result {
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid #e5edf4;
+  border-radius: 6px;
+  background: #f8fbfd;
+}
+
+.mock-result-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.mock-result-grid div {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #e5edf4;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.mock-result-grid span {
+  display: block;
+  color: #607d8f;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.mock-result-grid strong {
+  display: block;
+  margin-top: 4px;
+  color: #0e2638;
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.mock-message {
+  margin: 10px 0 0;
+  color: #334e5c;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.mock-warnings {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  color: #b45309;
+  font-size: 12px;
+  line-height: 1.6;
 }
 
 .result-area { min-height: 400px; }

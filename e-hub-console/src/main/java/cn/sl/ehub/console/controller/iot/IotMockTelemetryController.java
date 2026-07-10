@@ -2,11 +2,14 @@ package cn.sl.ehub.console.controller.iot;
 
 import cn.sl.ehub.common.vo.ResultVO;
 import cn.sl.ehub.console.service.IotMockTelemetryService;
+import cn.sl.ehub.service.dto.iot.IotMockPowerDataReq;
+import cn.sl.ehub.service.dto.iot.IotMockPowerDataResp;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -47,5 +50,11 @@ public class IotMockTelemetryController {
                 aggregatorId, entId, days, intervalSeconds,
                 maxPointsPerDevice, accessKey, hourOffset);
         return ResultVO.success(result);
+    }
+
+    @PostMapping("/power-data")
+    @ApiOperation("手动生成现有设备P功率物联数据")
+    public ResultVO<IotMockPowerDataResp> generatePowerData(@RequestBody IotMockPowerDataReq req) {
+        return ResultVO.success(mockTelemetryService.generatePowerData(req));
     }
 }

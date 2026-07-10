@@ -1,7 +1,5 @@
 package cn.sl.ehub.service.service;
 
-import cn.sl.ehub.common.enums.StatusCode;
-import cn.sl.ehub.common.exception.BaseException;
 import cn.sl.ehub.service.dto.iot.IotCimDataItem;
 import cn.sl.ehub.service.dto.iot.IotCimDataReceiveReq;
 import cn.sl.ehub.service.dto.iot.IotDataReceiveFailItem;
@@ -104,7 +102,7 @@ public class IotTelemetryIngestService {
         Date dataTime;
         try {
             dataTime = parseDataTime(item == null ? null : item.getDataTime());
-        } catch (BaseException e) {
+        } catch (IngestException e) {
             saveRawRecord(accessApp, INTERFACE_ORIGIN, null, null, null, externalDeviceId, externalMetric, null, rawValue, rawPayload, MATCH_STATUS_TIME_INVALID, "TIME_INVALID");
             failOrigin(resp, accessApp, item, "TIME_INVALID", rawPayload, null);
             return;
@@ -140,7 +138,7 @@ public class IotTelemetryIngestService {
         Date dataTime;
         try {
             dataTime = parseDataTime(item == null ? null : item.getDataTime());
-        } catch (BaseException e) {
+        } catch (IngestException e) {
             saveRawRecord(accessApp, INTERFACE_CIM, null, null, null, externalDeviceId, externalMetric, null, rawValue, rawPayload, MATCH_STATUS_TIME_INVALID, "TIME_INVALID");
             failCim(resp, accessApp, item, "TIME_INVALID", rawPayload, null);
             return;
@@ -170,7 +168,7 @@ public class IotTelemetryIngestService {
 
     private MatchResult resolveMatch(IotAccessApp accessApp, String externalDeviceId, String externalMetric) {
         MatchResult result = new MatchResult();
-        IotDevice device = findDeviceByExternalId(accessApp.getSourceCode(), externalDeviceId);
+        IotDevice device = findDeviceByExternalId(accessApp, externalDeviceId);
         if (device == null) {
             result.reason = "DEVICE_NOT_MATCHED";
             result.matchStatus = MATCH_STATUS_DEVICE_NOT_FOUND;
@@ -200,18 +198,21 @@ public class IotTelemetryIngestService {
         return result;
     }
 
-    private IotDevice findDeviceByExternalId(String sourceCode, String externalDeviceId) {
+    private IotDevice findDeviceByExternalId(IotAccessApp accessApp, String externalDeviceId) {
         Example example = new Example(IotDevice.class);
-        example.createCriteria()
-                .andEqualTo("thirdPartyApi", StringUtils.trim(sourceCode))
+        Example.Criteria criteria = example.createCriteria()
+                .andEqualTo("thirdPartyApi", StringUtils.trim(accessApp.getSourceCode()))
                 .andEqualTo("thirdPartyCode", StringUtils.trim(externalDeviceId))
                 .andEqualTo("deleted", 0);
+        if (StringUtils.isNotBlank(accessApp.getAggregatorId())) {
+            criteria.andEqualTo("aggregatorId", StringUtils.trim(accessApp.getAggregatorId()));
+        }
         List<IotDevice> devices = iotDeviceMapper.selectByExample(example);
         if (devices.isEmpty()) {
             return null;
         }
         if (devices.size() > 1) {
-            throw new BaseException(400, "三方设备标识匹配到多个设备，请检查设备映射配置");
+            throwParam("三方设备标识匹配到多个设备，请检查设备映射配置");
         }
         return devices.get(0);
     }
@@ -255,7 +256,7 @@ public class IotTelemetryIngestService {
         Date minuteTime = toMinute(dataTime);
         Date now = new Date();
         IotTelemetryMinute record = new IotTelemetryMinute();
-        record.setAggregatorId(accessApp.getAggregatorId());
+        record.setAggregatorId(device.getAggregatorId());
         record.setEntId(device.getEntId());
         record.setProjectId(projectId);
         record.setDeviceId(device.getId());
@@ -394,11 +395,24 @@ public class IotTelemetryIngestService {
     }
 
     private void throwAuth(String message) {
-        throw new BaseException(401, message);
+        throw new IngestException(401, message);
     }
 
     private void throwParam(String message) {
-        throw new BaseException(StatusCode.C.getCode(), message);
+        throw new IngestException(1002, message);
+    }
+
+    public static class IngestException extends RuntimeException {
+        private final Integer code;
+
+        public IngestException(Integer code, String message) {
+            super(message);
+            this.code = code;
+        }
+
+        public Integer getCode() {
+            return code;
+        }
     }
 
     private static class MatchResult {

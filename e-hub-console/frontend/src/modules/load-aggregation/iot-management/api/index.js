@@ -326,3 +326,12 @@ export function getDeviceSummary(params) {
     params: normalizeTelemetryParams(params),
   });
 }
+
+export function generatePowerData(data) {
+  return service({
+    method: "post",
+    url: "/iot/mock/power-data",
+    data,
+    headers: JSON_HEADERS,
+  });
+}

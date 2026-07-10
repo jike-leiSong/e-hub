@@ -1,11 +1,11 @@
 package cn.sl.ehub.console.controller.iot;
 
-import cn.sl.ehub.common.exception.BaseException;
 import cn.sl.ehub.common.vo.ResultVO;
 import cn.sl.ehub.service.dto.iot.IotCimDataReceiveReq;
 import cn.sl.ehub.service.dto.iot.IotDataReceiveResp;
 import cn.sl.ehub.service.dto.iot.IotOriginDataReceiveReq;
 import cn.sl.ehub.service.service.IotTelemetryIngestService;
+import cn.sl.ehub.service.service.IotTelemetryIngestService.IngestException;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -34,7 +34,7 @@ public class IotDataReceiveController {
         try {
             IotDataReceiveResp resp = iotTelemetryIngestService.ingestOriginData(accessKey, req);
             return ResultVO.success(resp, buildMsg(resp));
-        } catch (BaseException e) {
+        } catch (IngestException e) {
             return new ResultVO<>(e.getCode(), e.getMessage(), new IotDataReceiveResp());
         }
     }
@@ -46,7 +46,7 @@ public class IotDataReceiveController {
         try {
             IotDataReceiveResp resp = iotTelemetryIngestService.ingestCimData(accessKey, req);
             return ResultVO.success(resp, buildMsg(resp));
-        } catch (BaseException e) {
+        } catch (IngestException e) {
             return new ResultVO<>(e.getCode(), e.getMessage(), new IotDataReceiveResp());
         }
     }
