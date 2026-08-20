@@ -145,6 +145,9 @@ public class DeliveryServiceXinTai {
     @Resource
     private SingleMeasDeliveryLogService singleMeasDeliveryLogService;
 
+    @Resource
+    private GridDeliveryAuditService gridDeliveryAuditService;
+
     @Value("${nari.url.single}")
     private List<String> singleModelAndMeasUrl;
     @Resource
@@ -305,6 +308,8 @@ public class DeliveryServiceXinTai {
 
         // 上送电采暖数据到电网（带重试）
         String ehResponse = deliveryEHDataToGridWithRetry(ehCmdData, aggregatorId, resourceId);
+        auditTotalDelivery(aggregatorId, resourceId, ehCmdData, ehResponse,
+                CollectionUtils.size(pRealTime) >= ehConfigs.size());
         String result = "电采暖:" + ehResponse;
 
         //量测推送判断
@@ -360,6 +365,8 @@ public class DeliveryServiceXinTai {
 
         // 上送工业负荷数据到电网（带重试）
         String vppResponse = deliveryVPPDataToGridWithRetry(vppCmdData, aggregatorId, resourceId);
+        auditTotalDelivery(aggregatorId, resourceId, vppCmdData, vppResponse,
+                CollectionUtils.size(pRealTime) >= vppConfigs.size());
         String result = "工业负荷:" + vppResponse;
 
         //量测推送判断
@@ -1101,6 +1108,7 @@ public class DeliveryServiceXinTai {
                 map.put("userElecCurrent", userElecCurrent);
                 map.put("todayZeroElecQuantity", todayZeroElecQuantity);
                 map.put("innerStationId", energyStationMap.get(k).getEnergyStationCode());
+                map.put("dataQuality", CollectionUtils.isEmpty(bigDataHistoryRespListP) ? "missing" : "normal");
 
                 singleMeasData.add(map);
                 singleMeasDataMap.put(k, map);
@@ -1117,6 +1125,7 @@ public class DeliveryServiceXinTai {
                 map.put("userElecCurrent", "0.0000");
                 map.put("todayZeroElecQuantity", "0.0000");
                 map.put("innerStationId", energyStationInfo.getEnergyStationCode());
+                map.put("dataQuality", "missing");
 
                 singleMeasData.add(map);
             }
@@ -1255,6 +1264,7 @@ public class DeliveryServiceXinTai {
                 map.put("userElecCurrent", userElecCurrent);
                 map.put("todayZeroElecQuantity", todayZeroElecQuantity);
                 map.put("innerStationId", energyStationMap.get(k).getEnergyStationCode());
+                map.put("dataQuality", CollectionUtils.isEmpty(bigDataHistoryRespListP) ? "missing" : "normal");
                 singleMeasData.add(map);
                 singleMeasDataMap.put(k, map);
             }
@@ -1269,6 +1279,7 @@ public class DeliveryServiceXinTai {
                 map.put("userElecCurrent", "0.0000");
                 map.put("todayZeroElecQuantity", "0.0000");
                 map.put("innerStationId", energyStationInfo.getEnergyStationCode());
+                map.put("dataQuality", "missing");
                 singleMeasData.add(map);
             }
         });
@@ -1376,6 +1387,7 @@ public class DeliveryServiceXinTai {
         } catch (Exception e) {
             log.error("电采暖-记录单体量测上送日志到数据库失败: {}", ExceptionUtils.getStackTrace(e));
         }
+        auditSingleDelivery(aggregatorId, channelNo, singleMeasDeliveryReq, response);
 
         return response;
     }
@@ -1916,6 +1928,7 @@ public class DeliveryServiceXinTai {
                 map.put("userElecCurrent", userElecCurrent);
                 map.put("todayZeroElecQuantity", todayZeroElecQuantity);
                 map.put("innerStationId", energyStationMap.get(k).getEnergyStationCode());
+                map.put("dataQuality", CollectionUtils.isEmpty(bigDataHistoryRespListP) ? "missing" : "normal");
                 log.info("工业负荷-能源站{}, 量测数据: P={}, Q={}, Ia={}, Eptp={}", k, totalActivePower, totalReactivePower, userElecCurrent, todayZeroElecQuantity);
                 singleMeasData.add(map);
                 singleMeasDataMap.put(k, map);
@@ -1934,6 +1947,7 @@ public class DeliveryServiceXinTai {
                 map.put("userElecCurrent", "0.0000");
                 map.put("todayZeroElecQuantity", "0.0000");
                 map.put("innerStationId", energyStationInfo.getEnergyStationCode());
+                map.put("dataQuality", "missing");
                 singleMeasData.add(map);
             }
         });
@@ -2044,7 +2058,28 @@ public class DeliveryServiceXinTai {
         } catch (Exception e) {
             log.error("工业负荷-记录单体量测上送日志到数据库失败: {}", ExceptionUtils.getStackTrace(e));
         }
+        auditSingleDelivery(aggregatorId, channelNo, singleMeasDeliveryReq, response);
 
         return response;
+    }
+
+    private void auditTotalDelivery(String aggregatorId, String channelNo, Map<String, String> payload,
+                                    String response, boolean dataComplete) {
+        try {
+            // 新泰当前以 resourceId 作为电网上送通道号，二者同时写入能源维度，确保不同能源独立审计。
+            gridDeliveryAuditService.recordTotal(aggregatorId, channelNo, channelNo, payload, response, dataComplete);
+        } catch (Exception e) {
+            log.error("记录总加上送审计失败，不影响本次上送: {}", ExceptionUtils.getStackTrace(e));
+        }
+    }
+
+    private void auditSingleDelivery(String aggregatorId, String channelNo, SingleMeasDeliveryReq request,
+                                     String response) {
+        try {
+            // 新泰当前以 resourceId 作为电网上送通道号，二者同时写入能源维度，确保不同能源独立审计。
+            gridDeliveryAuditService.recordSingle(aggregatorId, channelNo, channelNo, request, response);
+        } catch (Exception e) {
+            log.error("记录单体量测上送审计失败，不影响本次上送: {}", ExceptionUtils.getStackTrace(e));
+        }
     }
 }

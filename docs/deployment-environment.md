@@ -1,0 +1,37 @@
+# 部署环境变量
+
+仓库不再保存数据库、Redis、JWT、短信、钉钉和外部网关凭证。部署前应由密钥管理系统或运行环境注入以下变量。
+
+## Console 必需配置
+
+- `CONSOLE_AUTH_TOKEN_SECRET`：JWT 签名密钥，认证开启时不能为空，建议使用至少 32 字节的随机值。
+- `CONSOLE_DB_PASSWORD`：Console 数据库密码。
+- `CONSOLE_REDIS_PASSWORD`：Console Redis 密码；无密码的本地 Redis 可以留空。
+
+常用可选配置：
+
+- `CONSOLE_DB_URL`、`CONSOLE_DB_USERNAME`
+- `CONSOLE_REDIS_HOST`、`CONSOLE_REDIS_PORT`、`CONSOLE_REDIS_DATABASE`
+- `CONSOLE_AUTH_EXPIRE_MINUTES`
+- `CONSOLE_AUTH_SESSION_STORE`：默认 `redis`；仅单机开发可设为 `local`。
+- `CONSOLE_ALLOWED_ORIGINS`：允许跨域的前端来源，多个来源以逗号分隔；留空时只支持同源访问。
+- `BIGDATA_USER_KEY`、`BIGDATA_DATA_COLLECTOR`
+
+## Upstream 必需配置
+
+- `UPSTREAM_DB_URL`、`UPSTREAM_DB_USERNAME`、`UPSTREAM_DB_PASSWORD`
+- `UPSTREAM_REDIS_SENTINEL_MASTER`、`UPSTREAM_REDIS_SENTINEL_NODES`、`UPSTREAM_REDIS_PASSWORD`
+- `UPSTREAM_KEYSTORE_PASSWORD`
+- `SMS_APP_ID`、`SMS_APP_SECRET`
+- `DINGDING_SECRET`、`DINGDING_WEBHOOK`
+- `IOT_BASE_URL`、`IOT_COMMAND_URL`、`IOT_TOKEN`、`IOT_XAUTH_ID`、`IOT_CALLBACK_URL`
+
+## 前端运行时配置
+
+负荷聚合历史接口不再内置外部网关地址和 AccessKey。通过 `public/config.js` 对应的运行时配置，或构建环境变量提供：
+
+- `VITE_API_BASE_URL`
+- `VITE_POINT_BASE_URL`
+- `VITE_GW_ACCESS_KEY`
+
+同源部署时 `VITE_API_BASE_URL` 可以留空，由当前站点转发请求。

@@ -1,41 +1,15 @@
 import service from "@/services/http";
-import commonUtil from "platform-common-component";
 import { getRandom, sortStr, sha1 } from "@/utils/util.js";
 
-let urlStr = "";
-let pointUrl = "";
-let accessKey = "";
 const runtimeConfig = window.__AGGREGATION_CONFIG__ || {};
 const envConfig = import.meta.env || {};
 const apiBaseUrl = runtimeConfig.apiBaseUrl || envConfig.VITE_API_BASE_URL;
 const pointBaseUrl = runtimeConfig.pointBaseUrl || envConfig.VITE_POINT_BASE_URL;
 const envAccessKey = runtimeConfig.accessKey || envConfig.VITE_GW_ACCESS_KEY;
 const jsonContentType = "application/json;charset=UTF-8";
-const hasConfiguredApiBase =
-  Object.prototype.hasOwnProperty.call(runtimeConfig, "apiBaseUrl") ||
-  Object.prototype.hasOwnProperty.call(envConfig, "VITE_API_BASE_URL");
-
-if (hasConfiguredApiBase) {
-  urlStr = normalizeBaseUrl(apiBaseUrl || "");
-  pointUrl = normalizeBaseUrl(pointBaseUrl || "/fnw-datamining");
-  accessKey = envAccessKey || "";
-} else if (commonUtil.currentENV() === "isProd") {
-  urlStr = "https://gateway.fanneng.com/load-aggregator-business";
-  pointUrl = "https://gateway.fanneng.com/fnw-datamining";
-  accessKey = "rXddpRDLO2Z72mM6ENBysr62fIof3Mfg";
-} else if (window.location.href.indexOf(".uat") !== -1) {
-  urlStr = "http://load-aggregator-business.uat.fnwintranet.com";
-  pointUrl = "http://fnw-datamining.cloud-common.fnwrancher-dev.enncloud.cn";
-  accessKey = "BiJHUDt6wAOGB4UoSnQLDWF2K6R0KCmY";
-} else if (commonUtil.currentENV() === "isFat") {
-  urlStr = "http://rdfa-gateway-5.fat.fnwintranet.com/load-aggregator-business";
-  pointUrl = "http://rdfa-gateway-5.fat.fnwintranet.com/fnw-datamining";
-  accessKey = "6eOyl9kLYhBdWgonGp21UnLLvircDSTg";
-} else {
-  urlStr = "http://gateway.test.fnwintranet.com/load-aggregator-business";
-  pointUrl = "http://gateway.test.fnwintranet.com/fnw-datamining";
-  accessKey = "BDo9pMIbZqJCUI9WsUHsCxpFNtCJMyR0";
-}
+const urlStr = normalizeBaseUrl(apiBaseUrl || "");
+const pointUrl = normalizeBaseUrl(pointBaseUrl || "/fnw-datamining");
+const accessKey = envAccessKey || "";
 
 function normalizeBaseUrl(url) {
   return String(url).replace(/\/$/, "");

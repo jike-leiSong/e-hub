@@ -5,7 +5,7 @@ client:
   keystore-alias: webclient
   key-store: classpath:jks/webclient1.p12
   trust-store: classpath:jks/webclient.truststore
-  store-password: Huabei.zdh2019
+  store-password: ${UPSTREAM_KEYSTORE_PASSWORD:}
 aggregator:
   name: XASN
 file:
@@ -59,13 +59,13 @@ pagehelper:
 
 sms:
   applicationName: load-aggregator
-  appId: msg-5229460204476416
-  appSecret: pwd-15600168730
+  appId: ${SMS_APP_ID:}
+  appSecret: ${SMS_APP_SECRET:}
   alertTemplateCode: SMS_215116833
 
 dingding:
-  secret: SEC7fbe9f5761f8461f409cb8cf7bc7b0369367c1a04723989a406c014e16984c4e
-  webHook: https://oapi.dingtalk.com/robot/send?access_token=dc5cf315a9c30e02027c06f29bef30882041ff60d7c21fbb226604cca8730151
+  secret: ${DINGDING_SECRET:}
+  webHook: ${DINGDING_WEBHOOK:}
 
 mybatis:
   mapper-locations: classpath*:/mapper/*Mapper.xml

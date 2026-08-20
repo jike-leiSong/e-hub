@@ -3,6 +3,7 @@ package cn.sl.ehub.upstream.controller;
 import javax.annotation.Resource;
 
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -10,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import cn.sl.ehub.common.enums.StatusCode;
 import cn.sl.ehub.upstream.service.DeliveryService;
 import cn.sl.ehub.upstream.service.DeliveryServiceXinTai;
+import cn.sl.ehub.upstream.service.DeliveryRetryService;
 import cn.sl.ehub.upstream.service.PeakPlanDeliveryService;
 import cn.sl.ehub.common.vo.ResultVO;
 import io.swagger.annotations.Api;
@@ -36,6 +38,9 @@ public class DeliveryController {
 
     @Resource
     private PeakPlanDeliveryService peakPlanDeliveryService;
+
+    @Resource
+    private DeliveryRetryService deliveryRetryService;
 
     /**
      * 单体量测数据上送接口
@@ -68,6 +73,21 @@ public class DeliveryController {
         return ResultVO.success(deliveryService.singleModelDataDelivery(aggregatorId, energyType));
     }
 
+    @PostMapping("/singleModelDataDelivery")
+    @ApiOperation(value = "人工上送全量单体模型", notes = "按所选能源上送全量模型及参与标识")
+    public ResultVO<String> manualSingleModelDataDelivery(@RequestParam String aggregatorId,
+            @RequestParam String energyType) {
+        return ResultVO.success(deliveryService.singleModelDataDelivery(aggregatorId, energyType));
+    }
+
+    @PostMapping("/singleMeasRetry")
+    @ApiOperation(value = "人工补送单体量测", notes = "按资源类型补送指定15分钟时刻的全量单体量测")
+    public ResultVO<String> singleMeasRetry(@RequestParam String aggregatorId,
+            @RequestParam String resourceTypeId,
+            @RequestParam Long time) {
+        return deliveryRetryService.singleMeasRetry(aggregatorId, resourceTypeId, time);
+    }
+
     /**
      * 调峰计划申报96点数据电网上送接口
      *
@@ -91,7 +111,8 @@ public class DeliveryController {
             }
             boolean result = peakPlanDeliveryService.execute96PointDeliveryByDate(aggregatorId, targetDate,
                     resourceTypeId);
-            return ResultVO.success("调峰计划96点数据上送成功");
+            return result ? ResultVO.success("调峰计划96点数据上送成功")
+                    : ResultVO.fail(StatusCode.C.getCode(), "调峰计划96点数据上送失败，请查看上送日志");
         } catch (Exception e) {
             log.error("调峰计划申报96点数据电网上送接口异常", e);
             return ResultVO.fail(StatusCode.C.getCode(), e.getMessage());
@@ -121,9 +142,44 @@ public class DeliveryController {
             }
             boolean result = peakPlanDeliveryService.executeDailyDataDeliveryByDate(aggregatorId, targetDate,
                     resourceTypeId);
-            return ResultVO.success("调峰计划日数据上送成功");
+            return result ? ResultVO.success("调峰计划日数据上送成功")
+                    : ResultVO.fail(StatusCode.C.getCode(), "调峰计划日数据上送失败，请查看上送日志");
         } catch (Exception e) {
             log.error("调峰计划申报日数据电网上送接口异常", e);
+            return ResultVO.fail(StatusCode.C.getCode(), e.getMessage());
+        }
+    }
+
+    @PostMapping("/peakPlan96PointDelivery")
+    @ApiOperation(value = "人工上送调峰计划96点数据", notes = "按日期和资源类型人工上送基础用电及最大调峰能力")
+    public ResultVO<String> manualPeakPlan96PointDelivery(@RequestParam String aggregatorId,
+            @RequestParam String dataDate,
+            @RequestParam String resourceTypeId) {
+        try {
+            java.util.Date targetDate = new java.text.SimpleDateFormat("yyyy-MM-dd").parse(dataDate);
+            boolean result = peakPlanDeliveryService.execute96PointDeliveryByDate(aggregatorId, targetDate,
+                    resourceTypeId);
+            return result ? ResultVO.success("调峰计划96点数据上送成功")
+                    : ResultVO.fail(StatusCode.C.getCode(), "调峰计划96点数据上送失败，请查看上送日志");
+        } catch (Exception e) {
+            log.error("人工上送调峰计划96点数据异常", e);
+            return ResultVO.fail(StatusCode.C.getCode(), e.getMessage());
+        }
+    }
+
+    @PostMapping("/peakPlanDailyDataDelivery")
+    @ApiOperation(value = "人工上送调峰计划日数据", notes = "按日期和资源类型人工上送日运行指标")
+    public ResultVO<String> manualPeakPlanDailyDataDelivery(@RequestParam String aggregatorId,
+            @RequestParam String dataDate,
+            @RequestParam String resourceTypeId) {
+        try {
+            java.util.Date targetDate = new java.text.SimpleDateFormat("yyyy-MM-dd").parse(dataDate);
+            boolean result = peakPlanDeliveryService.executeDailyDataDeliveryByDate(aggregatorId, targetDate,
+                    resourceTypeId);
+            return result ? ResultVO.success("调峰计划日数据上送成功")
+                    : ResultVO.fail(StatusCode.C.getCode(), "调峰计划日数据上送失败，请查看上送日志");
+        } catch (Exception e) {
+            log.error("人工上送调峰计划日数据异常", e);
             return ResultVO.fail(StatusCode.C.getCode(), e.getMessage());
         }
     }

@@ -11,6 +11,7 @@ import org.apache.ibatis.annotations.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Date;
 
 @Repository
 public interface IotTelemetryQueryMapper {
@@ -28,4 +29,12 @@ public interface IotTelemetryQueryMapper {
     Long countRawData(@Param("req") IotTelemetryRawQueryReq req);
 
     List<IotDeviceSummaryPointResp> selectDeviceSummary(@Param("req") IotDeviceSummaryReq req);
+
+    List<IotTelemetryDataResp> selectRunStatusData(@Param("aggregatorId") String aggregatorId,
+                                                    @Param("entId") String entId,
+                                                    @Param("deviceIds") List<Long> deviceIds,
+                                                    @Param("deviceCodes") List<String> deviceCodes,
+                                                    @Param("pointCodes") List<String> pointCodes,
+                                                    @Param("startTime") Date startTime,
+                                                    @Param("endTime") Date endTime);
 }

@@ -42,7 +42,9 @@ public class ConsolePermissionService {
     private static final String PAGE_LOAD_SETTLEMENT = "load-settlement";
     private static final String PAGE_LOAD_RESOURCES = "load-resources";
     private static final String PAGE_LOAD_DEVICE_OPERATION = "load-device-operation";
+    private static final String PAGE_LOAD_GRID_INTERACTION = "load-grid-interaction";
     private static final String PAGE_TARIFF_QUERY = "tariff-query";
+    private static final String PAGE_TARIFF_IMPORT = "tariff-import";
     private static final String PAGE_TARIFF_SOURCES = "tariff-sources";
     private static final String PAGE_TARIFF_API = "tariff-api";
     private static final String PAGE_TARIFF_LOGS = "tariff-logs";
@@ -51,8 +53,16 @@ public class ConsolePermissionService {
     private static final String PERM_LOAD_ADJUSTMENT = "load:adjustment:view";
     private static final String PERM_LOAD_SETTLEMENT = "load:settlement:view";
     private static final String PERM_LOAD_DEVICE_OPERATION = "load:device-operation:view";
+    private static final String PERM_LOAD_GRID_INTERACTION = "load:grid-interaction:view";
+    private static final String PERM_LOAD_GRID_INTERACTION_DELIVERY = "load:grid-interaction:delivery";
+    private static final String PERM_LOAD_GRID_INTERACTION_AUDIT = "load:grid-interaction:audit";
+    private static final String PERM_LOAD_GRID_INTERACTION_EXPORT = "load:grid-interaction:export";
+    private static final String LEGACY_PERM_LOAD_GRID_DELIVERY = "load:grid-delivery:view";
+    private static final String LEGACY_PERM_LOAD_GRID_DELIVERY_MANAGE = "load:grid-delivery:manage";
+    private static final String LEGACY_PERM_LOAD_GRID_DELIVERY_EXPORT = "load:grid-delivery:export";
     private static final String PERM_LOAD_RESOURCES = "load:resources:view";
     private static final String PERM_TARIFF_QUERY = "tariff:query:view";
+    private static final String PERM_TARIFF_IMPORT = "tariff:import:manage";
     private static final String PERM_TARIFF_SOURCES = "tariff:sources:view";
     private static final String PERM_TARIFF_API = "tariff:api:view";
     private static final String PERM_TARIFF_LOGS = "tariff:logs:view";
@@ -65,11 +75,19 @@ public class ConsolePermissionService {
             PERM_LOAD_ADJUSTMENT,
             PERM_LOAD_SETTLEMENT,
             PERM_LOAD_RESOURCES,
-            PERM_LOAD_DEVICE_OPERATION
+            PERM_LOAD_DEVICE_OPERATION,
+            PERM_LOAD_GRID_INTERACTION,
+            PERM_LOAD_GRID_INTERACTION_DELIVERY,
+            PERM_LOAD_GRID_INTERACTION_AUDIT,
+            PERM_LOAD_GRID_INTERACTION_EXPORT,
+            LEGACY_PERM_LOAD_GRID_DELIVERY,
+            LEGACY_PERM_LOAD_GRID_DELIVERY_MANAGE,
+            LEGACY_PERM_LOAD_GRID_DELIVERY_EXPORT
     );
 
     private static final List<String> TARIFF_PERMISSION_CODES = Arrays.asList(
             PERM_TARIFF_QUERY,
+            PERM_TARIFF_IMPORT,
             PERM_TARIFF_SOURCES,
             PERM_TARIFF_API,
             PERM_TARIFF_LOGS
@@ -96,13 +114,19 @@ public class ConsolePermissionService {
             "/iot/",
             "/model/",
             "/peakPlanDeclare/",
-            "/file/"
+            "/file/",
+            "/grid-interaction/",
+            "/grid-delivery-quality/"
     );
 
     private static final List<String> TARIFF_QUERY_API_PREFIXES = Arrays.asList(
             "/tariff/agent-price/",
             "/haomaidian/index/",
             "/areaDict/"
+    );
+
+    private static final List<String> TARIFF_IMPORT_API_PREFIXES = Collections.singletonList(
+            "/tariff/agent-price/import/"
     );
 
     private static final List<String> TARIFF_SOURCE_API_PREFIXES = Collections.singletonList(
@@ -206,17 +230,51 @@ public class ConsolePermissionService {
         if (startsWithAny(path, SETTINGS_API_PREFIXES)) {
             return hasPermission(profile, PERM_OWNER_SETTINGS);
         }
-        if (startsWithAny(path, TARIFF_QUERY_API_PREFIXES)) {
+        if (startsWithAny(path, TARIFF_IMPORT_API_PREFIXES)) {
             return hasProduct(profile, ConsoleProductService.PRODUCT_TARIFF)
-                    && hasPermission(profile, PERM_TARIFF_QUERY);
+                    && hasPermission(profile, PERM_TARIFF_IMPORT);
+        }
+        if (startsWithAny(path, TARIFF_OPEN_API_PREFIXES)) {
+            return hasProduct(profile, ConsoleProductService.PRODUCT_TARIFF)
+                    && hasPermission(profile, PERM_TARIFF_API);
         }
         if (startsWithAny(path, TARIFF_SOURCE_API_PREFIXES)) {
             return hasProduct(profile, ConsoleProductService.PRODUCT_TARIFF)
                     && hasPermission(profile, PERM_TARIFF_SOURCES);
         }
-        if (startsWithAny(path, TARIFF_OPEN_API_PREFIXES)) {
+        if (startsWithAny(path, TARIFF_QUERY_API_PREFIXES)) {
             return hasProduct(profile, ConsoleProductService.PRODUCT_TARIFF)
-                    && hasPermission(profile, PERM_TARIFF_API);
+                    && hasPermission(profile, PERM_TARIFF_QUERY);
+        }
+        if (StringUtils.startsWith(path, "/peakPlanDeclare/")) {
+            return hasProduct(profile, ConsoleProductService.PRODUCT_LOAD)
+                    && hasAnyPermission(profile, Arrays.asList(PERM_LOAD_GRID_INTERACTION_DELIVERY,
+                    LEGACY_PERM_LOAD_GRID_DELIVERY_MANAGE));
+        }
+        if (StringUtils.startsWith(path, "/grid-interaction/")
+                || StringUtils.startsWith(path, "/grid-delivery-quality/")) {
+            if (!hasProduct(profile, ConsoleProductService.PRODUCT_LOAD)) {
+                return false;
+            }
+            if (StringUtils.contains(path, "/export") || StringUtils.contains(path, "/report")) {
+                return hasAnyPermission(profile, Arrays.asList(PERM_LOAD_GRID_INTERACTION_EXPORT,
+                        PERM_LOAD_GRID_INTERACTION_DELIVERY, LEGACY_PERM_LOAD_GRID_DELIVERY_EXPORT,
+                        LEGACY_PERM_LOAD_GRID_DELIVERY_MANAGE));
+            }
+            boolean writeRequest = !StringUtils.equalsIgnoreCase(request.getMethod(), "GET");
+            if (StringUtils.contains(path, "/operations/") && writeRequest) {
+                return hasAnyPermission(profile, Arrays.asList(PERM_LOAD_GRID_INTERACTION_DELIVERY,
+                        LEGACY_PERM_LOAD_GRID_DELIVERY_MANAGE));
+            }
+            if (StringUtils.contains(path, "/recalculate")
+                    || (writeRequest && (StringUtils.contains(path, "/snapshot")
+                    || StringUtils.contains(path, "/periods") || StringUtils.contains(path, "/issues/")
+                    || StringUtils.contains(path, "/market-status")))) {
+                return hasAnyPermission(profile, Arrays.asList(PERM_LOAD_GRID_INTERACTION_AUDIT,
+                        LEGACY_PERM_LOAD_GRID_DELIVERY_MANAGE));
+            }
+            return hasAnyPermission(profile, Arrays.asList(PERM_LOAD_GRID_INTERACTION,
+                    LEGACY_PERM_LOAD_GRID_DELIVERY));
         }
         if (startsWithAny(path, LOAD_API_PREFIXES)) {
             return hasProduct(profile, ConsoleProductService.PRODUCT_LOAD)
@@ -349,7 +407,14 @@ public class ConsolePermissionService {
             permissionCodes.addAll(LOAD_PERMISSION_CODES);
         }
         if (products.contains(ConsoleProductService.PRODUCT_TARIFF)) {
-            permissionCodes.addAll(TARIFF_PERMISSION_CODES);
+            if (isOwner(user)) {
+                permissionCodes.addAll(TARIFF_PERMISSION_CODES);
+            } else {
+                // 客户默认只读电价查询、接口和调用记录；电价导入、数据源维护必须通过显式运营角色授权。
+                permissionCodes.add(PERM_TARIFF_QUERY);
+                permissionCodes.add(PERM_TARIFF_API);
+                permissionCodes.add(PERM_TARIFF_LOGS);
+            }
         }
         return permissionCodes;
     }
@@ -383,8 +448,16 @@ public class ConsolePermissionService {
         if (hasProduct(profile, ConsoleProductService.PRODUCT_LOAD) && hasPermission(profile, PERM_LOAD_DEVICE_OPERATION)) {
             pages.add(PAGE_LOAD_DEVICE_OPERATION);
         }
+        if (hasProduct(profile, ConsoleProductService.PRODUCT_LOAD)
+                && hasAnyPermission(profile, Arrays.asList(PERM_LOAD_GRID_INTERACTION,
+                LEGACY_PERM_LOAD_GRID_DELIVERY))) {
+            pages.add(PAGE_LOAD_GRID_INTERACTION);
+        }
         if (hasProduct(profile, ConsoleProductService.PRODUCT_TARIFF) && hasPermission(profile, PERM_TARIFF_QUERY)) {
             pages.add(PAGE_TARIFF_QUERY);
+        }
+        if (hasProduct(profile, ConsoleProductService.PRODUCT_TARIFF) && hasPermission(profile, PERM_TARIFF_IMPORT)) {
+            pages.add(PAGE_TARIFF_IMPORT);
         }
         if (hasProduct(profile, ConsoleProductService.PRODUCT_TARIFF) && hasPermission(profile, PERM_TARIFF_SOURCES)) {
             pages.add(PAGE_TARIFF_SOURCES);
@@ -456,6 +529,9 @@ public class ConsolePermissionService {
             if (allowedPages.contains(PAGE_LOAD_DEVICE_OPERATION)) {
                 children.add(item(PAGE_LOAD_DEVICE_OPERATION, "物联管理", null));
             }
+            if (allowedPages.contains(PAGE_LOAD_GRID_INTERACTION)) {
+                children.add(item(PAGE_LOAD_GRID_INTERACTION, "电网交互", null));
+            }
             if (!children.isEmpty()) {
                 items.add(item("load", "负荷聚合", "07", children));
             }
@@ -464,6 +540,9 @@ public class ConsolePermissionService {
             List<AuthMenuItemResp> children = new ArrayList<>();
             if (allowedPages.contains(PAGE_TARIFF_QUERY)) {
                 children.add(item(PAGE_TARIFF_QUERY, "电网代理价格", null));
+            }
+            if (allowedPages.contains(PAGE_TARIFF_IMPORT)) {
+                children.add(item(PAGE_TARIFF_IMPORT, "电价录入", null));
             }
             if (allowedPages.contains(PAGE_TARIFF_SOURCES)) {
                 children.add(item(PAGE_TARIFF_SOURCES, "数据来源", null));

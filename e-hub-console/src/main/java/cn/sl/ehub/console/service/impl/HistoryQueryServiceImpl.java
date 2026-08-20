@@ -5,6 +5,7 @@ import cn.sl.ehub.common.enums.StatusCode;
 import cn.sl.ehub.common.exception.BaseException;
 import cn.sl.ehub.common.utils.MathUtils;
 import cn.sl.ehub.common.vo.DataResp;
+import cn.sl.ehub.console.auth.LoadAggregationScopeService;
 import cn.sl.ehub.console.model.req.DeviceRunStatusReq;
 import cn.sl.ehub.console.model.req.NewUserAdjustmentGraphReq;
 import cn.sl.ehub.console.model.req.ProfitStatisticsReq;
@@ -17,6 +18,7 @@ import cn.sl.ehub.console.model.resp.LineDataGraphResp;
 import cn.sl.ehub.console.model.resp.PriceExcelDateResp;
 import cn.sl.ehub.console.model.vo.HistoryQueryGraphVO;
 import cn.sl.ehub.console.model.vo.HistoryQueryTableVO;
+import cn.sl.ehub.console.model.vo.LineDataGraphVO;
 import cn.sl.ehub.console.model.vo.PageResultVO;
 import cn.sl.ehub.console.model.vo.ProfitStatisticsVO;
 import cn.sl.ehub.console.model.vo.UserProfitStatisticsVO;
@@ -24,6 +26,7 @@ import cn.sl.ehub.console.service.IAggregatorBaseLineLoadChartService;
 import cn.sl.ehub.console.service.IAggregatorCrChartService;
 import cn.sl.ehub.console.service.IAggregatorDapChartService;
 import cn.sl.ehub.console.service.IAggregatorDateIssueChartService;
+import cn.sl.ehub.console.service.IAggregatorDeviceDateProfitService;
 import cn.sl.ehub.console.service.IAggregatorEntService;
 import cn.sl.ehub.console.service.IAggregatorEntBaseLineLoadChartService;
 import cn.sl.ehub.console.service.IAggregatorEntDateAdjustService;
@@ -32,11 +35,15 @@ import cn.sl.ehub.console.service.IAggregatorInfoService;
 import cn.sl.ehub.console.service.IAggregatorResourceDateIssueOfferService;
 import cn.sl.ehub.console.service.IHistoryQueryService;
 import cn.sl.ehub.service.mapper.IotTelemetryMinuteMapper;
+import cn.sl.ehub.service.mapper.IotTelemetryQueryMapper;
+import cn.sl.ehub.console.enums.MetricEnum;
+import cn.sl.ehub.service.dto.iot.IotTelemetryDataResp;
 import cn.sl.ehub.service.req.AdjustSituationExcelRep;
 import cn.sl.ehub.service.req.IndexOverviewTableResp;
 import cn.sl.ehub.service.resp.HistoryQueryDeviceMetricResp;
 import cn.sl.ehub.service.resp.IndexOverviewResp;
 import cn.sl.ehub.service.resp.AggregatorEntDateAdjustResp;
+import cn.sl.ehub.service.resp.AggregatorDeviceDateProfitResp;
 import cn.sl.ehub.service.vo.AggregatorBaseLineLoadChart;
 import cn.sl.ehub.service.vo.AggregatorCrChart;
 import cn.sl.ehub.service.vo.AggregatorDapChart;
@@ -47,17 +54,21 @@ import cn.sl.ehub.service.vo.AggregatorEntDateAdjust;
 import cn.sl.ehub.service.vo.AggregatorEntDevice;
 import cn.sl.ehub.service.vo.AggregatorInfo;
 import cn.sl.ehub.service.vo.AggregatorResourceDateIssueOffer;
+import cn.sl.ehub.service.vo.AggregatorDeviceDateProfit;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
 import java.text.Collator;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -75,10 +86,9 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 
 /**
- * 历史查询服务实现 (空实现)
+ * 历史查询服务实现。
  *
- * @Author sl
- * @Date 2026-06-15
+ * 调节明细和设备运行曲线已迁移，收益结算相关接口等待新规则后实现。
  */
 @RequiredArgsConstructor
 @Slf4j
@@ -109,6 +119,9 @@ public class HistoryQueryServiceImpl implements IHistoryQueryService {
     private final IAggregatorEntService aggregatorEntService;
     private final IAggregatorInfoService aggregatorInfoService;
     private final IotTelemetryMinuteMapper iotTelemetryMinuteMapper;
+    private final IotTelemetryQueryMapper iotTelemetryQueryMapper;
+    private final IAggregatorDeviceDateProfitService aggregatorDeviceDateProfitService;
+    private final LoadAggregationScopeService loadScopeService;
 
     @Override
     public HistoryQueryGraphVO userAdjustmentGraph(UserAdjustmentGraphReq userAdjustmentGraphReq) {
@@ -151,14 +164,112 @@ public class HistoryQueryServiceImpl implements IHistoryQueryService {
 
     @Override
     public PageResultVO<HistoryQueryTableVO> userAdjustmentTable(UserAdjustmentTableReq userAdjustmentTableReq) {
-        log.warn("userAdjustmentTable called - empty implementation");
-        return new PageResultVO<>();
+        if (userAdjustmentTableReq == null || StringUtils.isBlank(userAdjustmentTableReq.getDeviceBaseId())) {
+            throw new BaseException(StatusCode.C.getCode(), "设备ID不能为空");
+        }
+        AggregatorEntDevice device = aggregatorEntDeviceService
+                .getAggregatorEntDevice(userAdjustmentTableReq.getDeviceBaseId());
+        if (device == null) {
+            throw new BaseException(StatusCode.E_J.getCode(), "设备不存在");
+        }
+        loadScopeService.validateScope(device.getAggregatorId(), device.getEntId());
+        validateAdjustmentDeviceScope(userAdjustmentTableReq, device);
+        DateRange range = resolveAdjustmentDateRange(
+                userAdjustmentTableReq.getStartTime(), userAdjustmentTableReq.getEndTime());
+        List<AggregatorDeviceDateProfit> profits = aggregatorDeviceDateProfitService
+                .getAggregatorDeviceDateProfitList(device.getDeviceBaseId(),
+                        buildDateList(range.getStartDate(), range.getEndDate()));
+        List<AggregatorDeviceDateProfitResp> details = new ArrayList<>();
+        for (AggregatorDeviceDateProfit profit : profits) {
+            if (profit == null || StringUtils.isBlank(profit.getProfitDetail())) {
+                continue;
+            }
+            List<AggregatorDeviceDateProfitResp> parsed = JSONArray.parseArray(
+                    profit.getProfitDetail(), AggregatorDeviceDateProfitResp.class);
+            if (parsed != null) {
+                details.addAll(parsed.stream()
+                        .filter(item -> matchesProfitType(item, userAdjustmentTableReq.getProfitType()))
+                        .collect(Collectors.toList()));
+            }
+        }
+        details.sort(Comparator.comparing(AggregatorDeviceDateProfitResp::getStartTime,
+                Comparator.nullsLast(Comparator.reverseOrder())));
+
+        int pageNo = userAdjustmentTableReq.getPageNo() == null || userAdjustmentTableReq.getPageNo() < 1
+                ? 1 : userAdjustmentTableReq.getPageNo();
+        int pageSize = userAdjustmentTableReq.getPageSize() == null || userAdjustmentTableReq.getPageSize() < 1
+                ? 10 : Math.min(userAdjustmentTableReq.getPageSize(), 200);
+        int from = Math.min((pageNo - 1) * pageSize, details.size());
+        int to = Math.min(from + pageSize, details.size());
+        List<HistoryQueryTableVO> rows = details.subList(from, to).stream()
+                .map(item -> toAdjustmentTableRow(item, device.getDeviceName()))
+                .collect(Collectors.toList());
+        PageResultVO<HistoryQueryTableVO> result = new PageResultVO<>();
+        result.setPageIndex(pageNo);
+        result.setPageSize(pageSize);
+        result.setTotal(details.size());
+        result.setList(rows);
+        return result;
     }
 
     @Override
     public List<LineDataGraphResp> deviceRunStatusChart(DeviceRunStatusReq deviceRunStatusReq) {
-        log.warn("deviceRunStatusChart called - empty implementation");
-        return new ArrayList<>();
+        if (deviceRunStatusReq == null || CollectionUtils.isEmpty(deviceRunStatusReq.getDeviceBaseIdList())
+                || CollectionUtils.isEmpty(deviceRunStatusReq.getMetricList())) {
+            return Collections.emptyList();
+        }
+        DateRange range = resolveAdjustmentDateRange(
+                deviceRunStatusReq.getStartTime(), deviceRunStatusReq.getEndTime());
+        List<AggregatorEntDevice> devices = aggregatorEntDeviceService
+                .getAggregatorEntDeviceList(deviceRunStatusReq.getDeviceBaseIdList());
+        Map<String, AggregatorEntDevice> deviceMap = devices.stream().collect(Collectors.toMap(
+                AggregatorEntDevice::getDeviceBaseId, Function.identity(), (left, right) -> left));
+        if (deviceMap.size() != new LinkedHashSet<>(deviceRunStatusReq.getDeviceBaseIdList()).size()) {
+            throw new BaseException(StatusCode.E_J.getCode(), "部分设备不存在");
+        }
+        validateRunStatusScope(deviceRunStatusReq, devices);
+
+        List<MetricEnum> metrics = expandMetrics(deviceRunStatusReq.getMetricList());
+        if (metrics.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<IotTelemetryDataResp> telemetry = iotTelemetryQueryMapper.selectRunStatusData(
+                devices.get(0).getAggregatorId(),
+                StringUtils.trimToNull(deviceRunStatusReq.getSubEntId()),
+                telemetryDeviceIds(devices),
+                telemetryDeviceCodes(devices),
+                metrics.stream().map(MetricEnum::getCode).distinct().collect(Collectors.toList()),
+                range.getStartTime(), range.getEndTime());
+        Map<String, Map<String, Map<String, Double>>> dataMap = groupRunStatusData(telemetry, devices);
+        List<String> minuteAxis = buildMinuteTimeList(range.getStartDate(), range.getEndDate());
+
+        if ("1".equals(deviceRunStatusReq.getStatus())) {
+            List<LineDataGraphVO> lines = new ArrayList<>();
+            for (String deviceBaseId : deviceRunStatusReq.getDeviceBaseIdList()) {
+                AggregatorEntDevice device = deviceMap.get(deviceBaseId);
+                for (MetricEnum metric : metrics) {
+                    String lineName = device.getDeviceName();
+                    if (MetricEnum.IA == metric || MetricEnum.IB == metric || MetricEnum.IC == metric) {
+                        lineName = StringUtils.defaultString(lineName) + metric.getDesc();
+                    }
+                    lines.add(buildRunStatusLine(lineName, metric.getGroupName(), metric,
+                            runStatusPoints(dataMap, deviceBaseId, metric.getCode()), minuteAxis,
+                            device.getResourceTypeId()));
+                }
+            }
+            return Collections.singletonList(toLineGraphResp(lines));
+        }
+
+        String deviceBaseId = deviceRunStatusReq.getDeviceBaseIdList().get(0);
+        AggregatorEntDevice device = deviceMap.get(deviceBaseId);
+        Map<String, List<LineDataGraphVO>> groups = new LinkedHashMap<>();
+        for (MetricEnum metric : metrics) {
+            LineDataGraphVO line = buildRunStatusLine(metric.getDesc(), device.getDeviceName(), metric,
+                    runStatusPoints(dataMap, deviceBaseId, metric.getCode()), minuteAxis,
+                    device.getResourceTypeId());
+            groups.computeIfAbsent(metric.getGroupCode(), key -> new ArrayList<>()).add(line);
+        }
+        return groups.values().stream().map(this::toLineGraphResp).collect(Collectors.toList());
     }
 
     @Override
@@ -220,8 +331,12 @@ public class HistoryQueryServiceImpl implements IHistoryQueryService {
 
     @Override
     public List<HistoryQueryDeviceMetricResp> getMetricList() {
-        log.warn("getMetricList called - empty implementation");
-        return new ArrayList<>();
+        return MetricEnum.getMetricEnumByFlag(true).stream().map(metric -> {
+            HistoryQueryDeviceMetricResp resp = new HistoryQueryDeviceMetricResp();
+            resp.setMetricCode(metric.getCode());
+            resp.setMetricName(metric.getDesc());
+            return resp;
+        }).collect(Collectors.toList());
     }
 
     @Override
@@ -283,6 +398,191 @@ public class HistoryQueryServiceImpl implements IHistoryQueryService {
         HistoryAdjustExcelResp resp = new HistoryAdjustExcelResp();
         resp.setEntityList(buildBuzhaoExportTitle());
         resp.setAllExcelDataList(buildBuzhaoExportRows(powerChart, dateRange));
+        return resp;
+    }
+
+    private void validateAdjustmentDeviceScope(UserAdjustmentTableReq req, AggregatorEntDevice device) {
+        if ((StringUtils.isNotBlank(req.getAggregatorId())
+                && !StringUtils.equals(req.getAggregatorId(), device.getAggregatorId()))
+                || (StringUtils.isNotBlank(req.getSubEntId())
+                && !StringUtils.equals(req.getSubEntId(), device.getEntId()))
+                || (StringUtils.isNotBlank(req.getResourceTypeId())
+                && !StringUtils.equals(req.getResourceTypeId(), device.getResourceTypeId()))
+                || (StringUtils.isNotBlank(req.getDeviceId())
+                && !StringUtils.equals(req.getDeviceId(), device.getDeviceId()))) {
+            throw new BaseException(StatusCode.U.getCode(), StatusCode.U.getMsg());
+        }
+    }
+
+    private boolean matchesProfitType(AggregatorDeviceDateProfitResp item, Integer profitType) {
+        if (item == null || profitType == null) {
+            return item != null;
+        }
+        return profitType == 1
+                ? "1".equals(item.getProfitStatus())
+                : profitType != 0 || !"1".equals(item.getProfitStatus());
+    }
+
+    private HistoryQueryTableVO toAdjustmentTableRow(AggregatorDeviceDateProfitResp item, String deviceName) {
+        HistoryQueryTableVO row = new HistoryQueryTableVO();
+        String start = normalizeFullDateTime(item.getStartTime());
+        String end = normalizeFullDateTime(item.getEndTime());
+        String endLabel = end == null || end.length() < 5 ? item.getEndTime() : end.substring(end.length() - 5);
+        row.setTime(StringUtils.defaultString(start, item.getStartTime()) + "~" + StringUtils.defaultString(endLabel));
+        row.setDeviceName(deviceName);
+        row.setApplyPower(item.getDeliveryPower() == null ? null : String.valueOf(item.getDeliveryPower()));
+        row.setIssuePower(item.getIssuePower());
+        row.setActualPower(MathUtils.doublePointNotRounding(item.getReallyPower(), 2));
+        row.setUsePower(MathUtils.mulDoubleNull(item.getIssuePower(), 0.7D, 2));
+        row.setProfit(item.getProfit() == null ? null : String.valueOf(MathUtils.doublePoint(item.getProfit(), 2)));
+        row.setPowerUnit("kW");
+        row.setProfitUnit("元");
+        return row;
+    }
+
+    private void validateRunStatusScope(DeviceRunStatusReq req, List<AggregatorEntDevice> devices) {
+        Set<String> aggregatorIds = devices.stream().map(AggregatorEntDevice::getAggregatorId)
+                .filter(StringUtils::isNotBlank).collect(Collectors.toSet());
+        if (aggregatorIds.size() != 1) {
+            throw new BaseException(StatusCode.C.getCode(), "所选设备必须属于同一聚合商");
+        }
+        for (AggregatorEntDevice device : devices) {
+            loadScopeService.validateScope(device.getAggregatorId(), device.getEntId());
+            if ((StringUtils.isNotBlank(req.getAggregatorId())
+                    && !StringUtils.equals(req.getAggregatorId(), device.getAggregatorId()))
+                    || (StringUtils.isNotBlank(req.getSubEntId())
+                    && !StringUtils.equals(req.getSubEntId(), device.getEntId()))
+                    || (StringUtils.isNotBlank(req.getResourceTypeId())
+                    && !StringUtils.equals(req.getResourceTypeId(), device.getResourceTypeId()))) {
+                throw new BaseException(StatusCode.U.getCode(), StatusCode.U.getMsg());
+            }
+        }
+    }
+
+    private List<MetricEnum> expandMetrics(List<String> requestedMetrics) {
+        LinkedHashSet<MetricEnum> metrics = new LinkedHashSet<>();
+        for (String metricCode : requestedMetrics) {
+            if (MetricEnum.USE_ELECTRIC.getCode().equals(metricCode)) {
+                metrics.add(MetricEnum.IA);
+                metrics.add(MetricEnum.IB);
+                metrics.add(MetricEnum.IC);
+                continue;
+            }
+            MetricEnum metric = MetricEnum.getMetricEnum(metricCode);
+            if (metric != null) {
+                metrics.add(metric);
+            }
+        }
+        return new ArrayList<>(metrics);
+    }
+
+    private List<Long> telemetryDeviceIds(List<AggregatorEntDevice> devices) {
+        Set<Long> result = new LinkedHashSet<>();
+        for (AggregatorEntDevice device : devices) {
+            addTelemetryDeviceId(result, device.getIotDeviceBaseId());
+        }
+        return new ArrayList<>(result);
+    }
+
+    private List<String> telemetryDeviceCodes(List<AggregatorEntDevice> devices) {
+        Set<String> result = new LinkedHashSet<>();
+        for (AggregatorEntDevice device : devices) {
+            if (StringUtils.isNotBlank(device.getDeviceId())) {
+                result.add(device.getDeviceId());
+                result.add(normalizeTelemetryDeviceCode(device.getDeviceId()));
+            }
+        }
+        result.remove(null);
+        return new ArrayList<>(result);
+    }
+
+    private Map<String, Map<String, Map<String, Double>>> groupRunStatusData(
+            List<IotTelemetryDataResp> telemetry, List<AggregatorEntDevice> devices) {
+        Map<Long, String> idToBaseId = new HashMap<>();
+        Map<String, String> codeToBaseId = new HashMap<>();
+        for (AggregatorEntDevice device : devices) {
+            Set<Long> ids = new LinkedHashSet<>();
+            addTelemetryDeviceId(ids, device.getIotDeviceBaseId());
+            ids.forEach(id -> idToBaseId.put(id, device.getDeviceBaseId()));
+            if (StringUtils.isNotBlank(device.getDeviceId())) {
+                codeToBaseId.put(device.getDeviceId(), device.getDeviceBaseId());
+                codeToBaseId.put(normalizeTelemetryDeviceCode(device.getDeviceId()), device.getDeviceBaseId());
+            }
+        }
+        Map<String, Map<String, Map<String, Double>>> result = new LinkedHashMap<>();
+        if (telemetry == null) {
+            return result;
+        }
+        for (IotTelemetryDataResp item : telemetry) {
+            if (item == null || item.getDataTime() == null || StringUtils.isBlank(item.getPointCode())) {
+                continue;
+            }
+            String deviceBaseId = idToBaseId.get(item.getDeviceId());
+            if (deviceBaseId == null) {
+                deviceBaseId = codeToBaseId.get(item.getDeviceCode());
+            }
+            if (deviceBaseId == null) {
+                deviceBaseId = codeToBaseId.get(normalizeTelemetryDeviceCode(item.getDeviceCode()));
+            }
+            if (deviceBaseId == null) {
+                continue;
+            }
+            String minute = DATE_TIME_FORMATTER.format(Instant.ofEpochMilli(item.getDataTime().getTime())
+                    .atZone(ZoneId.systemDefault()).toLocalDateTime());
+            result.computeIfAbsent(deviceBaseId, key -> new LinkedHashMap<>())
+                    .computeIfAbsent(item.getPointCode(), key -> new LinkedHashMap<>())
+                    .put(minute, item.getValue());
+        }
+        return result;
+    }
+
+    private Map<String, Double> runStatusPoints(
+            Map<String, Map<String, Map<String, Double>>> dataMap, String deviceBaseId, String metricCode) {
+        Map<String, Map<String, Double>> metricMap = dataMap.get(deviceBaseId);
+        return metricMap == null ? Collections.emptyMap()
+                : metricMap.getOrDefault(metricCode, Collections.emptyMap());
+    }
+
+    private List<String> buildMinuteTimeList(LocalDate startDate, LocalDate endDate) {
+        List<String> result = new ArrayList<>();
+        LocalDateTime current = startDate.atStartOfDay().plusMinutes(1);
+        LocalDateTime end = endDate.plusDays(1).atStartOfDay();
+        while (!current.isAfter(end)) {
+            result.add(DATE_TIME_FORMATTER.format(current));
+            current = current.plusMinutes(1);
+        }
+        return result;
+    }
+
+    private LineDataGraphVO buildRunStatusLine(String lineName, String chartName, MetricEnum metric,
+                                                Map<String, Double> values, List<String> minuteAxis,
+                                                String resourceTypeId) {
+        LineDataGraphVO line = new LineDataGraphVO();
+        line.setLineName(lineName);
+        line.setChartName(chartName);
+        line.setLineUnit(metric.getUnit());
+        line.setGroupCode(metric.getGroupCode());
+        line.setGroupName(metric.getGroupName());
+        line.setDataRespList(minuteAxis.stream().map(time -> {
+            Double value = values.get(time);
+            if (value != null) {
+                value = MathUtils.doublePoint(value, 2);
+                if ("27".equals(resourceTypeId)) {
+                    value = -value;
+                }
+            }
+            return new DataResp(time, value);
+        }).collect(Collectors.toList()));
+        return line;
+    }
+
+    private LineDataGraphResp toLineGraphResp(List<LineDataGraphVO> lines) {
+        LineDataGraphResp resp = new LineDataGraphResp();
+        resp.setLineDataGraphVOList(lines);
+        if (!lines.isEmpty()) {
+            resp.setUnit(lines.get(0).getLineUnit());
+            resp.setChartName(lines.get(0).getChartName());
+        }
         return resp;
     }
 

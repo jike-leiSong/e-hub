@@ -4,9 +4,9 @@ spring:
     type: com.zaxxer.hikari.HikariDataSource
     platform: mysql
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://82.156.97.190:3306/e_hub?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-    username: root
-    password: ehub666$
+    url: ${UPSTREAM_DB_URL:jdbc:mysql://127.0.0.1:3306/e_hub?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true}
+    username: ${UPSTREAM_DB_USERNAME:root}
+    password: ${UPSTREAM_DB_PASSWORD:}
     hikari:
       maximum-pool-size: 20
       minimum-idle: 5
@@ -14,10 +14,10 @@ spring:
 
   # Redis配置
   redis:
-    host: 82.156.97.190
-    port: 6379
-    database: 0
-    password: ehub666$
+    host: ${UPSTREAM_REDIS_HOST:127.0.0.1}
+    port: ${UPSTREAM_REDIS_PORT:6379}
+    database: ${UPSTREAM_REDIS_DATABASE:0}
+    password: ${UPSTREAM_REDIS_PASSWORD:}
     timeout: 6000
     jedis:
       pool:

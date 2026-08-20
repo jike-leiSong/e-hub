@@ -16,6 +16,9 @@ import java.nio.charset.StandardCharsets;
 @Component
 public class AuthInterceptor implements HandlerInterceptor {
 
+    static final String SCOPE_AGGREGATOR_ATTRIBUTE = "ehub.scope.aggregatorIds";
+    static final String SCOPE_ENT_ATTRIBUTE = "ehub.scope.entIds";
+
     private final AuthService authService;
     private final ConsolePermissionService permissionService;
     private final LoadAggregationScopeService loadScopeService;
@@ -95,6 +98,12 @@ public class AuthInterceptor implements HandlerInterceptor {
 
     private String[] getValues(HttpServletRequest request, String... names) {
         StringBuilder values = new StringBuilder();
+        if (containsName(names, "aggregatorId", "aggregator_id")) {
+            appendValue(values, request.getAttribute(SCOPE_AGGREGATOR_ATTRIBUTE));
+        }
+        if (containsName(names, "entId", "ent_id", "entIds", "ent_ids")) {
+            appendValue(values, request.getAttribute(SCOPE_ENT_ATTRIBUTE));
+        }
         for (String name : names) {
             appendValue(values, request.getHeader(name));
             String[] parameterValues = request.getParameterValues(name);
@@ -122,6 +131,30 @@ public class AuthInterceptor implements HandlerInterceptor {
             values.append(',');
         }
         values.append(StringUtils.trim(value));
+    }
+
+    private void appendValue(StringBuilder values, Object value) {
+        if (value == null) {
+            return;
+        }
+        if (value instanceof String[]) {
+            for (String item : (String[]) value) {
+                appendValue(values, item);
+            }
+            return;
+        }
+        appendValue(values, String.valueOf(value));
+    }
+
+    private boolean containsName(String[] names, String... candidates) {
+        for (String name : names) {
+            for (String candidate : candidates) {
+                if (StringUtils.equals(name, candidate)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private void throwNoPermission() {

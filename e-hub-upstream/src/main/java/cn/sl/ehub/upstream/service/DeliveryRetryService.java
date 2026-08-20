@@ -122,6 +122,8 @@ public class DeliveryRetryService {
     private cn.sl.ehub.service.service.SingleMeasDeliveryLogService singleMeasDeliveryLogService;
     @Resource
     private cn.sl.ehub.service.service.AggregatorEntDeviceService aggregatorEntDeviceService;
+    @Resource
+    private GridDeliveryAuditService gridDeliveryAuditService;
 
     /**
      *
@@ -134,15 +136,18 @@ public class DeliveryRetryService {
      * @param time
      * @return void
      */
-    public void singleMeasRetry(String aggregatorId, String resourceTypeId, String resourceCode, Long time) {
+    public ResultVO<String> singleMeasRetry(String aggregatorId, String resourceTypeId, Long time) {
         log.info("单体量测补招-singleMeasRetry aggregatorId: {}, resourceTypeId: {}, time: {}", aggregatorId, resourceTypeId, time);
+        if (StringUtils.isBlank(aggregatorId) || StringUtils.isBlank(resourceTypeId) || time == null) {
+            return ResultVO.fail(StatusCode.C.getCode(), "聚合商、资源类型和补送时刻不能为空");
+        }
         // 资源id-资源类型map
         List<String> stationIds = Arrays.asList(noUpDeviceStationIds.split(","));
         List<AggregatorEntDevice> aggregatorEntDeviceList = aggregatorEntDeviceService.getOnlineEntDeviceListByAggregatorId(aggregatorId, stationIds);
         //  key为资源类型id
         Map<String, List<AggregatorEntDevice>> configMapByResourceType = aggregatorEntDeviceList.stream().collect(Collectors.groupingBy(AggregatorEntDevice::getResourceTypeId));
         if (MapUtil.isEmpty(configMapByResourceType)) {
-            return;
+            return ResultVO.fail(StatusCode.E_B.getCode(), "没有可补送的在线设备");
         }
 
         // 获取资源类型名称
@@ -152,7 +157,7 @@ public class DeliveryRetryService {
 
         List<AggregatorEntDevice> configs = configMapByResourceType.getOrDefault(resourceTypeId, Lists.newArrayList());
         if (CollectionUtils.isEmpty(configs)) {
-            return;
+            return ResultVO.fail(StatusCode.E_B.getCode(), "所选资源类型没有可补送设备");
         }
 
         // 根据资源类型名称获取资源类型编码
@@ -160,17 +165,18 @@ public class DeliveryRetryService {
         String actualResourceCode = resourTypeAndCodeMap.get(resourType);
         if (StrUtil.isBlank(actualResourceCode)) {
             log.warn("单体量测补招-未找到资源类型编码，resourceTypeId: {}, resourType: {}", resourceTypeId, resourType);
-            return;
+            return ResultVO.fail(StatusCode.F_NO_GROUP.getCode(), "暂不支持该资源类型补送");
         }
 
         // 判断资源类型，分别处理电采暖和工业负荷
         if (StrUtil.equals(resourType, EnergyModelEnumNew.ELECTRIC_HEATING.getName())) {
             // 电采暖补招
-            this.deliveryMeasDataEHRetry(configs, resourceTypeId, actualResourceCode, aggregatorId, time);
+            return this.deliveryMeasDataEHRetry(configs, resourceTypeId, actualResourceCode, aggregatorId, time);
         } else if (StrUtil.equals(resourType, EnergyModelEnumNew.INDUSTRIAL_LOAD.getName())) {
             // 工业负荷补招
-            this.deliveryMeasDataVPPRetry(configs, resourceTypeId, actualResourceCode, aggregatorId, time);
+            return this.deliveryMeasDataVPPRetry(configs, resourceTypeId, actualResourceCode, aggregatorId, time);
         }
+        return ResultVO.fail(StatusCode.F_NO_GROUP.getCode(), "当前仅支持电采暖和工业负荷单体量测补送");
     }
 
     /**
@@ -350,10 +356,9 @@ public class DeliveryRetryService {
                 log.error("保存文件失败 - 文件名: {}, 错误信息: {}", fileName, e.getMessage(), e);
             }
 
-            // Greeter greeter = clientConfig.greeter(singleModelAndMeasUrl);
-            // response = greeter.commitFile(filename, encodeString);
+            Greeter greeter = clientConfig.greeter(singleModelAndMeasUrl);
+            response = greeter.commitFile(filename, encodeString);
             log.info("聚合商" + aggregatorId + "资源Id:" + resourceTypeId + "单体量测数据上送成功");
-            response = "成功";
 
             result = ResultVO.success(response);
         } catch (Exception e) {
@@ -365,10 +370,11 @@ public class DeliveryRetryService {
             singleMeasDeliveryLog.setFileName(filename);
             // 日志入库为原始请求报文
             singleMeasDeliveryLog.setFileByte(JSONObject.toJSONString(singleMeasDeliveryReq));
-            singleMeasDeliveryLog.setDeliveryStatus("单体量测补招");
+            singleMeasDeliveryLog.setDeliveryStatus(response);
             singleMeasDeliveryLog.setCreateTime(new Date());
             singleMeasDeliveryLog.setIssueTime(time);
             singleMeasDeliveryLogService.addLog(singleMeasDeliveryLog);
+            auditRetry(aggregatorId, resourceTypeId, time, singleMeasDeliveryReq, response);
         }
 
         return result;
@@ -536,10 +542,11 @@ public class DeliveryRetryService {
             singleMeasDeliveryLog.setFileName(filename);
             // 日志入库为原始请求报文
             singleMeasDeliveryLog.setFileByte(JSONObject.toJSONString(singleMeasDeliveryReq));
-            singleMeasDeliveryLog.setDeliveryStatus("单体量测补招");
+            singleMeasDeliveryLog.setDeliveryStatus(response);
             singleMeasDeliveryLog.setCreateTime(new Date());
             singleMeasDeliveryLog.setIssueTime(time);
             singleMeasDeliveryLogService.addLog(singleMeasDeliveryLog);
+            auditRetry(aggregatorId, resourceTypeId, time, singleMeasDeliveryReq, response);
         }
 
         return result;
@@ -549,6 +556,18 @@ public class DeliveryRetryService {
 
         return bigDataHandlerService.getHistory(historyReq, "0");
 
+    }
+
+    private void auditRetry(String aggregatorId, String resourceTypeId, Long time,
+                            SingleMeasDeliveryReq request, String response) {
+        try {
+            LocalDateTime businessTime = LocalDateTime.ofInstant(Instant.ofEpochSecond(time), ZoneId.systemDefault());
+            gridDeliveryAuditService.recordSingleAt(aggregatorId, resourceTypeId, resourceTypeId,
+                    request, response, businessTime);
+        } catch (Exception ex) {
+            log.error("单体量测补送审计记录失败, aggregatorId={}, resourceTypeId={}, time={}",
+                    aggregatorId, resourceTypeId, time, ex);
+        }
     }
 
     private HistoryReq getHistoryReqForEHRetry(Long time, List<AggregatorEntDevice> ehConfigs) {

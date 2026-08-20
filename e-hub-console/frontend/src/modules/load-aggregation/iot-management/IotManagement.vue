@@ -276,6 +276,7 @@
 import IotTelemetry from "./IotTelemetry.vue";
 import {
   deleteDevice,
+  deleteDeviceGroup,
   listDeviceGroups,
   listDevices,
   listDeviceTypes,
@@ -502,8 +503,7 @@ export default {
       await this.$confirm(`确认删除设备组“${group.deviceGroupName}”吗？`, "删除确认", {
         type: "warning",
       });
-      const api = await import("./api/index.js");
-      const res = await api.deleteDeviceGroup(group.id);
+      const res = await deleteDeviceGroup(group.id);
       const body = res.data || {};
       if (body.code === 200) {
         this.$message.success("删除成功");

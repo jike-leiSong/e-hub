@@ -43,8 +43,28 @@ SELECT 'load:device-operation:view', '负荷聚合物联管理', 'PAGE', 'load',
 WHERE NOT EXISTS (SELECT 1 FROM console_permission WHERE permission_code = 'load:device-operation:view');
 
 INSERT INTO console_permission (permission_code, permission_name, permission_type, module_code, parent_code, path, sort_no, status, create_time, update_time)
+SELECT 'load:grid-interaction:view', '负荷聚合电网交互', 'PAGE', 'load', NULL, 'load-grid-interaction', 85, 1, DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s'), DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s')
+WHERE NOT EXISTS (SELECT 1 FROM console_permission WHERE permission_code = 'load:grid-interaction:view');
+
+INSERT INTO console_permission (permission_code, permission_name, permission_type, module_code, parent_code, path, sort_no, status, create_time, update_time)
+SELECT 'load:grid-interaction:delivery', '电网交互上送操作', 'ACTION', 'load', 'load:grid-interaction:view', NULL, 86, 1, DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s'), DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s')
+WHERE NOT EXISTS (SELECT 1 FROM console_permission WHERE permission_code = 'load:grid-interaction:delivery');
+
+INSERT INTO console_permission (permission_code, permission_name, permission_type, module_code, parent_code, path, sort_no, status, create_time, update_time)
+SELECT 'load:grid-interaction:audit', '电网上送核查处理', 'ACTION', 'load', 'load:grid-interaction:view', NULL, 87, 1, DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s'), DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s')
+WHERE NOT EXISTS (SELECT 1 FROM console_permission WHERE permission_code = 'load:grid-interaction:audit');
+
+INSERT INTO console_permission (permission_code, permission_name, permission_type, module_code, parent_code, path, sort_no, status, create_time, update_time)
+SELECT 'load:grid-interaction:export', '电网上送核查导出', 'ACTION', 'load', 'load:grid-interaction:view', NULL, 88, 1, DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s'), DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s')
+WHERE NOT EXISTS (SELECT 1 FROM console_permission WHERE permission_code = 'load:grid-interaction:export');
+
+INSERT INTO console_permission (permission_code, permission_name, permission_type, module_code, parent_code, path, sort_no, status, create_time, update_time)
 SELECT 'tariff:query:view', '电价服务代理价格', 'PAGE', 'tariff', NULL, 'tariff-query', 90, 1, DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s'), DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s')
 WHERE NOT EXISTS (SELECT 1 FROM console_permission WHERE permission_code = 'tariff:query:view');
+
+INSERT INTO console_permission (permission_code, permission_name, permission_type, module_code, parent_code, path, sort_no, status, create_time, update_time)
+SELECT 'tariff:import:manage', '电价服务电价录入', 'PAGE', 'tariff', NULL, 'tariff-import', 92, 1, DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s'), DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s')
+WHERE NOT EXISTS (SELECT 1 FROM console_permission WHERE permission_code = 'tariff:import:manage');
 
 INSERT INTO console_permission (permission_code, permission_name, permission_type, module_code, parent_code, path, sort_no, status, create_time, update_time)
 SELECT 'tariff:sources:view', '电价服务数据来源', 'PAGE', 'tariff', NULL, 'tariff-sources', 95, 1, DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s'), DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s')

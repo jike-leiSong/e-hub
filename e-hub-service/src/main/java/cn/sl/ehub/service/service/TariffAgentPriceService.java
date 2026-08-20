@@ -386,17 +386,6 @@ public class TariffAgentPriceService {
     }
 
     private List<FpgjPointResp> resolveFpgjData(AgentPriceQueryReq query, String dateOrMonth) {
-        List<FpgjPointResp> dayFpgj = Collections.emptyList();
-        if (StringUtils.isNotBlank(dateOrMonth) && dateOrMonth.length() == 7 && isCurrentMonth(dateOrMonth)) {
-            AgentPriceQueryReq todayQuery = copy(query);
-            todayQuery.setYearMonth(resolveRequestedVersion(LocalDate.now().format(DateTimeFormatter.ISO_DATE)));
-            dayFpgj = tariffAgentPriceMapper.selectFpgjData(todayQuery);
-            if (CollectionUtils.isNotEmpty(dayFpgj)) {
-                query.setYearMonth(todayQuery.getYearMonth());
-                return dayFpgj;
-            }
-        }
-
         List<FpgjPointResp> fpgj = tariffAgentPriceMapper.selectFpgjData(query);
         if (CollectionUtils.isEmpty(fpgj) && isDateString(dateOrMonth)) {
             String month = LocalDate.parse(dateOrMonth).format(DateTimeFormatter.ofPattern("yyyy-MM"));
@@ -727,15 +716,6 @@ public class TariffAgentPriceService {
             return province;
         }
         return province + " / " + city;
-    }
-
-    private static boolean isCurrentMonth(String value) {
-        try {
-            LocalDate date = LocalDate.parse(value + "-01", DateTimeFormatter.ISO_DATE);
-            return YearMonth.now().equals(YearMonth.from(date));
-        } catch (Exception ignored) {
-            return false;
-        }
     }
 
     private static boolean isDateString(String value) {

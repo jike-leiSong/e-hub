@@ -538,7 +538,8 @@ CREATE TABLE IF NOT EXISTS `iot_telemetry_minute` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_iot_telemetry_minute` (`device_id`, `point_code`, `minute_time`),
   KEY `idx_iot_telemetry_point_time_device` (`point_code`, `minute_time`, `device_id`),
-  KEY `idx_iot_telemetry_ent_time` (`ent_id`, `point_code`, `minute_time`)
+  KEY `idx_iot_telemetry_ent_time` (`ent_id`, `point_code`, `minute_time`),
+  KEY `idx_iot_telemetry_agg_point_time_device` (`aggregator_id`, `point_code`, `minute_time`, `device_code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='物联分钟测点数据';
 
 CREATE TABLE IF NOT EXISTS `iot_unmatched_telemetry_log` (

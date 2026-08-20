@@ -4,21 +4,17 @@ spring:
     type: com.zaxxer.hikari.HikariDataSource
     platform: mysql
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://10.39.48.241:3306/load-aggregator?characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-    #    username: fn_db_test
-    #    password: fn_db_test20180411
-    username: rootroot
-    password: Abcd1234
+    url: ${UPSTREAM_DB_URL}
+    username: ${UPSTREAM_DB_USERNAME}
+    password: ${UPSTREAM_DB_PASSWORD}
 
   # redis
   redis:
     sentinel:
-      master: master6379
-      nodes: 10.39.47.6:26379,10.39.47.7:26379,10.39.47.8:26379
-    #    host: 10.39.47.244
-    #    port: 6379
-    database: 15
-    password: FNpreadmin123
+      master: ${UPSTREAM_REDIS_SENTINEL_MASTER}
+      nodes: ${UPSTREAM_REDIS_SENTINEL_NODES}
+    database: ${UPSTREAM_REDIS_DATABASE:0}
+    password: ${UPSTREAM_REDIS_PASSWORD:}
     timeout: 6000
     jedis:
       pool:
@@ -28,15 +24,15 @@ spring:
         max-wait: 4000
 
 bigdata:
-  userKey: 03f9da7a41382f7199b9ad190872096c_e-hub-upstream
-  data-collector: http://data-collector.fnwintranet.com
+  userKey: ${BIGDATA_USER_KEY:}
+  data-collector: ${BIGDATA_DATA_COLLECTOR}
 
 iot:
-  baseUrl: http://iot-api-gateway-app.uat.fnwintranet.com/
-  url: http://iot-api-gateway-app.uat.fnwintranet.com/api/v1/iot-service-open/down/cmd/set
-  token: mH6KOV1QVLGdEUiX
-  XAUTHID: unattendedServicec
-  callBackUrl: http://e-hub-upstream.uat.fnwintranet.com/iot/callBack
+  baseUrl: ${IOT_BASE_URL}
+  url: ${IOT_COMMAND_URL}
+  token: ${IOT_TOKEN:}
+  XAUTHID: ${IOT_XAUTH_ID:}
+  callBackUrl: ${IOT_CALLBACK_URL}
 
 # elk
 app:

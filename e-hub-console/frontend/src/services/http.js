@@ -5,7 +5,7 @@
 import axios from "axios";
 
 const service = axios.create({
-  // timeout: 5000,
+  timeout: 10000,
 });
 service.defaults.headers.post["Content-Type"] =
   "application/x-www-form-urlencoded";
@@ -40,8 +40,14 @@ service.interceptors.response.use(
   },
   error => {
     const config = error.config;
-    // If config does not exist or the retry option is not set, reject
-    if (!config || !config.retry) return Promise.reject(error);
+    const method = String((config && config.method) || "get").toLowerCase();
+    const status = error.response && error.response.status;
+    const retryableMethod = ["get", "head", "options"].includes(method);
+    const retryableFailure = !status || status >= 500;
+    // 只自动重试幂等请求，避免创建、导入、发布等写操作被重复执行。
+    if (!config || !config.retry || !retryableMethod || !retryableFailure) {
+      return Promise.reject(error);
+    }
 
     // Set the variable for keeping track of the retry count
     config.__retryCount = config.__retryCount || 0;

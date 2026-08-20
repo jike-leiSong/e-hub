@@ -7,6 +7,13 @@ import cn.sl.ehub.service.dto.tariff.AgentPriceSourceResp;
 import cn.sl.ehub.service.dto.tariff.AgentPriceValuePointResp;
 import cn.sl.ehub.service.dto.tariff.AgentPriceVersionResp;
 import cn.sl.ehub.service.dto.tariff.FpgjPointResp;
+import cn.sl.ehub.service.dto.tariff.TariffAgentPriceDataInsertRow;
+import cn.sl.ehub.service.dto.tariff.TariffAgentPriceInsertRow;
+import cn.sl.ehub.service.dto.tariff.TariffAgentPriceStoredPoint;
+import cn.sl.ehub.service.dto.tariff.TariffAgentPriceStoredRow;
+import cn.sl.ehub.service.dto.tariff.TariffFpgjTypeDataInsertRow;
+import cn.sl.ehub.service.dto.tariff.TariffFpgjTypeInsertRow;
+import cn.sl.ehub.service.dto.tariff.TariffRulePricePreviewResp;
 import org.apache.ibatis.annotations.Param;
 import org.springframework.stereotype.Repository;
 
@@ -42,4 +49,56 @@ public interface TariffAgentPriceMapper {
     AgentPriceSourceResp selectSourceImportBatch(@Param("req") AgentPriceQueryReq req);
 
     AgentPriceSourceResp selectSourceConfigFallback(@Param("req") AgentPriceQueryReq req);
+
+    int deleteAgentPriceDataByScope(@Param("version") String version,
+                                    @Param("provinceCode") String provinceCode,
+                                    @Param("secondType") String secondType,
+                                    @Param("thirdType") String thirdType);
+
+    int deleteAgentPricesByScope(@Param("version") String version,
+                                 @Param("provinceCode") String provinceCode,
+                                 @Param("secondType") String secondType,
+                                 @Param("thirdType") String thirdType);
+
+    int deleteAgentPriceDataByPriceRows(@Param("version") String version,
+                                        @Param("provinceCode") String provinceCode,
+                                        @Param("secondType") String secondType,
+                                        @Param("thirdType") String thirdType,
+                                        @Param("list") List<TariffRulePricePreviewResp> list);
+
+    int deleteAgentPricesByPriceRows(@Param("version") String version,
+                                     @Param("provinceCode") String provinceCode,
+                                     @Param("secondType") String secondType,
+                                     @Param("thirdType") String thirdType,
+                                     @Param("list") List<TariffRulePricePreviewResp> list);
+
+    int deleteFpgjTypeDataByScope(@Param("version") String version,
+                                  @Param("provinceCode") String provinceCode,
+                                  @Param("secondType") String secondType);
+
+    int deleteFpgjTypesByScope(@Param("version") String version,
+                               @Param("provinceCode") String provinceCode,
+                               @Param("secondType") String secondType);
+
+    int countAgentPricesBySecondScope(@Param("version") String version,
+                                      @Param("provinceCode") String provinceCode,
+                                      @Param("secondType") String secondType);
+
+    int insertFpgjType(@Param("row") TariffFpgjTypeInsertRow row);
+
+    int batchInsertFpgjTypeData(@Param("list") List<TariffFpgjTypeDataInsertRow> list);
+
+    int batchInsertAgentPrice(@Param("list") List<TariffAgentPriceInsertRow> list);
+
+    int batchInsertAgentPriceData(@Param("list") List<TariffAgentPriceDataInsertRow> list);
+
+    List<TariffAgentPriceStoredRow> selectAgentPriceRowsByScope(@Param("version") String version,
+                                                                @Param("provinceCode") String provinceCode,
+                                                                @Param("secondType") String secondType,
+                                                                @Param("thirdType") String thirdType);
+
+    List<TariffAgentPriceStoredPoint> selectAgentPricePointsByScope(@Param("version") String version,
+                                                                    @Param("provinceCode") String provinceCode,
+                                                                    @Param("secondType") String secondType,
+                                                                    @Param("thirdType") String thirdType);
 }

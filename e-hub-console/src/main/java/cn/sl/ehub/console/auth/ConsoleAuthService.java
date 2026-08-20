@@ -1,5 +1,6 @@
 package cn.sl.ehub.console.auth;
 
+import cn.sl.ehub.common.utils.RedisUtil;
 import cn.sl.ehub.common.enums.StatusCode;
 import cn.sl.ehub.common.exception.BaseException;
 import cn.sl.ehub.common.utils.DateUtils;
@@ -11,9 +12,11 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTVerificationException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PostConstruct;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -32,15 +35,28 @@ public class ConsoleAuthService implements AuthService {
     private final ConsoleAuthProperties properties;
     private final ConsolePermissionService permissionService;
     private final ConsoleUserMapper consoleUserMapper;
+    private final RedisUtil redisUtil;
+    private final ObjectMapper objectMapper;
     private final SecureRandom secureRandom = new SecureRandom();
     private final Map<String, AuthSession> sessions = new ConcurrentHashMap<>();
 
     public ConsoleAuthService(ConsoleAuthProperties properties,
                               ConsolePermissionService permissionService,
-                              ConsoleUserMapper consoleUserMapper) {
+                              ConsoleUserMapper consoleUserMapper,
+                              RedisUtil redisUtil,
+                              ObjectMapper objectMapper) {
         this.properties = properties;
         this.permissionService = permissionService;
         this.consoleUserMapper = consoleUserMapper;
+        this.redisUtil = redisUtil;
+        this.objectMapper = objectMapper;
+    }
+
+    @PostConstruct
+    public void validateConfiguration() {
+        if (Boolean.TRUE.equals(properties.getEnabled()) && StringUtils.isBlank(properties.getTokenSecret())) {
+            throw new IllegalStateException("CONSOLE_AUTH_TOKEN_SECRET must be configured when console authentication is enabled");
+        }
     }
 
     @Override
@@ -78,7 +94,13 @@ public class ConsoleAuthService implements AuthService {
                 .withJWTId(nonce)
                 .sign(algorithm());
 
-        sessions.put(token, new AuthSession(authUser, expireAt));
+        if (useRedisSession()) {
+            if (!redisUtil.set(sessionKey(token), authUser, expireMinutes() * 60L)) {
+                throw new BaseException(StatusCode.D.getCode(), "登录会话存储失败");
+            }
+        } else {
+            sessions.put(token, new AuthSession(authUser, expireAt));
+        }
         cleanExpiredSessions(now);
         updateLastLoginTime(consoleUser);
 
@@ -112,8 +134,21 @@ public class ConsoleAuthService implements AuthService {
                     .withAudience(AUDIENCE)
                     .build();
             verifier.verify(token);
-            AuthSession session = sessions.get(token);
             long now = System.currentTimeMillis();
+            if (useRedisSession()) {
+                Object value = redisUtil.get(sessionKey(token));
+                if (value == null) {
+                    throw new BaseException(StatusCode.D.getCode(), StatusCode.D.getMsg());
+                }
+                AuthUser user = value instanceof AuthUser
+                        ? (AuthUser) value
+                        : objectMapper.convertValue(value, AuthUser.class);
+                if (user == null) {
+                    throw new BaseException(StatusCode.D.getCode(), StatusCode.D.getMsg());
+                }
+                return user;
+            }
+            AuthSession session = sessions.get(token);
             if (session == null || session.getExpireAt() <= now) {
                 sessions.remove(token);
                 throw new BaseException(StatusCode.D.getCode(), StatusCode.D.getMsg());
@@ -129,7 +164,11 @@ public class ConsoleAuthService implements AuthService {
     @Override
     public void logout(String token) {
         if (StringUtils.isNotBlank(token)) {
-            sessions.remove(token);
+            if (useRedisSession()) {
+                redisUtil.del(sessionKey(token));
+            } else {
+                sessions.remove(token);
+            }
         }
     }
 
@@ -173,11 +212,19 @@ public class ConsoleAuthService implements AuthService {
     }
 
     private Algorithm algorithm() {
-        return Algorithm.HMAC256(StringUtils.defaultIfBlank(properties.getTokenSecret(), "e-hub-console-default-token-secret"));
+        return Algorithm.HMAC256(StringUtils.trim(properties.getTokenSecret()));
     }
 
     private long expireMinutes() {
         return properties.getExpireMinutes() == null ? 720L : properties.getExpireMinutes();
+    }
+
+    private boolean useRedisSession() {
+        return StringUtils.equalsIgnoreCase("redis", properties.getSessionStore());
+    }
+
+    private String sessionKey(String token) {
+        return "ehub:console:session:" + sha256(token);
     }
 
     private String randomHex(int byteLength) {

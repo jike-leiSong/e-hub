@@ -1,739 +1,475 @@
-# 代理电价服务与数据导入方案
+# 代理电价四表规则化导入方案
 
-## 背景
+## 结论
 
-e-hub 当前已具备代理电价查询的基础能力：
-
-- 页面兼容接口：`/haomaidian/index/getDefaultMenus`、`/haomaidian/index/getEnAgentPrices`、`/areaDict/getDictByType`
-- 项目内部接口：`/tariff/agent-price/options`、`/tariff/agent-price/prices`
-- 代理电价主表：`e_agent_price`
-- 代理电价 96 点明细表：`e_agent_price_data`
-- 尖峰平谷主表：`e_fpgj_type`
-- 尖峰平谷 96 点明细表：`e_fpgj_type_data`
-
-现有数据模型可以支撑北京等地区月度代理电价查询，但要对外提供稳定服务，还需要补齐版本发布、数据来源、批次导入、质量校验、对外鉴权、调用审计和无数据处理规则。
-
-本方案目标是将代理电价能力从内部页面查询能力，建设为可对外开放的标准电价数据服务。
-
-## 市场服务形态参考
-
-市场上的电价数据服务通常不只返回一个电价值，而是围绕以下要素提供标准化能力：
-
-- 按地区、用户类型、电压等级、收费类型、日期或月份查询电价。
-- 支持分时电价，返回尖、峰、平、谷、深谷等时段信息。
-- 支持 24 点、96 点或更细颗粒度的电价曲线。
-- 保留数据来源、发布时间、生效时间、版本号和审核状态。
-- 对外通过 API Key、签名、限流、调用日志等方式提供服务。
-- 数据导入通常来自官方公告、Excel、PDF、网页表格和第三方数据源，导入后需要人工复核。
-
-国内代理购电数据通常来自电网企业、发改委、交易中心等公开发布渠道。由于各省公告格式不统一，完全自动化导入风险较高，适合采用“人工上传 + 半自动解析 + 规则校验 + 审批发布”的方式逐步建设。
-
-参考资料：
-
-- 国家发展改革委关于进一步深化燃煤发电上网电价市场化改革的通知：https://www.ndrc.gov.cn/xxgk/zcfb/tz/202110/t20211012_1299461.html
-- 国家发展改革委关于进一步完善分时电价机制的通知：https://www.ndrc.gov.cn/xxgk/zcfb/tz/202107/t20210729_1292067.html
-- OpenEI Utility Rates API：https://openei.org/services/doc/rest/util_rates/
-
-## 服务边界
-
-### 对外提供
-
-- 代理购电电度电价。
-- 输配电价、政府性基金及附加、线损折价、系统运行费等拆分价格。
-- 代理购电价格、输配及系统运行价格、附加价格等汇总口径。
-- 尖、峰、平、谷、深谷时段。
-- 96 点明细价格曲线。
-- 容量电价、需量电价。
-- 省份、二级区域、三级区域三级联动选项。
-- 企业用电属性、电压等级、收费类型选项。
-- 数据版本、发布时间、来源文件、生效期。
-
-### 不在一期提供
-
-- 市场化交易客户的个性化合同电价。
-- 企业实际结算账单复算。
-- 现货市场实时电价预测。
-- 电费账单生成。
-- 非官方来源数据的兜底推测。
-
-## 总体架构
-
-```text
-官方公告/Excel/PDF/网页
-        |
-        v
-数据采集与上传
-        |
-        v
-导入暂存表 staging
-        |
-        v
-规则校验、差异比对、人工复核
-        |
-        v
-审批发布
-        |
-        v
-正式电价库
-        |
-        v
-内部查询接口 + 对外 OpenAPI + 缓存 + 调用审计
-```
-
-## 对外 API 设计
-
-对外接口建议新增 `/openapi/v1/tariff/agent` 前缀，和现有内部页面接口解耦。
-
-现有 `/haomaidian/index/*` 保持页面兼容；对外客户使用 OpenAPI，不直接依赖页面接口。
-
-### 查询版本列表
-
-```http
-GET /openapi/v1/tariff/agent/versions
-```
-
-请求参数：
-
-| 参数 | 必填 | 说明 |
-| --- | --- | --- |
-| provinceCode | 否 | 省份编码 |
-| yearMonth | 否 | 查询月份，格式 `yyyy-MM` |
-| status | 否 | 版本状态，默认只返回已发布 |
-
-返回示例：
-
-```json
-{
-  "code": "0",
-  "message": "success",
-  "data": [
-    {
-      "version": "2606",
-      "yearMonth": "2026-06",
-      "provinceCode": "110000000000",
-      "provinceName": "北京市",
-      "status": "PUBLISHED",
-      "effectiveStart": "2026-06-01",
-      "effectiveEnd": "2026-06-30",
-      "publishTime": "2026-05-28 10:00:00"
-    }
-  ]
-}
-```
-
-### 查询区域菜单
-
-```http
-GET /openapi/v1/tariff/agent/areas
-```
-
-请求参数：
-
-| 参数 | 必填 | 说明 |
-| --- | --- | --- |
-| yearMonth | 是 | 查询月份 |
-| provinceCode | 否 | 省份编码 |
-
-返回省份、二级区域、三级区域三级联动树。现有页面接口 `/haomaidian/index/getDefaultMenus` 可以复用该能力。
-
-### 查询业务选项
-
-```http
-GET /openapi/v1/tariff/agent/options
-```
-
-请求参数：
-
-| 参数 | 必填 | 说明 |
-| --- | --- | --- |
-| yearMonth | 是 | 查询月份 |
-| provinceCode | 是 | 省份编码 |
-| secondType | 是 | 二级区域 |
-| thirdType | 是 | 三级区域 |
-| userType | 否 | 企业用电属性 |
-| sfType | 否 | 收费类型 |
-
-返回：
-
-```json
-{
-  "code": "0",
-  "message": "success",
-  "data": {
-    "userTypes": ["工商业用电"],
-    "sfTypes": ["两部制"],
-    "dyLevels": ["1-10千伏"]
-  }
-}
-```
-
-注意：对外版必须支持按 `yearMonth` 查询选项，不能永远读取最新版本。
-
-### 查询代理电价
-
-```http
-POST /openapi/v1/tariff/agent/prices/query
-```
-
-请求参数：
-
-```json
-{
-  "provinceCode": "110000000000",
-  "secondType": "全域",
-  "thirdType": "不限",
-  "yearMonth": "2026-06",
-  "selectedDate": "",
-  "queryDimension": "month",
-  "userType": "工商业用电",
-  "dyLevel": "1-10千伏",
-  "sfType": "两部制",
-  "returnPoints": true
-}
-```
-
-字段说明：
-
-| 参数 | 必填 | 说明 |
-| --- | --- | --- |
-| provinceCode | 是 | 省份编码 |
-| secondType | 是 | 二级区域 |
-| thirdType | 是 | 三级区域 |
-| yearMonth | 条件必填 | 查询月份，`selectedDate` 为空时必填 |
-| selectedDate | 条件必填 | 查询日期，优先级高于 `yearMonth` |
-| queryDimension | 否 | `month` 或 `day` |
-| userType | 是 | 企业用电属性 |
-| dyLevel | 是 | 电压等级 |
-| sfType | 是 | 收费类型 |
-| returnPoints | 否 | 是否返回 96 点明细 |
-
-返回示例：
-
-```json
-{
-  "code": "0",
-  "message": "success",
-  "traceId": "20260703103000001",
-  "data": {
-    "version": "2606",
-    "yearMonth": "2026-06",
-    "provinceCode": "110000000000",
-    "provinceName": "北京市",
-    "secondType": "全域",
-    "thirdType": "不限",
-    "userType": "工商业用电",
-    "dyLevel": "1-10千伏",
-    "sfType": "两部制",
-    "unit": "元/kWh",
-    "capacityElectricityPrice": null,
-    "demandElectricityPrice": null,
-    "periodSummary": {
-      "jian": {
-        "periodType": "尖",
-        "dlPrice": "0.4161",
-        "ddPrice": "0.5100",
-        "spPrice": "0.0800",
-        "fjPrice": "0.0139",
-        "times": ["18:00,20:00"]
-      },
-      "feng": {
-        "periodType": "峰",
-        "dlPrice": "0.3161",
-        "ddPrice": "0.4100",
-        "spPrice": "0.0800",
-        "fjPrice": "0.0139",
-        "times": ["08:00,11:00"]
-      },
-      "ping": {
-        "periodType": "平",
-        "dlPrice": "0.2161",
-        "ddPrice": "0.3100",
-        "spPrice": "0.0800",
-        "fjPrice": "0.0139",
-        "times": ["11:00,18:00"]
-      },
-      "gu": {
-        "periodType": "谷",
-        "dlPrice": "0.1161",
-        "ddPrice": "0.2100",
-        "spPrice": "0.0800",
-        "fjPrice": "0.0139",
-        "times": ["00:00,08:00"]
-      },
-      "shengu": {
-        "periodType": "深谷",
-        "dlPrice": "0",
-        "ddPrice": "0",
-        "spPrice": "0",
-        "fjPrice": "0",
-        "times": []
-      }
-    },
-    "points96": [
-      {
-        "time": "00:00",
-        "periodType": "谷",
-        "ddPrice": "0.2100",
-        "spPrice": "0.0800",
-        "fjPrice": "0.0139",
-        "xsPrice": "0",
-        "systemPrice": "0",
-        "dlPrice": "0.1161"
-      }
-    ],
-    "source": {
-      "sourceType": "OFFICIAL_NOTICE",
-      "sourceName": "国网北京市电力公司",
-      "sourceUrl": "https://example.com/source.pdf",
-      "sourceFileName": "2026年6月代理购电价格表.pdf",
-      "importBatchNo": "TARIFF-202606-BJ-001",
-      "publishTime": "2026-05-28 10:00:00"
-    }
-  }
-}
-```
-
-### 无数据处理规则
-
-无数据时返回明确错误码，不能跨月取旧版本兜底。
-
-例如查询 `2026-07-03`：
-
-- 优先查日版本 `2026-07-03`。
-- 没有日版本时查月版本 `2026-07`。
-- 如果 `2026-07` 没有发布，返回 `NO_DATA`。
-- 不能回退到 `2026-06`。
-
-返回示例：
-
-```json
-{
-  "code": "TARIFF_NO_DATA",
-  "message": "未查询到 2026-07-03 对应的代理电价数据",
-  "data": null
-}
-```
-
-## 版本与单位规则
-
-### 版本规则
-
-当前库中存在 `2606` 这种版本格式，可继续兼容，但对外建议统一暴露 `yearMonth=2026-06`。
-
-内部版本映射规则：
-
-| 输入 | 内部 version |
-| --- | --- |
-| `2026-06` | `2606` |
-| `2026-06-01` | 优先 `2026-06-01`，其次 `2606` |
-| `2606` | `2606` |
-
-版本匹配必须遵守“请求月份内匹配”，禁止跨月 fallback。
-
-### 单位规则
-
-当前服务代码中存在 `RATE = 0.001`，说明数据库价格与接口输出价格之间存在单位换算。对外服务必须在文档和返回值中明确：
-
-- 数据库存储单位。
-- 接口输出单位。
-- 是否经过换算。
-- 小数精度和四舍五入规则。
-
-建议对外统一输出 `元/kWh`，保留 4 到 6 位小数，内部按 BigDecimal 计算。
-
-## 数据模型增强
-
-现有正式表继续保留：
+当前代理电价查询已经由四张正式表支撑，且当前电价数据能够满足现阶段查询和展示需求：
 
 - `e_agent_price`
 - `e_agent_price_data`
 - `e_fpgj_type`
 - `e_fpgj_type_data`
 
-建议新增以下表。
+因此电价导入方案不需要在一期引入新的规则主表、公式表、适用对象表或复杂来源管理表。推荐方案是：
 
-### 电价数据来源表
-
-```sql
-CREATE TABLE tariff_source_config (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  province_code VARCHAR(20) NOT NULL COMMENT '省份编码',
-  province_name VARCHAR(64) NOT NULL COMMENT '省份名称',
-  source_name VARCHAR(128) NOT NULL COMMENT '来源名称',
-  source_type VARCHAR(32) NOT NULL COMMENT 'OFFICIAL_NOTICE/EXCHANGE/CUSTOM_UPLOAD',
-  source_url VARCHAR(512) DEFAULT NULL COMMENT '来源页面',
-  publish_rule VARCHAR(128) DEFAULT NULL COMMENT '发布日期规律',
-  enabled TINYINT NOT NULL DEFAULT 1,
-  remark VARCHAR(512) DEFAULT NULL,
-  create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
-  update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
+```text
+运营在页面按规则录入
+        |
+        v
+后端在内存中校验并生成 96 点
+        |
+        v
+预览确认
+        |
+        v
+发布到现有四张正式表
+        |
+        v
+沿用当前查询接口和展示逻辑
 ```
 
-### 导入批次表
+规则化录入只是“生成四表数据的工具”，不是新的业务数据模型。四张正式表仍是电价服务唯一查询事实来源。
 
-```sql
-CREATE TABLE tariff_import_batch (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  batch_no VARCHAR(64) NOT NULL UNIQUE COMMENT '导入批次号',
-  year_month VARCHAR(7) NOT NULL COMMENT '电价月份',
-  version VARCHAR(24) NOT NULL COMMENT '内部版本',
-  province_code VARCHAR(20) NOT NULL,
-  province_name VARCHAR(64) NOT NULL,
-  source_type VARCHAR(32) NOT NULL,
-  source_name VARCHAR(128) DEFAULT NULL,
-  source_url VARCHAR(512) DEFAULT NULL,
-  source_file_name VARCHAR(255) DEFAULT NULL,
-  source_file_path VARCHAR(512) DEFAULT NULL,
-  status VARCHAR(32) NOT NULL COMMENT 'UPLOADED/PARSED/VALIDATED/APPROVED/PUBLISHED/FAILED/REPLACED',
-  total_rows INT DEFAULT 0,
-  valid_rows INT DEFAULT 0,
-  error_rows INT DEFAULT 0,
-  publish_time DATETIME DEFAULT NULL,
-  operator_id VARCHAR(64) DEFAULT NULL,
-  operator_name VARCHAR(64) DEFAULT NULL,
-  remark VARCHAR(512) DEFAULT NULL,
-  create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
-  update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
+## 设计原则
+
+- 不新增一期主业务表。
+- 不要求运营维护 96 点 Excel。
+- 不改变当前查询接口的核心取数模型。
+- 不改变当前 `RATE = 0.001` 的价格展示兼容逻辑。
+- 支持月度默认版本，保留单日特殊版本能力。
+- 公式计算只作为页面录入辅助，不作为必须持久化的规则模型。
+- 96 点 Excel 保留为兜底，不作为主流程。
+
+## 当前四张表的职责
+
+### `e_fpgj_type`
+
+峰平谷尖主表。
+
+当前关键字段：
+
+- `id`
+- `version`
+- `province_code`
+- `province_name`
+- `second_type`
+- `del_flag`
+
+当前唯一约束是 `version + province_code + second_type`。这意味着在现有模型下，一个省份、一个二级区域、一个版本只适合维护一套公共分时时段。
+
+现阶段设计按这个约束处理：同一版本同一区域只有一套尖峰平谷时段。
+
+### `e_fpgj_type_data`
+
+峰平谷尖 96 点明细表。
+
+每条 `e_fpgj_type` 对应 96 条明细：
+
+- `biz_time`：`00:00` 到 `23:45`
+- `fpgj_type`：`尖`、`峰`、`平`、`谷`、`深谷`
+
+### `e_agent_price`
+
+代理电价主表。
+
+一条记录表示一个价格维度：
+
+```text
+version + province_code + second_type + third_type + dy_level + user_type + other_type + price_type
 ```
 
-### 导入暂存主表
+其中：
 
-```sql
-CREATE TABLE tariff_agent_price_staging (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  batch_no VARCHAR(64) NOT NULL,
-  row_no INT NOT NULL,
-  version VARCHAR(24) NOT NULL,
-  province_code VARCHAR(20) NOT NULL,
-  province_name VARCHAR(64) NOT NULL,
-  second_type VARCHAR(64) NOT NULL,
-  third_type VARCHAR(64) NOT NULL,
-  dy_level VARCHAR(64) NOT NULL,
-  user_type VARCHAR(64) NOT NULL,
-  other_type VARCHAR(64) NOT NULL,
-  price_type VARCHAR(32) NOT NULL,
-  capacity_electricity_price DECIMAL(20,7) DEFAULT NULL,
-  demand_electricity_price DECIMAL(20,7) DEFAULT NULL,
-  validate_status VARCHAR(32) NOT NULL DEFAULT 'PENDING',
-  validate_message VARCHAR(1024) DEFAULT NULL,
-  create_time DATETIME DEFAULT CURRENT_TIMESTAMP
-);
+- `other_type` 对应当前接口里的 `sfType`，即收费类型，如单一制、两部制。
+- `price_type` 当前继续使用已有口径，如 `电度`、`输配`、`附加`、`线损`、`系统运行`。
+- `capacity_electricity_price`、`demand_electricity_price` 继续存在主表上。
+
+### `e_agent_price_data`
+
+代理电价 96 点明细表。
+
+每条 `e_agent_price` 对应 96 条明细：
+
+- `biz_time`：`00:00` 到 `23:45`
+- `price`：当前系统按放大 1000 倍后的值存储
+
+页面按 `元/kWh` 录入，发布时写入：
+
+```text
+入库价格 = 页面价格 * 1000
 ```
 
-### 导入暂存 96 点表
+查询展示时沿用当前服务里的：
 
-```sql
-CREATE TABLE tariff_agent_price_data_staging (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  staging_price_id BIGINT NOT NULL,
-  biz_time VARCHAR(20) NOT NULL,
-  price DECIMAL(20,7) NOT NULL,
-  create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY uk_staging_price_time (staging_price_id, biz_time)
-);
+```text
+展示价格 = 入库价格 * 0.001
 ```
 
-### 尖峰平谷暂存表
+## 版本规则
 
-```sql
-CREATE TABLE tariff_fpgj_type_staging (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  batch_no VARCHAR(64) NOT NULL,
-  row_no INT NOT NULL,
-  version VARCHAR(24) NOT NULL,
-  province_code VARCHAR(20) NOT NULL,
-  province_name VARCHAR(64) NOT NULL,
-  second_type VARCHAR(64) NOT NULL,
-  validate_status VARCHAR(32) NOT NULL DEFAULT 'PENDING',
-  validate_message VARCHAR(1024) DEFAULT NULL,
-  create_time DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-```
+继续沿用当前 `version` 字段。
 
-```sql
-CREATE TABLE tariff_fpgj_type_data_staging (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  staging_fpgj_id BIGINT NOT NULL,
-  biz_time VARCHAR(20) NOT NULL,
-  fpgj_type VARCHAR(10) NOT NULL,
-  create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY uk_staging_fpgj_time (staging_fpgj_id, biz_time)
-);
-```
-
-### 对外调用记录表
-
-```sql
-CREATE TABLE tariff_api_call_log (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  app_key VARCHAR(64) NOT NULL,
-  api_path VARCHAR(128) NOT NULL,
-  request_id VARCHAR(64) NOT NULL,
-  province_code VARCHAR(20) DEFAULT NULL,
-  year_month VARCHAR(7) DEFAULT NULL,
-  selected_date VARCHAR(10) DEFAULT NULL,
-  response_code VARCHAR(32) DEFAULT NULL,
-  cost_ms INT DEFAULT NULL,
-  client_ip VARCHAR(64) DEFAULT NULL,
-  create_time DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-```
-
-## 导入模板设计
-
-### Sheet: agent_price
-
-| 字段 | 必填 | 说明 |
+| 场景 | 输入 | version |
 | --- | --- | --- |
-| year_month | 是 | `yyyy-MM` |
-| version | 否 | 可自动生成，如 `2606` |
-| province_code | 是 | 省份编码 |
-| province_name | 是 | 省份名称 |
-| second_type | 是 | 二级区域，无则填 `全域` 或 `不限` |
-| third_type | 是 | 三级区域，无则填 `不限` |
-| user_type | 是 | 企业用电属性 |
-| dy_level | 是 | 电压等级 |
-| sf_type | 是 | 收费类型 |
-| price_type | 是 | 电度/输配/附加/线损/系统运行 |
-| capacity_electricity_price | 否 | 容量电价 |
-| demand_electricity_price | 否 | 需量电价 |
-| 00:00 | 是 | 96 点价格 |
-| 00:15 | 是 | 96 点价格 |
-| ... | 是 | ... |
-| 23:45 | 是 | 96 点价格 |
+| 月度默认电价 | `2026-07` | `2607` |
+| 单日特殊电价 | `2026-07-15` | `260715` |
+| 日期区间特殊电价 | `2026-07-15` 到 `2026-07-31` | 逐日生成 `260715` 到 `260731` |
 
-### Sheet: fpgj_type
+查询规则建议保持简单明确：
 
-| 字段 | 必填 | 说明 |
-| --- | --- | --- |
-| year_month | 是 | `yyyy-MM` |
-| version | 否 | 可自动生成 |
-| province_code | 是 | 省份编码 |
-| province_name | 是 | 省份名称 |
-| second_type | 是 | 二级区域 |
-| 00:00 | 是 | 尖/峰/平/谷/深谷 |
-| 00:15 | 是 | 尖/峰/平/谷/深谷 |
-| ... | 是 | ... |
-| 23:45 | 是 | 尖/峰/平/谷/深谷 |
+```text
+按具体日期查询：
+  1. 先查 YYMMDD 日期版本
+  2. 日期版本不存在时回退 YYMM 月度版本
+  3. 月度版本也不存在时返回无数据
 
-## 数据导入流程
+按月份查询：
+  1. 只查 YYMM 月度版本
+  2. 不跨月回退
+```
 
-### 1. 来源登记
+这样无需新增表，也可以支持节假日或尖峰日期覆盖。
 
-按省份维护来源配置：
+## 录入模式
 
-- 省份编码和名称。
-- 官方公告地址。
-- 发布主体。
-- 发布时间规律。
-- 文件类型。
-- 是否启用自动采集。
+### 1. 直接时段价模式
 
-一期可以人工维护，后续再逐步接入爬虫。
+这是一期主流程。
 
-### 2. 文件上传
+运营录入内容：
 
-运营人员上传官方 Excel、PDF 或整理后的标准模板，系统生成 `batch_no`。
+- 版本：月份或日期。
+- 省份、二级区域、三级区域。
+- 分时时段：尖、峰、平、谷、深谷分别对应哪些时间段。
+- 电价行：用户类型、电压等级、收费类型、各时段电价、容量电价、需量电价。
 
-批次初始状态为 `UPLOADED`。
+示例：
 
-### 3. 解析入暂存表
+| 用户类型 | 电压等级 | 收费类型 | 尖 | 峰 | 平 | 谷 | 深谷 | 最大需量 | 变压器容量 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 工商业用电 | 1-10千伏 | 两部制 | 1.0822 | 1.0032 | 0.6419 | 0.3402 | 0.3029 | 48 | 30 |
 
-解析文件后写入 staging 表，不直接写正式表。
+后端根据时段配置自动生成 96 点，不要求运营逐点维护。
 
-批次状态更新为 `PARSED`。
+### 2. 公式辅助模式
 
-### 4. 规则校验
+公式模式只作为录入辅助，不落新的规则表。
 
-核心校验：
+适用场景：公告里给的是分项价格和浮动比例，例如：
 
-- `year_month`、`province_code`、`second_type`、`third_type`、`user_type`、`dy_level`、`sf_type` 不能为空。
-- 每个价格类型必须有 96 个点。
-- `biz_time` 必须完整覆盖 `00:00` 到 `23:45`。
-- 同一组合下不能重复：
-  `version + province_code + second_type + third_type + dy_level + user_type + sf_type + price_type`
-- 尖峰平谷类型只能为：`尖`、`峰`、`平`、`谷`、`深谷`。
-- 价格必须为数字，不能为负数。
-- 同一省份同一月份已发布数据存在时，必须走替换发布流程。
-- 和上月价格差异超过阈值时标记为需要人工确认。
-- 正式表主从数据数量一致，不能出现主表有数据但 96 点缺失。
+- 代理购电价格。
+- 上网环节线损费用。
+- 电度输配电价。
+- 系统运行费用。
+- 政府性基金及附加。
+- 高峰上浮比例。
+- 低谷下浮比例。
+- 尖峰上浮比例。
 
-校验通过后批次状态为 `VALIDATED`。
+页面可以帮助运营计算出尖、峰、平、谷、深谷结果价。发布时仍然只把计算后的 96 点结果写入四张正式表。
 
-### 5. 人工复核
+也就是说：
 
-复核页面展示：
+```text
+公式参数 -> 页面/后端计算 -> 结果时段价 -> 96 点 -> 四张正式表
+```
 
-- 文件来源。
-- 解析结果。
-- 校验错误。
-- 与上月差异。
-- 价格曲线预览。
-- 尖峰平谷时段图。
+公式参数不作为一期查询依据。
 
-复核通过后批次状态为 `APPROVED`。
+### 3. 复制历史模式
+
+复制历史也基于现有四张表完成。
+
+流程：
+
+1. 选择已有版本，如 `2606`。
+2. 从 `e_fpgj_type_data` 反推出时段配置。
+3. 从 `e_agent_price` 和 `e_agent_price_data` 反推出价格行。
+4. 生成新版本草稿，如 `2607`。
+5. 运营只修改价格或少量时段。
+6. 预览后发布。
+
+这个模式可以覆盖“月底只改价格、时段基本不变”的常见操作。
+
+### 4. 96 点 Excel 兜底模式
+
+仅用于：
+
+- 历史数据补录。
+- 外部系统已生成 96 点。
+- 异常省份临时处理。
+- 数据修复。
+
+即使使用 Excel，也必须先预览和校验，再写四张正式表。
+
+## 页面流程
+
+### 1. 建版本
+
+运营选择：
+
+- 电价月份或日期。
+- 省份。
+- 二级区域，默认 `全域` 或 `不限`。
+- 三级区域，默认 `不限`。
+- 生效类型：月度默认、单日特殊、日期区间。
+- 录入模式：直接时段价、公式辅助、复制历史、96 点 Excel。
+
+系统生成 `version`。
+
+### 2. 配时段
+
+页面不展示 96 个格子，而是展示时间段配置。
+
+示例：
+
+| 时段 | 时间 |
+| --- | --- |
+| 谷 | `00:00-08:00` |
+| 峰 | `08:00-10:00, 14:00-17:00` |
+| 深谷 | `10:00-14:00` |
+| 平 | `17:00-24:00` |
+
+展开规则：
+
+- 15 分钟一个点。
+- 生成 `00:00` 到 `23:45` 共 96 个点。
+- 时间段左闭右开，例如 `08:00-10:00` 覆盖 `08:00` 到 `09:45`。
+- `24:00` 只作为结束边界，不生成 `24:00` 点。
+
+校验规则：
+
+- 96 个点必须全部覆盖。
+- 同一个点只能命中一个时段。
+- 时段类型只能是 `尖`、`峰`、`平`、`谷`、`深谷`。
+
+### 3. 录价格
+
+每一行价格对应一组适用对象：
+
+```text
+province_code + second_type + third_type + user_type + dy_level + other_type
+```
+
+运营录入各时段电价：
+
+- 尖。
+- 峰。
+- 平。
+- 谷。
+- 深谷。
+- 容量电价。
+- 需量电价。
+
+如果某个时段没有使用，可以不填对应价格。只要时段配置里使用了某个时段类型，该价格行就必须填写对应时段价格。
+
+### 4. 自动生成 96 点
+
+后端生成两类数据。
+
+峰谷数据：
+
+```text
+e_fpgj_type: 1 条
+e_fpgj_type_data: 96 条
+```
+
+价格数据：
+
+```text
+e_agent_price: 每个价格行至少 1 条 price_type=电度
+e_agent_price_data: 每条 e_agent_price 生成 96 条
+```
+
+如果页面录入了拆分价格，则按当前价格类型继续生成：
+
+- `电度`
+- `输配`
+- `附加`
+- `线损`
+- `系统运行`
+
+如果当前需求只需要总电度价，则至少保证 `电度` 类型完整；其他价格类型可以为空，查询服务当前会按空值或 0 处理。
+
+### 5. 预览
+
+发布前预览：
+
+- 时段时间条。
+- 每个价格行的尖、峰、平、谷、深谷价格。
+- 展开后的 96 点曲线。
+- 即将写入的主表数量和明细数量。
+- 是否会替换已有同版本数据。
 
 ### 6. 发布
 
-发布时使用事务：
+发布只写四张正式表。
 
-1. 如同版本已有正式数据，旧数据标记为 `del_flag=1` 或批次状态改为 `REPLACED`。
-2. 将 staging 主表写入 `e_agent_price`。
-3. 将 staging 明细写入 `e_agent_price_data`。
-4. 将 staging 尖峰平谷写入 `e_fpgj_type` 和 `e_fpgj_type_data`。
-5. 批次状态更新为 `PUBLISHED`。
-6. 刷新缓存。
+事务步骤：
 
-发布失败必须回滚，不能出现主表已写入但 96 点明细缺失。
+1. 校验待发布数据。
+2. 查询同 `version + province_code + second_type + third_type` 的旧价格数据。
+3. 查询同 `version + province_code + second_type` 的旧时段数据。
+4. 删除同 scope 旧明细和旧主表数据。
+5. 写入新的 `e_fpgj_type`。
+6. 写入新的 96 条 `e_fpgj_type_data`。
+7. 写入新的 `e_agent_price`。
+8. 写入新的 `e_agent_price_data`。
+9. 提交事务。
 
-## 缓存设计
+失败时整体回滚，不能出现主表有数据但 96 点缺失。
 
-代理电价数据发布后变化频率低，适合缓存。
+说明：现有唯一键中 `e_fpgj_type` 不包含 `del_flag`，`e_agent_price` 重复软删除也可能因同一唯一键下多条 `del_flag = '1'` 记录冲突。因此一期发布采用事务内同 scope 替换写入，而不是保留多版软删历史。
 
-缓存 key：
+## 后端接口建议
 
-```text
-tariff:agent:price:{version}:{provinceCode}:{secondType}:{thirdType}:{userType}:{dyLevel}:{sfType}
-tariff:agent:areas:{version}
-tariff:agent:options:{version}:{provinceCode}:{secondType}:{thirdType}
+一期可以新增轻量接口，不需要新增持久化模型。
+
+### 预览
+
+```http
+POST /tariff/agent-price/import/rule/preview
 ```
 
-缓存策略：
+请求体是页面 DTO，包括：
 
-- 已发布版本缓存 24 小时或长期缓存。
-- 新批次发布后主动失效相关 key。
-- 无数据结果可短缓存 5 分钟，避免穿透。
+- version 信息。
+- 地区信息。
+- 时段配置。
+- 价格行。
+- 可选公式参数。
 
-## 安全与治理
+响应返回：
 
-对外 API 需要具备：
+- 96 点时段。
+- 96 点价格。
+- 主表和明细表预计写入数量。
+- 校验错误。
 
-- `appKey/appSecret` 签名。
-- 时间戳和 nonce 防重放。
-- IP 白名单。
-- 按 appKey 限流。
-- 调用日志。
-- 失败告警。
-- 版本发布审计。
-- 数据导入审计。
+### 发布
 
-签名建议：
-
-```text
-signature = HMAC-SHA256(appSecret, method + path + timestamp + nonce + bodySha256)
+```http
+POST /tariff/agent-price/import/rule/publish
 ```
 
-## 错误码
+请求体可以沿用预览 DTO，后端必须重新计算和重新校验，不能只信任前端预览结果。
 
-| 错误码 | 说明 |
-| --- | --- |
-| `TARIFF_PARAM_ERROR` | 参数错误 |
-| `TARIFF_NO_DATA` | 当前条件没有电价数据 |
-| `TARIFF_VERSION_NOT_FOUND` | 指定版本不存在 |
-| `TARIFF_UNPUBLISHED` | 版本未发布 |
-| `TARIFF_IMPORT_VALIDATE_FAILED` | 导入校验失败 |
-| `TARIFF_AUTH_FAILED` | 鉴权失败 |
-| `TARIFF_RATE_LIMITED` | 调用超过限流 |
-| `TARIFF_INTERNAL_ERROR` | 服务内部异常 |
+### 复制历史
 
-## 当前代码改造建议
+```http
+POST /tariff/agent-price/import/rule/copy
+```
 
-### 服务层
+入参：
 
-当前 `TariffAgentPriceService` 可继续作为领域服务，但建议拆分职责：
+- sourceVersion。
+- targetVersion。
+- provinceCode。
+- secondType。
+- thirdType。
 
-- `TariffAgentPriceQueryService`：查询电价、区域、选项。
-- `TariffAgentPriceImportService`：导入、校验、发布。
-- `TariffAgentPriceVersionService`：版本解析、版本发布、版本状态。
-- `TariffAgentPriceOpenApiService`：对外响应封装、鉴权上下文、调用日志。
+返回可编辑 DTO，不直接写库。
 
-### Mapper 层
+## 校验规则
 
-当前 `TariffAgentPriceMapper` 主要支撑查询。导入发布建议新增独立 Mapper：
+### 时段校验
 
-- `TariffImportBatchMapper`
-- `TariffAgentPriceStagingMapper`
-- `TariffFpgjTypeStagingMapper`
-- `TariffOpenApiLogMapper`
+- 必须生成 96 个时点。
+- `biz_time` 必须覆盖 `00:00` 到 `23:45`。
+- 不允许重复时点。
+- 不允许空时点。
+- `fpgj_type` 只能是 `尖`、`峰`、`平`、`谷`、`深谷`。
 
-### 接口层
+### 价格校验
 
-保留：
+- 每个价格行必须能生成 96 个价格点。
+- 时段配置中出现的时段类型，价格行必须有对应价格。
+- 结果电度价格不能为负。
+- 容量电价、需量电价可以为空。
+- 页面录入单位为 `元/kWh`，发布入库必须乘以 1000。
+- 金额使用 `BigDecimal` 计算，避免浮点误差。
 
-- `/haomaidian/index/getDefaultMenus`
-- `/haomaidian/index/getEnAgentPrices`
-- `/areaDict/getDictByType`
-- `/tariff/agent-price/options`
-- `/tariff/agent-price/prices`
+### 重复校验
 
-新增：
+同一批发布内不允许重复：
 
-- `/openapi/v1/tariff/agent/versions`
-- `/openapi/v1/tariff/agent/areas`
-- `/openapi/v1/tariff/agent/options`
-- `/openapi/v1/tariff/agent/prices/query`
-- `/tariff/agent-price/import/upload`
-- `/tariff/agent-price/import/validate`
-- `/tariff/agent-price/import/approve`
-- `/tariff/agent-price/import/publish`
-- `/tariff/agent-price/import/batches`
+```text
+version + province_code + second_type + third_type + dy_level + user_type + other_type + price_type + capacity_electricity_price + demand_electricity_price
+```
 
-## 实施计划
+同一 `e_agent_price` 下不允许重复 `biz_time`。
 
-### 一期：可用版本
+同一 `e_fpgj_type` 下不允许重复 `biz_time`。
 
-- 修正查询版本规则，禁止跨月 fallback。
-- 新增版本列表接口。
-- 新增对外查询接口，但先复用现有查询逻辑。
-- 新增导入批次表和 staging 表。
-- 支持标准 Excel 模板导入。
-- 支持导入校验和人工发布。
-- 支持北京地区 2026-06 数据完整查询。
+### 发布校验
 
-### 二期：标准服务版本
+- 发布前必须重新生成 96 点。
+- 发布前必须重新查询是否存在同版本旧数据。
+- 替换发布要先删除同 scope 旧数据，再写入新数据。
+- 事务失败必须回滚。
 
-- 对外返回 96 点明细。
-- 补齐来源文件、批次、发布时间。
-- 接入 appKey/appSecret 鉴权。
-- 增加调用日志和限流。
-- 增加缓存。
-- 增加导入差异比对。
+## 当前四表方案的边界
 
-### 三期：全国数据运营版本
+当前四表方案适合现阶段需求：
 
-- 按省份维护官方来源配置。
-- 支持 PDF 表格半自动解析。
-- 支持发布审批流。
-- 支持自动巡检缺失省份和缺失月份。
-- 支持对客户发送版本发布通知。
+- 同一省份、同一地区、同一版本一套公共分时时段。
+- 不需要按行业、容量门槛、充换电类型维护多套不同分时时段。
+- 查询侧主要按省份、地区、用户类型、电压等级、收费类型查询电价。
+- 当前电价已经能满足页面展示和接口查询。
+
+如果后续出现同一地区同一版本需要多套时段，例如：
+
+- 普通工商业一套时段。
+- 电动汽车充换电一套时段。
+- 特定容量工业用户尖峰覆盖一套时段。
+
+现有 `e_fpgj_type` 的唯一键就会成为限制。到那个阶段再考虑扩展 `e_fpgj_type` 的适用对象字段，或新增规则表。目前不作为一期范围。
+
+## 一期范围
+
+一期只做当前四表闭环：
+
+- 规则化录入页面。
+- 复制历史版本。
+- 时段配置自动展开 96 点。
+- 时段价格自动展开 96 点。
+- 预览和校验。
+- 发布到四张正式表。
+- 月度版本和日期版本查询规则。
+- 保留 96 点 Excel 兜底。
+
+一期不做：
+
+- 新增规则主表。
+- 新增公式持久化表。
+- 新增适用对象时段表。
+- 官方来源自动采集。
+- AI 解析公告。
+- 复杂审批流。
 
 ## 验收标准
 
-### 查询服务
+### 生成
 
-- 查询北京 `2026-06` 有数据时正常返回。
-- 查询北京 `2026-07-03` 且数据库没有 7 月数据时返回 `TARIFF_NO_DATA`。
-- 区域三级联动、用户类型、电压等级、收费类型与当前版本数据一致。
-- 返回结果包含版本、单位、来源、发布时间。
-- 聚合时段和 96 点明细一致。
+- 配置 `00:00-08:00` 谷、`08:00-10:00` 峰等时间段后，系统能生成完整 96 点。
+- 每个价格行能按时段价格生成完整 96 点电度价格。
+- 页面录入 `0.632043`，入库 `632.043`，查询展示仍为 `0.632043`。
 
-### 导入服务
+### 发布
 
-- 标准模板可导入成功。
-- 缺少 96 点时报错，不能发布。
-- 同一版本重复导入必须经过替换发布。
-- 发布失败可以回滚。
-- 批次状态完整流转。
-- 能追溯正式数据来自哪个文件和哪个批次。
+- 发布后 `e_fpgj_type` 有 1 条有效主表，`e_fpgj_type_data` 有 96 条有效明细。
+- 每条有效 `e_agent_price` 都有 96 条有效 `e_agent_price_data`。
+- 重复发布同版本时，同 scope 旧数据被替换，新数据生效。
+- 发布失败不会留下半截数据。
 
-## 结论
+### 查询
 
-代理电价服务应从“页面查询接口”升级为“版本化电价数据服务”。
+- 查询月度版本 `2607` 能正常返回当前电价。
+- 查询日期 `2026-07-20` 时，存在 `260720` 则返回日期版本，不存在则回退 `2607`。
+- 查询不存在的月份不跨月回退。
+- 时段汇总和 96 点明细一致。
 
-短期重点是把现有 `e_agent_price`、`e_agent_price_data`、`e_fpgj_type`、`e_fpgj_type_data` 用稳定，补齐版本、来源、导入批次和无数据规则。
+## 最终判断
 
-中期重点是开放标准 OpenAPI，提供 96 点明细、聚合时段、数据来源和调用治理。
+在当前需求下，不需要把电价导入设计成一套新的规则数据中心。更合适的做法是保留当前四张正式表作为唯一事实来源，把规则化录入做成生成器和校验器。
 
-长期重点是建设全国电价数据运营能力，通过半自动采集、人工复核、审批发布和质量巡检，保证代理电价数据可查、可信、可追溯。
+这样既能把人工维护成本从 96 点 Excel 降下来，又不会引入超出当前需求的数据模型复杂度。

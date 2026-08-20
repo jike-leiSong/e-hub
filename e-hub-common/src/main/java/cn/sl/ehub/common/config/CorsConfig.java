@@ -27,8 +27,8 @@ public class CorsConfig {
         final CorsConfiguration config = new CorsConfiguration();
         // 允许cookies跨域
         config.setAllowCredentials(true);
-        // #允许向该服务器提交请求的URI，*表示全部允许，在SpringMVC中，如果设成*，会自动转成当前请求头中的Origin
-        config.addAllowedOrigin("*");
+        // 不再使用通配来源。允许携带凭证时，通配来源会把任意站点带入信任边界。
+        // 生产环境通过 allowed.origins 配置可信前端域名；未配置时仅允许同源访问。
         if (CollectionUtils.isNotEmpty(allowedOrigins)) {
             config.setAllowedOrigins(allowedOrigins);
         }

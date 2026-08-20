@@ -10,6 +10,7 @@ const LEGACY_PAGE_MAP = {
   "user-management": "identity-access",
   "permission-management": "identity-access",
   settings: "platform-settings",
+  "load-grid-delivery": "load-grid-interaction",
 };
 
 export function normalizeAuthUser(authUser = {}) {
@@ -99,6 +100,7 @@ function normalizeMenuItems(items) {
     const normalizedItem = {
       ...item,
       key: normalizedKey || item.key,
+      label: normalizedKey === "load-grid-interaction" ? "电网交互" : item.label,
       children: normalizeMenuItems(item.children),
     };
     if (!result.some(existing => existing.key === normalizedItem.key)) {
@@ -131,7 +133,12 @@ function fallbackProfile(platformType, products) {
         "load:settlement:view",
         "load:device-operation:view",
         "load:resources:view",
+        "load:grid-interaction:view",
+        "load:grid-interaction:delivery",
+        "load:grid-interaction:audit",
+        "load:grid-interaction:export",
         "tariff:query:view",
+        "tariff:import:manage",
         "tariff:sources:view",
         "tariff:api:view",
         "tariff:logs:view",
@@ -146,7 +153,9 @@ function fallbackProfile(platformType, products) {
         "load-settlement",
         "load-device-operation",
         "load-resources",
+        "load-grid-interaction",
         "tariff-query",
+        "tariff-import",
         "tariff-sources",
         "tariff-api",
         "tariff-logs",
@@ -175,6 +184,7 @@ function fallbackProfile(platformType, products) {
                 { key: "load-settlement", label: "收益结算" },
                 { key: "load-resources", label: "资源管理" },
                 { key: "load-device-operation", label: "物联管理" },
+                { key: "load-grid-interaction", label: "电网交互" },
               ],
             },
             {
@@ -183,6 +193,7 @@ function fallbackProfile(platformType, products) {
               icon: "08",
               children: [
                 { key: "tariff-query", label: "电网代理价格" },
+                { key: "tariff-import", label: "电价录入" },
                 { key: "tariff-sources", label: "数据来源" },
                 { key: "tariff-api", label: "接口能力" },
                 { key: "tariff-logs", label: "调用记录" },
@@ -203,13 +214,18 @@ function fallbackProfile(platformType, products) {
       "load:settlement:view",
       "load:device-operation:view",
       "load:resources:view",
+      "load:grid-interaction:view",
+      "load:grid-interaction:delivery",
+      "load:grid-interaction:audit",
+      "load:grid-interaction:export",
     );
     allowedPages.push(
       "load-overview",
       "load-adjustment",
       "load-settlement",
       "load-resources",
-      "load-device-operation"
+      "load-device-operation",
+      "load-grid-interaction"
     );
     productItems.push({
       key: "load",
@@ -221,19 +237,19 @@ function fallbackProfile(platformType, products) {
         { key: "load-settlement", label: "收益结算" },
         { key: "load-resources", label: "资源管理" },
         { key: "load-device-operation", label: "物联管理" },
+        { key: "load-grid-interaction", label: "电网交互" },
       ],
     });
   }
   if (products.includes(PRODUCT_TARIFF)) {
-    permissions.push("tariff:query:view", "tariff:sources:view", "tariff:api:view", "tariff:logs:view");
-    allowedPages.push("tariff-query", "tariff-sources", "tariff-api", "tariff-logs");
+    permissions.push("tariff:query:view", "tariff:api:view", "tariff:logs:view");
+    allowedPages.push("tariff-query", "tariff-api", "tariff-logs");
     productItems.push({
       key: "tariff",
       label: "电价服务",
       icon: "04",
       children: [
         { key: "tariff-query", label: "电网代理价格" },
-        { key: "tariff-sources", label: "数据来源" },
         { key: "tariff-api", label: "接口能力" },
         { key: "tariff-logs", label: "调用记录" },
       ],

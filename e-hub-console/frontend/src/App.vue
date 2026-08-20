@@ -113,7 +113,14 @@
           :key="loadPageKey"
           :aggregator-id="selectedAggregatorId"
         />
+        <GridInteraction
+          v-else-if="activePage === 'load-grid-interaction'"
+          :key="loadPageKey"
+          :aggregator-id="selectedAggregatorId"
+          :user="currentUser"
+        />
         <AgentPrice v-else-if="activePage === 'tariff-query'" />
+        <TariffRuleImport v-else-if="activePage === 'tariff-import'" />
         <TariffSources v-else-if="activePage === 'tariff-sources'" />
         <TenantCenter v-else-if="activePage === 'tenant-center'" />
         <IdentityAccessCenter v-else-if="activePage === 'identity-access'" />
@@ -134,8 +141,10 @@ import PlatformSettingsCenter from "./PlatformSettingsCenter.vue";
 import Aggregation from "@/modules/load-aggregation/overview/Aggregation.vue";
 import AggregationHistory from "@/modules/load-aggregation/history/src/AggregationHistory.vue";
 import IotManagement from "@/modules/load-aggregation/iot-management/IotManagement.vue";
+import GridInteraction from "@/modules/load-aggregation/grid-delivery/GridInteraction.vue";
 import LoadResources from "@/modules/load-aggregation/resources/LoadResources.vue";
 import AgentPrice from "@/modules/tariff/agent-price/AgentPrice.vue";
+import TariffRuleImport from "@/modules/tariff/import/TariffRuleImport.vue";
 import TariffSources from "@/modules/tariff/sources/TariffSources.vue";
 import service from "@/services/http";
 import {
@@ -175,12 +184,20 @@ const pageMeta = {
     title: "负荷聚合 / 物联管理",
     eyebrow: "LOAD AGGREGATION",
   },
+  "load-grid-interaction": {
+    title: "负荷聚合 / 电网交互",
+    eyebrow: "LOAD AGGREGATION",
+  },
   "load-resources": {
     title: "负荷聚合 / 资源管理",
     eyebrow: "LOAD AGGREGATION",
   },
   "tariff-query": {
     title: "电价服务 / 电网代理价格",
+    eyebrow: "POWER TARIFF",
+  },
+  "tariff-import": {
+    title: "电价服务 / 电价录入",
     eyebrow: "POWER TARIFF",
   },
   "tariff-sources": {
@@ -246,6 +263,7 @@ function resolveInitialPage() {
     "user-management": "identity-access",
     "permission-management": "identity-access",
     settings: "platform-settings",
+    "load-grid-delivery": "load-grid-interaction",
   };
   if (page === "history") {
     return "load-adjustment";
@@ -272,6 +290,7 @@ const loadPages = [
   "load-settlement",
   "load-resources",
   "load-device-operation",
+  "load-grid-interaction",
   "load-history",
 ];
 
@@ -294,8 +313,10 @@ export default {
     Aggregation,
     AggregationHistory,
     IotManagement,
+    GridInteraction,
     LoadResources,
     AgentPrice,
+    TariffRuleImport,
     TariffSources,
   },
   data() {

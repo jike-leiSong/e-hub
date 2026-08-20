@@ -242,4 +242,214 @@
     LIMIT 1
   </select>
 
+  <delete id="deleteAgentPriceDataByScope">
+    DELETE d
+    FROM e_agent_price_data d
+    INNER JOIN e_agent_price p ON p.id = d.en_agent_price_id
+    WHERE p.version = #{version}
+      AND p.province_code = #{provinceCode}
+      AND p.second_type = #{secondType}
+      AND p.third_type = #{thirdType}
+  </delete>
+
+  <delete id="deleteAgentPricesByScope">
+    DELETE FROM e_agent_price
+    WHERE version = #{version}
+      AND province_code = #{provinceCode}
+      AND second_type = #{secondType}
+      AND third_type = #{thirdType}
+  </delete>
+
+  <sql id="agentPriceRowMatch">
+    p.dy_level = #{item.dyLevel}
+    AND p.user_type = #{item.userType}
+    AND p.other_type = #{item.sfType}
+    AND p.price_type = #{item.priceType}
+  </sql>
+
+  <delete id="deleteAgentPriceDataByPriceRows">
+    DELETE d
+    FROM e_agent_price_data d
+    INNER JOIN e_agent_price p ON p.id = d.en_agent_price_id
+    WHERE p.version = #{version}
+      AND p.province_code = #{provinceCode}
+      AND p.second_type = #{secondType}
+      AND p.third_type = #{thirdType}
+      AND (
+      <foreach collection="list" item="item" separator=" OR ">
+        (<include refid="agentPriceRowMatch"/>)
+      </foreach>
+      )
+  </delete>
+
+  <delete id="deleteAgentPricesByPriceRows">
+    DELETE p
+    FROM e_agent_price p
+    WHERE p.version = #{version}
+      AND p.province_code = #{provinceCode}
+      AND p.second_type = #{secondType}
+      AND p.third_type = #{thirdType}
+      AND (
+      <foreach collection="list" item="item" separator=" OR ">
+        (<include refid="agentPriceRowMatch"/>)
+      </foreach>
+      )
+  </delete>
+
+  <delete id="deleteFpgjTypeDataByScope">
+    DELETE d
+    FROM e_fpgj_type_data d
+    INNER JOIN e_fpgj_type t ON t.id = d.en_fpgj_type_id
+    WHERE t.version = #{version}
+      AND t.province_code = #{provinceCode}
+      AND t.second_type = #{secondType}
+  </delete>
+
+  <delete id="deleteFpgjTypesByScope">
+    DELETE FROM e_fpgj_type
+    WHERE version = #{version}
+      AND province_code = #{provinceCode}
+      AND second_type = #{secondType}
+  </delete>
+
+  <select id="countAgentPricesBySecondScope" resultType="int">
+    SELECT COUNT(1)
+    FROM e_agent_price
+    WHERE del_flag = '0'
+      AND version = #{version}
+      AND province_code = #{provinceCode}
+      AND second_type = #{secondType}
+  </select>
+
+  <insert id="insertFpgjType">
+    INSERT INTO e_fpgj_type (
+      id,
+      version,
+      province_code,
+      province_name,
+      second_type,
+      create_by,
+      create_date,
+      del_flag
+    ) VALUES (
+      #{row.id},
+      #{row.version},
+      #{row.provinceCode},
+      #{row.provinceName},
+      #{row.secondType},
+      #{row.createBy},
+      NOW(),
+      '0'
+    )
+  </insert>
+
+  <insert id="batchInsertFpgjTypeData">
+    INSERT INTO e_fpgj_type_data (
+      en_fpgj_type_id,
+      biz_time,
+      fpgj_type,
+      del_flag
+    ) VALUES
+    <foreach collection="list" item="item" separator=",">
+      (
+        #{item.fpgjTypeId},
+        #{item.bizTime},
+        #{item.fpgjType},
+        '0'
+      )
+    </foreach>
+  </insert>
+
+  <insert id="batchInsertAgentPrice">
+    INSERT INTO e_agent_price (
+      id,
+      version,
+      province_code,
+      province_name,
+      second_type,
+      third_type,
+      dy_level,
+      user_type,
+      other_type,
+      price_type,
+      create_by,
+      create_date,
+      del_flag,
+      capacity_electricity_price,
+      demand_electricity_price
+    ) VALUES
+    <foreach collection="list" item="item" separator=",">
+      (
+        #{item.id},
+        #{item.version},
+        #{item.provinceCode},
+        #{item.provinceName},
+        #{item.secondType},
+        #{item.thirdType},
+        #{item.dyLevel},
+        #{item.userType},
+        #{item.otherType},
+        #{item.priceType},
+        #{item.createBy},
+        NOW(),
+        '0',
+        #{item.capacityElectricityPrice},
+        #{item.demandElectricityPrice}
+      )
+    </foreach>
+  </insert>
+
+  <insert id="batchInsertAgentPriceData">
+    INSERT INTO e_agent_price_data (
+      en_agent_price_id,
+      biz_time,
+      price,
+      del_flag
+    ) VALUES
+    <foreach collection="list" item="item" separator=",">
+      (
+        #{item.agentPriceId},
+        #{item.bizTime},
+        #{item.price},
+        '0'
+      )
+    </foreach>
+  </insert>
+
+  <select id="selectAgentPriceRowsByScope" resultType="cn.sl.ehub.service.dto.tariff.TariffAgentPriceStoredRow">
+    SELECT
+      p.id AS id,
+      p.user_type AS userType,
+      p.dy_level AS dyLevel,
+      p.other_type AS otherType,
+      p.price_type AS priceType,
+      p.capacity_electricity_price AS capacityElectricityPrice,
+      p.demand_electricity_price AS demandElectricityPrice
+    FROM e_agent_price p
+    WHERE p.del_flag = '0'
+      AND p.version = #{version}
+      AND p.province_code = #{provinceCode}
+      AND p.second_type = #{secondType}
+      AND p.third_type = #{thirdType}
+    ORDER BY p.user_type, p.other_type, p.dy_level, p.price_type, p.id
+  </select>
+
+  <select id="selectAgentPricePointsByScope" resultType="cn.sl.ehub.service.dto.tariff.TariffAgentPriceStoredPoint">
+    SELECT
+      d.en_agent_price_id AS agentPriceId,
+      d.biz_time AS bizTime,
+      d.price AS price
+    FROM e_agent_price p
+    INNER JOIN e_agent_price_data d ON p.id = d.en_agent_price_id
+    WHERE p.del_flag = '0'
+      AND d.del_flag = '0'
+      AND p.version = #{version}
+      AND p.province_code = #{provinceCode}
+      AND p.second_type = #{secondType}
+      AND p.third_type = #{thirdType}
+    ORDER BY d.en_agent_price_id,
+      CAST(SUBSTRING_INDEX(d.biz_time, ':', 1) AS UNSIGNED),
+      CAST(SUBSTRING_INDEX(d.biz_time, ':', -1) AS UNSIGNED)
+  </select>
+
 </mapper>

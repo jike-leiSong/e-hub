@@ -1,6 +1,7 @@
 package cn.sl.ehub.console.controller.loadaggregation;
 
 import cn.sl.ehub.common.vo.ResultVO;
+import cn.sl.ehub.console.auth.LoadAggregationScopeService;
 import cn.sl.ehub.console.model.vo.PageResultVO;
 import cn.sl.ehub.console.service.IAggregatorEntAppApplyPlanService;
 import cn.sl.ehub.console.service.IAggregatorEntApplyPlanService;
@@ -33,6 +34,7 @@ public class AggregatorEntAppApplyPlanController {
 
     private final IAggregatorEntApplyPlanService aggregatorEntApplyPlanService;
     private final IAggregatorEntAppApplyPlanService aggregatorEntAppApplyPlanService;
+    private final LoadAggregationScopeService loadScopeService;
 
     @ApiOperation(value = "查询申报计划列表（分页，支持多种过滤）")
     @GetMapping("/getAggregatorEntApplyPlanRespList")
@@ -46,6 +48,7 @@ public class AggregatorEntAppApplyPlanController {
             @ApiParam("数量") @RequestParam(value = "pageSize", defaultValue = "10") Integer pageSize) {
         log.info("查询APP申报计划列表: entId={}, type={}, planType={}, date={}, pageNum={}, pageSize={}",
                 entId, type, planType, date, pageNum, pageSize);
+        loadScopeService.validateScope(null, entId);
         return ResultVO.success(aggregatorEntApplyPlanService.getAggregatorEntApplyPlanRespList(
                 entId, type, planType, date, pageNum, pageSize));
     }
@@ -57,6 +60,7 @@ public class AggregatorEntAppApplyPlanController {
                 aggregatorEntApplyPlanReq.getEntId(),
                 aggregatorEntApplyPlanReq.getStartDate(),
                 aggregatorEntApplyPlanReq.getEndDate());
+        loadScopeService.validateScope(aggregatorEntApplyPlanReq.getAggregatorId(), aggregatorEntApplyPlanReq.getEntId());
         return ResultVO.success(aggregatorEntApplyPlanService.addApplyPlanV1(aggregatorEntApplyPlanReq));
     }
 
@@ -66,6 +70,7 @@ public class AggregatorEntAppApplyPlanController {
             @ApiParam("企业ID") @RequestParam("entId") String entId,
             @ApiParam("开始日期") @RequestParam(value = "date", defaultValue = "2021-03-05", required = false) String date) {
         log.info("查询社会责任: entId={}, date={}", entId, date);
+        loadScopeService.validateScope(null, entId);
         return ResultVO.success(aggregatorEntAppApplyPlanService.getSocialResponsibility(entId, date));
     }
 
@@ -74,6 +79,7 @@ public class AggregatorEntAppApplyPlanController {
     public ResultVO<AggregatorEntApplyPlanResp> getAggregatorEntDefaultApplyPlanResp(
             @ApiParam("企业ID") @RequestParam("entId") String entId) {
         log.info("查询默认计划: entId={}", entId);
+        loadScopeService.validateScope(null, entId);
         return ResultVO.success(aggregatorEntAppApplyPlanService.getAggregatorEntDefaultApplyPlanResp(entId));
     }
 
@@ -84,6 +90,7 @@ public class AggregatorEntAppApplyPlanController {
             @ApiParam("开始日期") @RequestParam("startDate") String startDate,
             @ApiParam("结束日期") @RequestParam("endDate") String endDate) {
         log.info("查询调峰日历: entId={}, startDate={}, endDate={}", entId, startDate, endDate);
+        loadScopeService.validateScope(null, entId);
         return ResultVO.success(aggregatorEntAppApplyPlanService.getAggregatorEntApplyPlanDateResp(
                 entId, startDate, endDate));
     }
@@ -94,6 +101,7 @@ public class AggregatorEntAppApplyPlanController {
             @ApiParam("企业ID") @RequestParam("entId") String entId,
             @ApiParam("日期") @RequestParam(value = "date", required = false) String date) {
         log.info("查询创建计划日期: entId={}, date={}", entId, date);
+        loadScopeService.validateScope(null, entId);
         return ResultVO.success(aggregatorEntApplyPlanService.getDate(entId, date));
     }
 }

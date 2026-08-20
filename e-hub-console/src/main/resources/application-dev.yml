@@ -21,6 +21,12 @@ spring:
         max-idle: 100
         max-wait: 4000
 
+# 本地开发认证配置。生产环境仍必须通过 CONSOLE_AUTH_TOKEN_SECRET 显式提供密钥。
+console:
+  auth:
+    token-secret: ${CONSOLE_AUTH_TOKEN_SECRET:e-hub-console-dev-only-token-secret}
+    session-store: ${CONSOLE_AUTH_SESSION_STORE:local}
+
 #大数据
 bigdata:
   userKey: dev-key

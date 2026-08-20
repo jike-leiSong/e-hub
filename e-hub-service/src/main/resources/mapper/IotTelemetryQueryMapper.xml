@@ -336,4 +336,59 @@
     </if>
   </select>
 
+  <select id="selectRunStatusData" resultType="cn.sl.ehub.service.dto.iot.IotTelemetryDataResp">
+    SELECT
+      m.device_id AS deviceId,
+      m.device_code AS deviceCode,
+      d.device_name AS deviceName,
+      m.point_code AS pointCode,
+      p.property_name AS pointName,
+      m.unit AS unit,
+      m.minute_time AS dataTime,
+      m.point_value AS value,
+      m.quality AS quality
+    FROM iot_telemetry_minute m
+    LEFT JOIN iot_device d ON m.device_id = d.id AND d.deleted = 0
+    LEFT JOIN iot_device_point p ON m.device_id = p.device_id
+      AND m.point_code = p.property_code AND p.deleted = 0
+    WHERE m.aggregator_id = #{aggregatorId}
+      AND m.minute_time <![CDATA[ > ]]> #{startTime}
+      AND m.minute_time <![CDATA[ <= ]]> #{endTime}
+      AND m.point_code IN
+      <foreach collection="pointCodes" item="pointCode" open="(" separator="," close=")">
+        #{pointCode}
+      </foreach>
+      <if test="entId != null and entId != ''">
+        AND m.ent_id = #{entId}
+      </if>
+      <choose>
+        <when test="deviceIds != null and deviceIds.size() > 0 and deviceCodes != null and deviceCodes.size() > 0">
+          AND (m.device_id IN
+          <foreach collection="deviceIds" item="deviceId" open="(" separator="," close=")">
+            #{deviceId}
+          </foreach>
+          OR m.device_code IN
+          <foreach collection="deviceCodes" item="deviceCode" open="(" separator="," close=")">
+            #{deviceCode}
+          </foreach>)
+        </when>
+        <when test="deviceIds != null and deviceIds.size() > 0">
+          AND m.device_id IN
+          <foreach collection="deviceIds" item="deviceId" open="(" separator="," close=")">
+            #{deviceId}
+          </foreach>
+        </when>
+        <when test="deviceCodes != null and deviceCodes.size() > 0">
+          AND m.device_code IN
+          <foreach collection="deviceCodes" item="deviceCode" open="(" separator="," close=")">
+            #{deviceCode}
+          </foreach>
+        </when>
+        <otherwise>
+          AND 1 = 0
+        </otherwise>
+      </choose>
+    ORDER BY m.device_id, m.point_code, m.minute_time
+  </select>
+
 </mapper>

@@ -15,7 +15,10 @@ public class ConsoleAuthProperties {
 
     private Boolean enabled = true;
 
-    private String tokenSecret = "e-hub-console-default-token-secret";
+    private String tokenSecret;
+
+    /** 会话存储方式：redis（默认，支持多实例）或 local（仅开发调试）。 */
+    private String sessionStore = "redis";
 
     private Long expireMinutes = 720L;
 

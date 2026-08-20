@@ -16,12 +16,36 @@ aggregator:
   apply:
     plan:
       aggregatorId: 1711340903453614082
+  ent-auto-apply:
+    enabled: ${AGGREGATOR_ENT_AUTO_APPLY_ENABLED:false}
+    cron: "${AGGREGATOR_ENT_AUTO_APPLY_CRON:0 5 0 * * ?}"
+
+grid:
+  delivery:
+    upstream-base-url: ${GRID_DELIVERY_UPSTREAM_BASE_URL:http://127.0.0.1:8088}
+    reconciliation:
+      exact-tolerance-kw: ${GRID_DELIVERY_RECONCILIATION_EXACT_TOLERANCE_KW:0.0001}
+      precision-base-kw: ${GRID_DELIVERY_RECONCILIATION_PRECISION_BASE_KW:0.05}
+      precision-per-single-kw: ${GRID_DELIVERY_RECONCILIATION_PRECISION_PER_SINGLE_KW:0.005}
+    quality:
+      enabled: ${GRID_DELIVERY_QUALITY_JOB_ENABLED:true}
+      current-cron: "${GRID_DELIVERY_QUALITY_CURRENT_CRON:0 7/15 * * * ?}"
+      final-cron: "${GRID_DELIVERY_QUALITY_FINAL_CRON:0 20 0 * * ?}"
+      delay-minutes: ${GRID_DELIVERY_QUALITY_DELAY_MINUTES:7}
+      standard-rate: ${GRID_DELIVERY_QUALITY_STANDARD_RATE:99}
+    export:
+      path: ${GRID_DELIVERY_EXPORT_PATH:./exports/grid-delivery}
+      expire-hours: ${GRID_DELIVERY_EXPORT_EXPIRE_HOURS:72}
 
 console:
   auth:
     enabled: true
-    token-secret: ${CONSOLE_AUTH_TOKEN_SECRET:e-hub-console-default-token-secret}
+    token-secret: ${CONSOLE_AUTH_TOKEN_SECRET:}
     expire-minutes: ${CONSOLE_AUTH_EXPIRE_MINUTES:720}
+    session-store: ${CONSOLE_AUTH_SESSION_STORE:redis}
+
+allowed:
+  origins: ${CONSOLE_ALLOWED_ORIGINS:}
 
 logging:
   config: classpath:logback-spring.xml
